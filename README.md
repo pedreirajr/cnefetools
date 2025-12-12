@@ -1,5 +1,5 @@
 
-# cnefetools: Tools for working with Brazilian CNEFE 2022 Address Data <img src="man/figures/logo.png" alt="logo" align="right" width="180"/>
+## cnefetools: Tools for working with Brazilian CNEFE 2022 Address Data <img src="man/figures/logo.png" alt="logo" align="right" width="180"/>
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
