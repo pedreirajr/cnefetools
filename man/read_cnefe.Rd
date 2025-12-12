@@ -7,7 +7,7 @@
 read_cnefe(code_muni, verbose = TRUE, cache = TRUE)
 }
 \arguments{
-\item{code_muni}{Integer or coercible to integer. Seven-digit IBGE
+\item{code_muni}{Integer. Seven-digit IBGE municipality code
 municipality code.}
 
 \item{verbose}{Logical; if \code{TRUE}, print informative messages about
