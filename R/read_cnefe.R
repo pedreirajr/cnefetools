@@ -1,25 +1,27 @@
 #' Read CNEFE 2022 data for a given municipality
 #'
 #' @description
-#' Downloads (optionally caching) and reads the CNEFE 2022 CSV file for a given
+#' Downloads and reads the CNEFE 2022 CSV file for a given
 #' IBGE municipality code, using the official IBGE FTP structure. The function
 #' relies on an internal index linking municipality codes to the corresponding
-#' ZIP URLs. Data are returned as an Arrow [Table][arrow::Table] for efficient
-#' downstream processing.
+#' ZIP URLs. Data are returned either as an Arrow [Table][arrow::Table]
+#' (default) or as an [sf][sf::st_as_sf] object with SIRGAS 2000 coordinates.
 #'
 #' @details
 #' Internally, `read_cnefe()`:
 #'
-#' 1. Looks up the given `code_muni` in an internal index (`cnefe_index_2022`),
+#' 1. Looks up the given `code_muni` in an internal index,
 #'    which maps municipality codes to ZIP URLs.
 #' 2. Downloads the corresponding ZIP file (or reuses a cached copy).
 #' 3. Finds the first `.csv` file inside the archive.
 #' 4. Extracts the CSV to a temporary directory.
 #' 5. Reads it with [arrow::read_delim_arrow()] assuming `";"` as delimiter.
 #'
-#' The function does not attempt to interpret column types beyond Arrow's
-#' defaults and does not perform any spatial conversion. These steps are left
-#' to the user or to higher level helpers that may be added in future versions.
+#' When `output = "arrow"` (default), the function does not perform any spatial
+#' conversion and simply returns the Arrow table. When `output = "sf"`, the
+#' function converts the result to an [sf][sf::st_as_sf] point object using the
+#' `LONGITUDE` and `LATITUDE` columns, with CRS EPSG:4674 (SIRGAS 2000),
+#' keeping these columns in the final object (`remove = FALSE`).
 #'
 #' @section Caching:
 #' When `cache = TRUE` (the default), the downloaded ZIP file is stored in a
@@ -30,31 +32,44 @@
 #' When `cache = FALSE`, the ZIP file is stored in a temporary location and
 #' removed when the function exits.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code
-#'   municipality code.
+#' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param verbose Logical; if `TRUE`, print informative messages about
 #'   download, extraction, and reading steps.
 #' @param cache Logical; if `TRUE`, cache the downloaded ZIP file in a
 #'   user-level cache directory specific to this package. If `FALSE`, a
 #'   temporary file is used and removed after reading.
+#' @param output Character. Output format. `"arrow"` (default) returns an
+#'   [arrow::Table], whereas `"sf"` returns an [sf][sf::st_as_sf] point object
+#'   with coordinates built from `LONGITUDE` / `LATITUDE` in CRS 4674.
 #'
-#' @return An [arrow::Table] containing all CNEFE records for the given
-#'   municipality.
+#' @return
+#' If `output = "arrow"`, an [arrow::Table] containing all CNEFE records for
+#' the given municipality.
+#'
+#' If `output = "sf"`, an [sf][sf::st_as_sf] object with point geometry in
+#' EPSG:4674 (SIRGAS 2000), using the `LONGITUDE` and `LATITUDE` columns.
 #'
 #' @examples
 #' \dontrun{
-#' # Example: read CNEFE data for a municipality (Salvador)
+#' # Example: read CNEFE data for a municipality (Salvador) as Arrow table
 #' tab <- read_cnefe(2927408)
 #'
 #' # Convert to a data frame
-#' df <- tab |> as.data.frame()
+#' df <- tab %>%
+#'   as.data.frame()
 #' head(df)
+#'
+#' # Read directly as sf object (points in SIRGAS 2000)
+#' pts <- read_cnefe(2927408, output = "sf")
+#' pts
 #' }
 #'
 #' @export
 read_cnefe <- function(code_muni,
                        verbose = TRUE,
-                       cache   = TRUE) {
+                       cache   = TRUE,
+                       output  = c("arrow", "sf")) {
+  output   <- match.arg(output)
   code_muni <- .normalize_code_muni(code_muni)
 
   # Use the internal index built in data-raw/
@@ -152,13 +167,41 @@ read_cnefe <- function(code_muni,
   tab <- suppressWarnings(
     arrow::read_delim_arrow(
       csv_path,
-      delim        = ";",
-      col_names    = TRUE,
+      delim         = ";",
+      col_names     = TRUE,
       as_data_frame = FALSE
     )
   )
 
-  tab
+  # Return Arrow table directly
+  if (identical(output, "arrow")) {
+    return(tab)
+  }
+
+  # From here on we need sf installed
+  rlang::check_installed(
+    "sf",
+    reason = "to use `output = \"sf\"` in `read_cnefe()`."
+  )
+
+  # Convert Arrow table to data.frame
+  df <- as.data.frame(tab)
+
+  if (!all(c("LONGITUDE", "LATITUDE") %in% names(df))) {
+    rlang::abort(
+      "Columns 'LONGITUDE' and 'LATITUDE' not found in CNEFE data; cannot build sf object."
+    )
+  }
+
+  df$LONGITUDE <- as.numeric(df$LONGITUDE)
+  df$LATITUDE  <- as.numeric(df$LATITUDE)
+
+  sf::st_as_sf(
+    df,
+    coords = c("LONGITUDE", "LATITUDE"),
+    crs    = 4674,
+    remove = FALSE
+  )
 }
 
 # Internal helper: normalize and validate municipality code

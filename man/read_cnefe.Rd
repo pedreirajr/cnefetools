@@ -4,11 +4,10 @@
 \alias{read_cnefe}
 \title{Read CNEFE 2022 data for a given municipality}
 \usage{
-read_cnefe(code_muni, verbose = TRUE, cache = TRUE)
+read_cnefe(code_muni, verbose = TRUE, cache = TRUE, output = c("arrow", "sf"))
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code
-municipality code.}
+\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
 
 \item{verbose}{Logical; if \code{TRUE}, print informative messages about
 download, extraction, and reading steps.}
@@ -16,22 +15,29 @@ download, extraction, and reading steps.}
 \item{cache}{Logical; if \code{TRUE}, cache the downloaded ZIP file in a
 user-level cache directory specific to this package. If \code{FALSE}, a
 temporary file is used and removed after reading.}
+
+\item{output}{Character. Output format. \code{"arrow"} (default) returns an
+\link[arrow:Table-class]{arrow::Table}, whereas \code{"sf"} returns an \link[sf:st_as_sf]{sf} point object
+with coordinates built from \code{LONGITUDE} / \code{LATITUDE} in CRS 4674.}
 }
 \value{
-An \link[arrow:Table-class]{arrow::Table} containing all CNEFE records for the given
-municipality.
+If \code{output = "arrow"}, an \link[arrow:Table-class]{arrow::Table} containing all CNEFE records for
+the given municipality.
+
+If \code{output = "sf"}, an \link[sf:st_as_sf]{sf} object with point geometry in
+EPSG:4674 (SIRGAS 2000), using the \code{LONGITUDE} and \code{LATITUDE} columns.
 }
 \description{
-Downloads (optionally caching) and reads the CNEFE 2022 CSV file for a given
+Downloads and reads the CNEFE 2022 CSV file for a given
 IBGE municipality code, using the official IBGE FTP structure. The function
 relies on an internal index linking municipality codes to the corresponding
-ZIP URLs. Data are returned as an Arrow \link[arrow:Table-class]{Table} for efficient
-downstream processing.
+ZIP URLs. Data are returned either as an Arrow \link[arrow:Table-class]{Table}
+(default) or as an \link[sf:st_as_sf]{sf} object with SIRGAS 2000 coordinates.
 }
 \details{
 Internally, \code{read_cnefe()}:
 \enumerate{
-\item Looks up the given \code{code_muni} in an internal index (\code{cnefe_index_2022}),
+\item Looks up the given \code{code_muni} in an internal index,
 which maps municipality codes to ZIP URLs.
 \item Downloads the corresponding ZIP file (or reuses a cached copy).
 \item Finds the first \code{.csv} file inside the archive.
@@ -39,9 +45,11 @@ which maps municipality codes to ZIP URLs.
 \item Reads it with \code{\link[arrow:read_delim_arrow]{arrow::read_delim_arrow()}} assuming \code{";"} as delimiter.
 }
 
-The function does not attempt to interpret column types beyond Arrow's
-defaults and does not perform any spatial conversion. These steps are left
-to the user or to higher level helpers that may be added in future versions.
+When \code{output = "arrow"} (default), the function does not perform any spatial
+conversion and simply returns the Arrow table. When \code{output = "sf"}, the
+function converts the result to an \link[sf:st_as_sf]{sf} point object using the
+\code{LONGITUDE} and \code{LATITUDE} columns, with CRS EPSG:4674 (SIRGAS 2000),
+keeping these columns in the final object (\code{remove = FALSE}).
 }
 \section{Caching}{
 
@@ -56,12 +64,17 @@ removed when the function exits.
 
 \examples{
 \dontrun{
-# Example: read CNEFE data for a municipality (Salvador)
+# Example: read CNEFE data for a municipality (Salvador) as Arrow table
 tab <- read_cnefe(2927408)
 
 # Convert to a data frame
-df <- tab |> as.data.frame()
+df <- tab \%>\%
+  as.data.frame()
 head(df)
+
+# Read directly as sf object (points in SIRGAS 2000)
+pts <- read_cnefe(2927408, output = "sf")
+pts
 }
 
 }
