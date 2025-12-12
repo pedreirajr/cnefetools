@@ -9,10 +9,7 @@ MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 Brazilian National Address File for Statistical Purposes (*Cadastro
 Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level
 dataset released by the Brazilian Institute of Geography and Statistics
-(*Instituto Brasileiro de Geografia e Estatística*, IBGE).  
-The current version focuses on efficiently downloading, caching, and
-reading municipality-level CNEFE CSV files into Arrow tables or `sf`
-objects for downstream analysis.
+(*Instituto Brasileiro de Geografia e Estatística*, IBGE).
 
 ## Installation
 
@@ -106,7 +103,9 @@ cnefe_dictionary()
 
 ## Roadmap
 
-Planned extensions include:
+The current version focuses on efficiently downloading, caching, and
+reading municipality-level CNEFE CSV files into Arrow tables or `sf`
+objects for downstream analysis. Planned extensions include:
 
 - Functions to compute land use mix indicators based on CNEFE records.  
 - Functions to support dasymetric population interpolation using CNEFE
