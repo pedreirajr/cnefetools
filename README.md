@@ -66,6 +66,41 @@ ggplot() +
 > consider filtering by area of interest or sampling points before
 > creating maps.
 
+## Caching behavior
+
+By default, `cache = TRUE` stores the downloaded ZIP file in a
+user-level cache directory specific to this package.  
+The exact location is handled internally via:
+
+``` r
+tools::R_user_dir("cnefetools", "cache")
+```
+
+If you prefer to avoid persistent caching, set:
+
+``` r
+tab_ssa <- read_cnefe(code_muni = 2927408, cache = FALSE)
+```
+
+In this case, the ZIP file is stored in a temporary location and removed
+after reading.
+
+## Accessing official CNEFE documentation
+
+**cnefetools** includes local copies of the official methodological note
+and the variable dictionary for the 2022 CNEFE released by IBGE.
+
+You can open these documents in your default PDF and spreadsheet viewers
+with:
+
+``` r
+# Open the official methodological note (PDF)
+cnefe_doc()
+
+# Open the official variable dictionary (Excel)
+cnefe_dictionary()
+```
+
 ## Land use mix indicators with `compute_lumi()`
 
 The function `compute_lumi()` computes mixed land use indicators on an
@@ -115,41 +150,6 @@ ggplot(lumi_for) +
        title = "Bidirectional Global-centered Balance Index (BGBI)",
        subtitle = "Hexagonal grid (H3) for Fortaleza - CNEFE 2022") +
   theme_minimal()
-```
-
-## Caching behavior
-
-By default, `cache = TRUE` stores the downloaded ZIP file in a
-user-level cache directory specific to this package.  
-The exact location is handled internally via:
-
-``` r
-tools::R_user_dir("cnefetools", "cache")
-```
-
-If you prefer to avoid persistent caching, set:
-
-``` r
-tab_ssa <- read_cnefe(code_muni = 2927408, cache = FALSE)
-```
-
-In this case, the ZIP file is stored in a temporary location and removed
-after reading.
-
-## Accessing official CNEFE documentation
-
-**cnefetools** includes local copies of the official methodological note
-and the variable dictionary for the 2022 CNEFE released by IBGE.
-
-You can open these documents in your default PDF and spreadsheet viewers
-with:
-
-``` r
-# Open the official methodological note (PDF)
-cnefe_doc()
-
-# Open the official variable dictionary (Excel)
-cnefe_dictionary()
 ```
 
 ## Citation
