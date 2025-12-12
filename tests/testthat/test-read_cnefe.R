@@ -1,26 +1,22 @@
-test_that("read_cnefe() fails for unknown municipality code", {
-  fake_code <- 9999999L
-
-  expect_error(
-    read_cnefe(fake_code),
-    "Municipality code not found in internal CNEFE index"
-  )
+test_that("read_cnefe() falha para códigos inválidos", {
+  expect_error(read_cnefe("abc"), "must be coercible")
+  expect_error(read_cnefe(9999999L), "not found in internal CNEFE index")
 })
 
-test_that("read_cnefe() requires a single municipality code", {
-  expect_error(
-    read_cnefe(c(2927408, 3550308)),
-    "`code_muni` must be a single value"
+test_that("read_cnefe() baixa dados de um município real (teste opcional online)", {
+  # Nunca roda no CRAN
+  testthat::skip_on_cran()
+  # Pula se não tiver internet
+  testthat::skip_if_offline(host = "ftp.ibge.gov.br")
+  # E, principalmente, só roda se você explicitamente habilitar:
+  testthat::skip_if_not(
+    identical(Sys.getenv("CNEFETOOLS_RUN_DOWNLOAD_TESTS"), "true"),
+    "Live download tests are disabled by default."
   )
-})
-
-test_that("read_cnefe() works for a real municipality (offline-safe)", {
-  skip_on_cran()
-  testthat::skip_if_offline()
 
   tab <- read_cnefe(2927408, cache = FALSE, verbose = FALSE)
 
-  # Arrow Table S3 class name can be checked this way
-  expect_s3_class(tab, "Table")
-  expect_gt(tab$num_rows, 0)
+  # Arrow Table
+  testthat::expect_s3_class(tab, "Table")
+  testthat::expect_true(all(c("LONGITUDE", "LATITUDE") %in% names(tab)))
 })

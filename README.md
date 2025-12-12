@@ -53,8 +53,8 @@ library(sf)
 library(ggplot2)
 library(dplyr)
 
-# Read CNEFE data as sf (Salvador)
-tab_ssa_sf <- read_cnefe(2927408, output = "sf", cache = TRUE)
+# Read CNEFE data as sf (Salvador, IBGE code = 2927408)
+tab_ssa_sf <- read_cnefe(code_muni = 2927408, output = "sf", cache = TRUE)
 
 # Keep only religious facilities (COD_ESPECIE == 8)
 templos_ssa <- tab_ssa_sf %>%
@@ -86,11 +86,27 @@ tools::R_user_dir("cnefetools", "cache")
 If you prefer to avoid persistent caching, set:
 
 ``` r
-tab_ssa <- read_cnefe(2927408, cache = FALSE)
+tab_ssa <- read_cnefe(code_muni = 2927408, cache = FALSE)
 ```
 
 In this case, the ZIP file is stored in a temporary location and removed
 after reading.
+
+## Accessing official CNEFE documentation
+
+**cnefetools** includes local copies of the official methodological note
+and the variable dictionary for the 2022 CNEFE released by IBGE.
+
+You can open these documents in your default PDF and spreadsheet viewers
+with:
+
+``` r
+# Open the official methodological note (PDF)
+cnefe_doc()
+
+# Open the official variable dictionary (Excel)
+cnefe_dictionary()
+```
 
 ## Roadmap
 
@@ -99,5 +115,3 @@ Planned extensions include:
 - Functions to compute land use mix indicators based on CNEFE records.  
 - Functions to support dasymetric population interpolation using CNEFE
   as ancillary data.  
-- Additional helpers for working with Arrow tables and spatial
-  representations.
