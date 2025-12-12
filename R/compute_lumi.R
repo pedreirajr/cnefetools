@@ -3,7 +3,10 @@
 #' @description
 #' `compute_lumi()` reads CNEFE 2022 records for a given municipality,
 #' assigns each address point to an H3 cell, and computes land-use mix
-#' indicators per hexagon (EI, HHI, adapted HHI, and BGBI).
+#' indices per hexagon (EI, HHI, adapted HHI, and BGBI), following the
+#' methodology proposed in Pedreira Jr. et al. (2025) for measuring land-use
+#' mix with address-level census data (engrXiv preprint:
+#' https://engrxiv.org/preprint/view/5975).
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param h3_resolution Integer. H3 grid resolution (default: 9).
@@ -15,6 +18,11 @@
 #'   - `p_res`: share of residential addresses in the hexagon;
 #'   - `ei`, `hhi`, `hhi_adp`, `bgbi`: land-use mix indicators;
 #'   - `geometry`: hexagon geometry.
+#'
+#' @references
+#' Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. (2025).
+#' Measuring land use mix with address-level census data. engrXiv.
+#' https://engrxiv.org/preprint/view/5975
 #'
 #' @export
 compute_lumi <- function(code_muni,

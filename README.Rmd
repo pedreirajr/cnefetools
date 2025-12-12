@@ -60,6 +60,44 @@ ggplot() +
 > For large municipalities, CNEFE may contain more than 1 million address points.\
 > Plotting all coordinates at once can be slow and memory intensive, so consider filtering by area of interest or sampling points before creating maps.
 
+## Land use mix indicators with `compute_lumi()`
+
+The function `compute_lumi()` computes mixed land use indicators on an H3 hexagonal grid for any Brazilian municipality covered by the 2022 CNEFE (Pedreira Junior et al, 2025). Internally, it: (i) Reads and preprocesses address points from CNEFE; (ii) Builds an H3 grid over the municipal boundary; (iii) Aggregates residential and non-residential addresses per hexagon; and (iv) Computes the following indicators:
+
+-   `p_res`: proportion of residential addresses in each hexagon.
+-   `ei`: Entropy Index (EI), ranging from 0 (single use) to 1 (balanced residential/non-residential).
+-   `hhi`: Herfindahl–Hirschman Index (HHI) for two uses (residential vs. non-residential), rescaled to [0, 1].
+-   `hhi_adp`: adapted HHI, which adds directionality and takes values in [−1, 1], where negative values indicate non-residential dominance and positive values indicate residential dominance.
+-   `bgbi`: Bidirectional Global-centered Balance Index (BGBI), which measures the deviation of the local residential share from the citywide residential proportion, also in [−1, 1].
+
+Below is an example for Fortaleza (IBGE code 2304400) at H3 resolution 8:
+
+``` r
+library(cnefetools)
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Compute land use mix indicators on an H3 grid
+lumi_for <- compute_lumi(code_muni = 2304400, h3_resolution = 8, verbose = TRUE)
+
+# Quick summary of the resulting sf object
+lumi_for
+```
+
+You can also visualize the spatial distribution of the BGBI indicator with `ggplot2`:
+
+``` r
+ggplot(lumi_for) +
+  geom_sf(aes(fill = bgbi), color = NA) +
+  scale_fill_viridis_c(option = "plasma") +
+  coord_sf() +
+  labs(fill = "BGBI",
+       title = "Bidirectional Global-centered Balance Index (BGBI)",
+       subtitle = "Hexagonal grid (H3) for Fortaleza - CNEFE 2022") +
+  theme_minimal()
+```
+
 ## Caching behavior
 
 By default, `cache = TRUE` stores the downloaded ZIP file in a user-level cache directory specific to this package.\
@@ -91,8 +129,15 @@ cnefe_doc()
 cnefe_dictionary()
 ```
 
-## Roadmap
-The current version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables or `sf` objects for downstream analysis. Planned extensions include:
+## Citation
 
--   Functions to compute land use mix indicators based on CNEFE records.\
--   Functions to support dasymetric population interpolation using CNEFE as ancillary data.\
+If you use **cnefetools** in scientific work, please cite the associated preprint:
+
+> Pedreira Jr., J. U.; Louro, T.V.; Assis, L. B. M.; Brito, P. L. *Measuring land use mix with address-level census data* (2025). engrXiv. <https://engrxiv.org/preprint/view/5975>
+
+## Roadmap
+
+The current version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables or `sf` objects and on computing mixed land use indicators over H3 grids. Planned extensions include:
+
+-   Functions to support dasymetric population interpolation using CNEFE as ancillary data.
+-   Performance improvements and alternative backends for spatial joins in `compute_lumi()`, including high-performance frameworks for spatial big data processing, such as SedonaDB and DuckDB’s spatial extensions.
