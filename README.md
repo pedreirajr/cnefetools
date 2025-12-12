@@ -21,8 +21,8 @@ objects for downstream analysis.
 ## Installation
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("pedreirajr/cnefetools")
+# install.packages("pak")
+pak::pak("pedreirajr/cnefetools")
 ```
 
 ## Basic usage
