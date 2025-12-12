@@ -1,18 +1,14 @@
 
-<!-- badges: start -->
+# cnefetools: Tools for working with Brazilian CNEFE 2022 Address Data <img src="man/figures/logo.png" alt="logo" align="right" width="180"/>
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
-<!-- badges: end -->
-
-# cnefetools
-
-**cnefetools** provides helper functions to work with the 2022 Brazilian
-National Address File for Statistical Purposes (*Cadastro Nacional de
-Endereços para Fins Estatísticos*, CNEFE), an address-level dataset
-released by the Brazilian Institute of Geography and Statistics
+**{cnefetools}** provides helper functions to work with the 2022
+Brazilian National Address File for Statistical Purposes (*Cadastro
+Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level
+dataset released by the Brazilian Institute of Geography and Statistics
 (*Instituto Brasileiro de Geografia e Estatística*, IBGE).  
 The current version focuses on efficiently downloading, caching, and
 reading municipality-level CNEFE CSV files into Arrow tables or `sf`
@@ -33,7 +29,7 @@ library(cnefetools)
 # Example: read CNEFE data for a municipality (Salvador) as an Arrow table
 tab_ssa <- read_cnefe(2927408, cache = TRUE)
 
-# Convert to a tibble for inspection
+# Convert to a data frame for inspection
 df_ssa <- tab_ssa %>%
   as.data.frame()
 
