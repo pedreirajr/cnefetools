@@ -30,7 +30,7 @@
 #' When `cache = FALSE`, the ZIP file is stored in a temporary location and
 #' removed when the function exits.
 #'
-#' @param code_muni Integer or coercible to integer. Seven-digit IBGE
+#' @param code_muni Integer. Seven-digit IBGE municipality code
 #'   municipality code.
 #' @param verbose Logical; if `TRUE`, print informative messages about
 #'   download, extraction, and reading steps.
