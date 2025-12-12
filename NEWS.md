@@ -1,3 +1,3 @@
-# cnefetools (development version)
+# cnefetools 0.0.0.9000
 
-* Initial CRAN submission.
+* Initial development version. Basic package infrastructure set up.
