@@ -1,12 +1,13 @@
 
 # cnefetools
 
-Tools for working with the Brazilian CNEFE 2022 address data from the
-Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE).
-
-The initial goal of this package is to provide a simple and efficient
-way to download, cache, and read municipality-level CNEFE CSV files into
-Arrow tables.
+**cnefetools** provides helper functions to work with the 2022 Brazilian
+National Address File for Statistical Purposes (*Cadastro Nacional de
+Endereços para Fins Estatísticos*, CNEFE), an address-level dataset
+released by IBGE.  
+The initial version focuses on efficiently downloading, caching, and
+reading municipality-level CNEFE CSV files into Arrow tables for
+downstream analysis.
 
 ## Installation
 
