@@ -6,6 +6,8 @@
 \alias{cnefetools-package}
 \title{cnefetools: Tools for Working with Brazilian CNEFE 2022 Address Data}
 \description{
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+
 Provides helper functions to work with the Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) from the 2022 Brazilian census. The initial version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables for downstream analysis.
 }
 \seealso{
