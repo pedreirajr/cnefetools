@@ -114,7 +114,8 @@ addresses per hexagon; and (iv) Computes the following indicators:
 - `ei`: Entropy Index (EI), ranging from 0 (single use) to 1 (balanced
   residential/non-residential).
 - `hhi`: Herfindahl–Hirschman Index (HHI) for two uses (residential
-  vs. non-residential), rescaled to \[0, 1\].
+  vs. non-residential), ranging from 0.5 (balanced
+  residential/non-residential) to 1 (single use).
 - `hhi_adp`: adapted HHI, which adds directionality and takes values in
   \[−1, 1\], where negative values indicate non-residential dominance
   and positive values indicate residential dominance.
