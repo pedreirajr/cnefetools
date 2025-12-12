@@ -32,4 +32,6 @@ Imports:
     sf,
     lifecycle,
     magrittr,
-    rlang
+    rlang,
+    h3jsr,
+    tidyr
