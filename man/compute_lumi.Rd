@@ -26,5 +26,13 @@ An \code{\link[sf:sf]{sf::sf}} object with CRS 4326 containing:
 \description{
 \code{compute_lumi()} reads CNEFE 2022 records for a given municipality,
 assigns each address point to an H3 cell, and computes land-use mix
-indicators per hexagon (EI, HHI, adapted HHI, and BGBI).
+indices per hexagon (EI, HHI, adapted HHI, and BGBI), following the
+methodology proposed in Pedreira Jr. et al. (2025) for measuring land-use
+mix with address-level census data (engrXiv preprint:
+https://engrxiv.org/preprint/view/5975).
+}
+\references{
+Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. (2025).
+Measuring land use mix with address-level census data. engrXiv.
+https://engrxiv.org/preprint/view/5975
 }
