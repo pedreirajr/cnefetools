@@ -87,8 +87,8 @@ after reading.
 
 ## Accessing official CNEFE documentation
 
-**cnefetools** includes local copies of the official methodological note
-and the variable dictionary for the 2022 CNEFE released by IBGE.
+**{cnefetools}** includes local copies of the official methodological
+note and the variable dictionary for the 2022 CNEFE released by IBGE.
 
 You can open these documents in your default PDF and spreadsheet viewers
 with:
@@ -155,8 +155,8 @@ ggplot(lumi_for) +
 
 ## Citation
 
-If you use **cnefetools** in scientific work, please cite the associated
-preprint:
+If you use **{cnefetools}** in scientific work, please cite the
+associated preprint:
 
 > Pedreira Jr., J. U.; Louro, T.V.; Assis, L. B. M.; Brito, P. L.
 > *Measuring land use mix with address-level census data* (2025).
