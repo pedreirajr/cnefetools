@@ -1,6 +1,6 @@
 Package: cnefetools
 Title: Tools for Working with Brazilian CNEFE 2022 Address Data
-Version: 0.0.1.9000
+Version: 0.0.1.9001
 Authors@R: 
     person("Jorge Ubirajara", "Pedreira Junior",
            email = "jorge.ubirajara@ufba.br",
