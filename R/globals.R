@@ -1,0 +1,18 @@
+utils::globalVariables(c(
+  "CODIGO_ESPECIE",
+  "COD_ESPECIE",
+  "id_hex",
+  "count",
+  "COD_ESPECIE1",
+  "tot",
+  "p_res",
+  "q_rest",
+  "k",
+  "hhi",
+  "min_hhi",
+  "hhi_sc",
+  "ei",
+  "hhi_adp",
+  "bgbi",
+  "geometry"
+))
