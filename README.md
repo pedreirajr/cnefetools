@@ -4,7 +4,8 @@
 **cnefetools** provides helper functions to work with the 2022 Brazilian
 National Address File for Statistical Purposes (*Cadastro Nacional de
 Endereços para Fins Estatísticos*, CNEFE), an address-level dataset
-released by IBGE.  
+released by the Brazilian Institute of Geography and Statistics
+(*Instituto Brasileiro de Geografia e Estatística*, IBGE).  
 The initial version focuses on efficiently downloading, caching, and
 reading municipality-level CNEFE CSV files into Arrow tables for
 downstream analysis.
