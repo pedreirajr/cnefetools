@@ -1,4 +1,4 @@
-# cnefetools (development version)
+# cnefetools 0.0.2
 
 # cnefetools 0.0.1
 
