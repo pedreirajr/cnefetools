@@ -3,18 +3,16 @@ output:
   github_document:
     html_preview: false
 ---
-
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml) 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
 <!-- badges: end -->
 
 # cnefetools
 
-**cnefetools** provides helper functions to work with the 2022 Brazilian National Address File for Statistical Purposes (*Cadastro Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level dataset released by the Brazilian Institute of Geography and Statistics (*Instituto Brasileiro de Geografia e Estatística*, IBGE).  
-The initial version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables or spatial objects for downstream analysis.
+**cnefetools** provides helper functions to work with the 2022 Brazilian National Address File for Statistical Purposes (*Cadastro Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level dataset released by the Brazilian Institute of Geography and Statistics (*Instituto Brasileiro de Geografia e Estatística*, IBGE).\
+The current version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables or `sf` objects for downstream analysis.
 
 ## Installation
 
@@ -23,48 +21,57 @@ The initial version focuses on efficiently downloading, caching, and reading mun
 remotes::install_github("pedreirajr/cnefetools")
 ```
 
-## Basic usage (Arrow output)
+## Basic usage
 
 ``` r
 library(cnefetools)
 
-# Example - read CNEFE data for a municipality (Salvador)
+# Example: read CNEFE data for a municipality (Salvador) as an Arrow table
 tab_ssa <- read_cnefe(2927408, cache = TRUE)
 
 # Convert to a tibble for inspection
-df_ssa <- tab_ssa %>% 
+df_ssa <- tab_ssa %>%
   as.data.frame()
 
 head(df_ssa)
 ```
 
-By default, `read_cnefe()` returns an [arrow::Table], which is convenient for
-large-scale, columnar workflows.
+## Spatial output and quick map
 
-## Spatial output (sf)
-
-If you prefer a spatial object, set `output = "sf"`. In this case, `read_cnefe()`
-returns an `sf` object using the geocoded coordinates (`LONGITUDE`, `LATITUDE`)
-in the SIRGAS 2000 reference system (EPSG:4674).
+If you prefer to work with spatial objects, `read_cnefe()` can return an `sf` object by setting `output = "sf"`.\
+The example below reads CNEFE data for Salvador, filters only religious facilities (`COD_ESPECIE == 8`), and plots them with `ggplot2`:
 
 ``` r
 library(cnefetools)
 library(sf)
+library(ggplot2)
+library(dplyr)
 
+# Read CNEFE data as sf (Salvador)
 tab_ssa_sf <- read_cnefe(2927408, output = "sf", cache = TRUE)
 
-tab_ssa_sf
-sf::st_crs(tab_ssa_sf)
+# Keep only religious facilities (COD_ESPECIE == 8)
+templos_ssa <- tab_ssa_sf %>%
+  dplyr::filter(COD_ESPECIE == 8)
+
+ggplot() +
+  geom_sf(data = templos_ssa, size = 0.3, alpha = 0.6) +
+  coord_sf() +
+  theme_minimal()
 ```
 
-This is useful when you want to integrate CNEFE addresses directly in spatial
-analysis or map production.
+> **Warning**\
+> For large municipalities, CNEFE may contain more than 1 million address points.\
+> Plotting all coordinates at once can be slow and memory intensive, so consider filtering by area of interest or sampling points before creating maps.
 
 ## Caching behavior
 
-By default, `cache = TRUE` stores the downloaded ZIP file in a user-level cache
-directory specific to this package. The exact location is handled internally via
-`tools::R_user_dir("cnefetools", "cache")`.
+By default, `cache = TRUE` stores the downloaded ZIP file in a user-level cache directory specific to this package.\
+The exact location is handled internally via:
+
+``` r
+tools::R_user_dir("cnefetools", "cache")
+```
 
 If you prefer to avoid persistent caching, set:
 
@@ -72,13 +79,12 @@ If you prefer to avoid persistent caching, set:
 tab_ssa <- read_cnefe(2927408, cache = FALSE)
 ```
 
-In this case, the ZIP file is stored in a temporary location and removed after
-reading.
+In this case, the ZIP file is stored in a temporary location and removed after reading.
 
 ## Roadmap
 
 Planned extensions include:
 
-- Functions to compute land use mix indicators based on CNEFE records.
-- Functions to support dasymetric population interpolation using CNEFE as
-  ancillary data.
+-   Functions to compute land use mix indicators based on CNEFE records.\
+-   Functions to support dasymetric population interpolation using CNEFE as ancillary data.\
+-   Additional helpers for working with Arrow tables and spatial representations.
