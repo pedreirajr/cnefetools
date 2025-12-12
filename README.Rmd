@@ -13,8 +13,8 @@ output:
 
 # cnefetools
 
-**cnefetools** provides helper functions to work with the 2022 Brazilian National Address File for Statistical Purposes (*Cadastro Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level dataset released by the Brazilian Institute of Geography and Statistics (*Instituto Brasileiro de Geografia e Estatística*, IBGE).\
-The initial version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables for downstream analysis.
+**cnefetools** provides helper functions to work with the 2022 Brazilian National Address File for Statistical Purposes (*Cadastro Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level dataset released by the Brazilian Institute of Geography and Statistics (*Instituto Brasileiro de Geografia e Estatística*, IBGE).  
+The initial version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables or spatial objects for downstream analysis.
 
 ## Installation
 
@@ -23,7 +23,7 @@ The initial version focuses on efficiently downloading, caching, and reading mun
 remotes::install_github("pedreirajr/cnefetools")
 ```
 
-## Basic usage
+## Basic usage (Arrow output)
 
 ``` r
 library(cnefetools)
@@ -38,9 +38,33 @@ df_ssa <- tab_ssa %>%
 head(df_ssa)
 ```
 
+By default, `read_cnefe()` returns an [arrow::Table], which is convenient for
+large-scale, columnar workflows.
+
+## Spatial output (sf)
+
+If you prefer a spatial object, set `output = "sf"`. In this case, `read_cnefe()`
+returns an `sf` object using the geocoded coordinates (`LONGITUDE`, `LATITUDE`)
+in the SIRGAS 2000 reference system (EPSG:4674).
+
+``` r
+library(cnefetools)
+library(sf)
+
+tab_ssa_sf <- read_cnefe(2927408, output = "sf", cache = TRUE)
+
+tab_ssa_sf
+sf::st_crs(tab_ssa_sf)
+```
+
+This is useful when you want to integrate CNEFE addresses directly in spatial
+analysis or map production.
+
 ## Caching behavior
 
-By default, `cache = TRUE` stores the downloaded ZIP file in a user-level cache directory specific to this package. The exact location is handled internally via `tools::R_user_dir("cnefetools", "cache")`.
+By default, `cache = TRUE` stores the downloaded ZIP file in a user-level cache
+directory specific to this package. The exact location is handled internally via
+`tools::R_user_dir("cnefetools", "cache")`.
 
 If you prefer to avoid persistent caching, set:
 
@@ -48,12 +72,13 @@ If you prefer to avoid persistent caching, set:
 tab_ssa <- read_cnefe(2927408, cache = FALSE)
 ```
 
-In this case, the ZIP file is stored in a temporary location and removed after reading.
+In this case, the ZIP file is stored in a temporary location and removed after
+reading.
 
 ## Roadmap
 
 Planned extensions include:
 
--   Functions to compute land use mix indicators based on CNEFE records.
--   Functions to support dasymetric population interpolation using CNEFE as ancillary data.
--   Additional helpers for working with Arrow tables and spatial representations.
+- Functions to compute land use mix indicators based on CNEFE records.
+- Functions to support dasymetric population interpolation using CNEFE as
+  ancillary data.
