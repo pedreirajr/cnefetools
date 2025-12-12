@@ -21,7 +21,6 @@ Suggests:
     ggplot2,
     knitr,
     rmarkdown,
-    sf,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Depends: 
@@ -30,6 +29,7 @@ Imports:
     archive,
     arrow,
     dplyr,
+    sf,
     lifecycle,
     magrittr,
     rlang
