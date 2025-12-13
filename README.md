@@ -1,5 +1,5 @@
 
-# cnefetools: Tools for working with Brazilian CNEFE 2022 Address Data <img src="man/figures/logo.png" alt="logo" align="right" width="190"/>
+# cnefetools: Tools for working with Brazilian CNEFE 2022 address data <img src="man/figures/logo.png" alt="logo" align="right" width="190"/>
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
@@ -69,14 +69,8 @@ ggplot() +
 ## Caching behavior
 
 By default, `cache = TRUE` stores the downloaded ZIP file in a
-user-level cache directory specific to this package.  
-The exact location is handled internally via:
-
-``` r
-tools::R_user_dir("cnefetools", "cache")
-```
-
-If you prefer to avoid persistent caching, set:
+user-level cache directory specific to this package. If you prefer to
+avoid persistent caching, set:
 
 ``` r
 tab_ssa <- read_cnefe(code_muni = 2927408, cache = FALSE)
@@ -101,14 +95,15 @@ cnefe_doc()
 cnefe_dictionary()
 ```
 
-## Land use mix indicators with `compute_lumi()`
+## Land-use mix indicators with `compute_lumi()`
 
-The function `compute_lumi()` computes mixed land use indicators on an
-H3 hexagonal grid for any Brazilian municipality covered by the 2022
-CNEFE (Pedreira Junior et al, 2025). Internally, it: (i) Reads and
-preprocesses address points from CNEFE; (ii) Builds an H3 grid over the
-municipal boundary; (iii) Aggregates residential and non-residential
-addresses per hexagon; and (iv) Computes the following indicators:
+The `compute_lumi()` function computes land-use mix indicators on an H3
+hexagonal grid at any user-defined resolution for any Brazilian
+municipality covered by the 2022 CNEFE dataset (Pedreira Junior et al,
+2025). Internally, it: (i) Reads and preprocesses address points from
+CNEFE; (ii) Builds an H3 grid over the municipal boundary; (iii)
+Aggregates residential and non-residential addresses per hexagon; and
+(iv) Computes the following indicators:
 
 - `p_res`: proportion of residential addresses in each hexagon.
 - `ei`: Entropy Index (EI), ranging from 0 (single use) to 1 (balanced
@@ -132,11 +127,8 @@ library(sf)
 library(ggplot2)
 library(dplyr)
 
-# Compute land use mix indicators on an H3 grid
+# Compute land use mix indicators on an H3 grid (res. 8) for Fortaleza (IBGE code 2304400):
 lumi_for <- compute_lumi(code_muni = 2304400, h3_resolution = 8, verbose = TRUE)
-
-# Quick summary of the resulting sf object
-lumi_for
 ```
 
 You can also visualize the spatial distribution of the BGBI indicator
@@ -155,8 +147,8 @@ ggplot(lumi_for) +
 
 ## Citation
 
-If you use **{cnefetools}** in scientific work, please cite the
-associated preprint:
+If you use **{cnefetools}** in your work, please cite the associated
+preprint:
 
 > Pedreira Jr., J. U.; Louro, T.V.; Assis, L. B. M.; Brito, P. L.
 > *Measuring land use mix with address-level census data* (2025).
