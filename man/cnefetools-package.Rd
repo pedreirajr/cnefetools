@@ -19,7 +19,12 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Jorge Ubirajara Pedreira Junior \email{jorge.ubirajara@ufba.br}
+\strong{Maintainer}: Jorge Ubirajara Pedreira Junior \email{jorge.ubirajara@ufba.br} (\href{https://orcid.org/0000-0002-8243-5395}{ORCID})
+
+Other contributors:
+\itemize{
+  \item Kaio Cunha Pedreira \email{kaiocp7@gmail.com} [contributor]
+}
 
 }
 \keyword{internal}
