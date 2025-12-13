@@ -47,11 +47,11 @@ library(dplyr)
 tab_ssa_sf <- read_cnefe(code_muni = 2927408, output = "sf", cache = TRUE)
 
 # Keep only religious facilities (COD_ESPECIE == 8)
-templos_ssa <- tab_ssa_sf %>%
+temples_ssa <- tab_ssa_sf %>%
   dplyr::filter(COD_ESPECIE == 8)
 
 ggplot() +
-  geom_sf(data = templos_ssa, size = 0.3, alpha = 0.6) +
+  geom_sf(data = temples_ssa, size = 0.3, alpha = 0.6) +
   coord_sf() +
   theme_minimal()
 ```
