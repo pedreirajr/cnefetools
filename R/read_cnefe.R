@@ -210,9 +210,27 @@ read_cnefe <- function(code_muni,
     rlang::abort("`code_muni` must be a single value.")
   }
 
-  code_muni <- suppressWarnings(as.integer(code_muni))
+  if (is.factor(code_muni)) code_muni <- as.character(code_muni)
+
+  # character input must be exactly 7 digits
+  if (is.character(code_muni)) {
+    code_muni <- trimws(code_muni)
+
+    if (!nzchar(code_muni) || !grepl("^\\d{7}$", code_muni)) {
+      rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
+    }
+
+    code_muni <- suppressWarnings(as.integer(code_muni))
+  } else {
+    code_muni <- suppressWarnings(as.integer(code_muni))
+  }
 
   if (is.na(code_muni) || !is.finite(code_muni)) {
+    rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
+  }
+
+  # enforce 7 digits
+  if (nchar(sprintf("%d", code_muni)) != 7) {
     rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
   }
 
@@ -220,6 +238,7 @@ read_cnefe <- function(code_muni,
 }
 
 # Internal helper: return and create (if needed) the cache directory
+#' @keywords internal
 .cnefe_cache_dir <- function() {
   cache_dir <- tools::R_user_dir("cnefetools", which = "cache")
 
