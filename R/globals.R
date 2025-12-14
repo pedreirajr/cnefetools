@@ -1,4 +1,6 @@
 utils::globalVariables(c(
+  ".data",
+  "n",
   "CODIGO_ESPECIE",
   "COD_ESPECIE",
   "id_hex",
