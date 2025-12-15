@@ -8,14 +8,6 @@
 #' (default) or as an [sf][sf::st_as_sf] object with SIRGAS 2000 coordinates.
 #'
 #' @details
-#' Internally, `read_cnefe()`:
-#'
-#' 1. Looks up the given `code_muni` in an internal index,
-#'    which maps municipality codes to ZIP URLs.
-#' 2. Downloads the corresponding ZIP file (or reuses a cached copy).
-#' 3. Finds the first `.csv` file inside the archive.
-#' 4. Extracts the CSV to a temporary directory.
-#' 5. Reads it with [arrow::read_delim_arrow()] assuming `";"` as delimiter.
 #'
 #' When `output = "arrow"` (default), the function does not perform any spatial
 #' conversion and simply returns the Arrow table. When `output = "sf"`, the
@@ -58,150 +50,32 @@ read_cnefe <- function(code_muni,
   output    <- match.arg(output)
   code_muni <- .normalize_code_muni(code_muni)
 
-  # Use the internal index built in data-raw/
-  index <- cnefe_index_2022
+  # Ensure ZIP exists (cached or temporary) and is valid
+  zip_info <- .cnefe_ensure_zip(
+    code_muni = code_muni,
+    index     = cnefe_index_2022,
+    cache     = cache,
+    verbose   = verbose,
+    base_timeout = 300L,
+    timeouts  = c(300L, 600L, 1800L)
+  )
 
-  info <- index[index$code_muni == code_muni, , drop = FALSE]
-  if (nrow(info) == 0) {
-    rlang::abort(
-      sprintf("Municipality code not found in internal CNEFE index: %s", code_muni)
-    )
-  }
-
-  url <- info$zip_url[1]
-  if (is.na(url) || !nzchar(url)) {
-    rlang::abort(
-      sprintf("Missing `zip_url` in internal index for municipality: %s", code_muni)
-    )
-  }
-
-  ext <- tools::file_ext(url)
-  if (!nzchar(ext)) ext <- "zip"
-
-  # Decide where to store the ZIP file
-  if (isTRUE(cache)) {
-    cache_dir   <- .cnefe_cache_dir()
-    zip_path    <- file.path(cache_dir, basename(url))
-    cleanup_zip <- FALSE
-  } else {
-    zip_path    <- tempfile(fileext = paste0(".", ext))
-    cleanup_zip <- TRUE
-  }
+  zip_path    <- zip_info$zip_path
+  cleanup_zip <- isTRUE(zip_info$cleanup_zip)
 
   # Temporary directory to extract the CSV
   tmp_dir <- tempfile("cnefe_unzip_")
   dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Always restore timeout; always cleanup temp dir and temp zip (if cache = FALSE)
-  old_timeout  <- getOption("timeout")
-  base_timeout <- max(old_timeout, 300L)
-
   on.exit({
-    options(timeout = old_timeout)
-
-    if (cleanup_zip && file.exists(zip_path)) {
-      unlink(zip_path)
-    }
-    if (dir.exists(tmp_dir)) {
-      unlink(tmp_dir, recursive = TRUE)
-    }
+    if (cleanup_zip && file.exists(zip_path)) unlink(zip_path)
+    if (dir.exists(tmp_dir)) unlink(tmp_dir, recursive = TRUE)
   }, add = TRUE)
 
-  # ---------------------------------------------------------------------------
-  # Download with retries + temporary file + timeout escalation
-  # ---------------------------------------------------------------------------
-  .download_zip_with_retry <- function(url, destfile, verbose,
-                                       timeouts = c(base_timeout, 600L, 1800L)) {
-
-    timeouts <- unique(as.integer(timeouts))
-    timeouts <- timeouts[!is.na(timeouts) & timeouts > 0]
-    timeouts <- sort(timeouts)
-
-    last_err <- NULL
-
-    for (t in timeouts) {
-      options(timeout = t)
-
-      tmp <- tempfile(fileext = ".zip")
-      if (file.exists(tmp)) unlink(tmp)
-
-      if (verbose) {
-        message(sprintf("Downloading (timeout = %ss): %s", t, url))
-      }
-
-      ok <- tryCatch({
-        utils::download.file(
-          url,
-          destfile = tmp,
-          mode     = "wb",
-          quiet    = !verbose
-        )
-
-        if (!file.exists(tmp) || is.na(file.size(tmp)) || file.size(tmp) == 0) {
-          stop("Download produced an empty file.")
-        }
-
-        # Validate ZIP integrity by listing its contents
-        archive::archive(tmp)
-
-        # Only now move into place (avoids leaving partial ZIP in cache)
-        if (file.exists(destfile)) unlink(destfile)
-        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
-        if (!ok_copy) stop("Failed to copy downloaded ZIP into destination.")
-
-        TRUE
-      }, error = function(e) {
-        last_err <<- e
-        FALSE
-      }, finally = {
-        if (file.exists(tmp)) unlink(tmp)
-      })
-
-      if (isTRUE(ok)) return(invisible(TRUE))
-
-      if (verbose && !is.null(last_err)) {
-        message("Download attempt failed: ", conditionMessage(last_err))
-      }
-    }
-
-    if (!is.null(last_err)) {
-      rlang::abort(conditionMessage(last_err))
-    }
-    rlang::abort("Download failed for unknown reasons.")
-  }
-
-  # If cached file exists, validate it; if invalid, delete and re-download
-  if (isTRUE(cache) && file.exists(zip_path)) {
-    valid <- tryCatch({
-      archive::archive(zip_path)
-      TRUE
-    }, error = function(e) FALSE)
-
-    if (!valid) {
-      if (verbose) message("Cached ZIP appears corrupted. Deleting it...")
-      unlink(zip_path)
-    }
-  }
-
-  # Download if needed (with retries + escalating timeout)
-  if (!file.exists(zip_path)) {
-    .download_zip_with_retry(url, zip_path, verbose)
-  } else if (verbose) {
-    message("Using cached file: ", zip_path)
-  }
-
-  # ---------------------------------------------------------------------------
-  # Extract CSV
-  # ---------------------------------------------------------------------------
+  # List archive and find first CSV inside
   if (verbose) message("Listing archive contents...")
-  arch_info <- archive::archive(zip_path)
-  csv_inside <- arch_info$path[grepl("\\.csv$", arch_info$path, ignore.case = TRUE)][1]
-
-  if (is.na(csv_inside)) {
-    rlang::abort(
-      sprintf("No .csv file found inside archive for municipality: %s", code_muni)
-    )
-  }
+  arch_info  <- archive::archive(zip_path)
+  csv_inside <- .cnefe_first_csv_in_archive(arch_info)
 
   if (verbose) message("Extracting ", csv_inside, " ...")
   archive::archive_extract(zip_path, file = csv_inside, dir = tmp_dir)
@@ -211,9 +85,7 @@ read_cnefe <- function(code_muni,
     rlang::abort(sprintf("Failed to extract CSV to %s", csv_path))
   }
 
-  # ---------------------------------------------------------------------------
   # Read with Arrow
-  # ---------------------------------------------------------------------------
   if (verbose) message("Reading CSV with arrow...")
   tab <- suppressWarnings(
     arrow::read_delim_arrow(
@@ -224,7 +96,6 @@ read_cnefe <- function(code_muni,
     )
   )
 
-  # Return Arrow table directly
   if (identical(output, "arrow")) {
     return(tab)
   }
@@ -252,49 +123,4 @@ read_cnefe <- function(code_muni,
     crs    = 4674,
     remove = FALSE
   )
-}
-
-# Internal helper: normalize and validate municipality code
-.normalize_code_muni <- function(code_muni) {
-  if (length(code_muni) != 1L) {
-    rlang::abort("`code_muni` must be a single value.")
-  }
-
-  if (is.factor(code_muni)) code_muni <- as.character(code_muni)
-
-  # character input must be exactly 7 digits
-  if (is.character(code_muni)) {
-    code_muni <- trimws(code_muni)
-
-    if (!nzchar(code_muni) || !grepl("^\\d{7}$", code_muni)) {
-      rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
-    }
-
-    code_muni <- suppressWarnings(as.integer(code_muni))
-  } else {
-    code_muni <- suppressWarnings(as.integer(code_muni))
-  }
-
-  if (is.na(code_muni) || !is.finite(code_muni)) {
-    rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
-  }
-
-  # enforce 7 digits
-  if (nchar(sprintf("%d", code_muni)) != 7) {
-    rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
-  }
-
-  code_muni
-}
-
-# Internal helper: return and create (if needed) the cache directory
-#' @keywords internal
-.cnefe_cache_dir <- function() {
-  cache_dir <- tools::R_user_dir("cnefetools", which = "cache")
-
-  if (!dir.exists(cache_dir)) {
-    dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-  }
-
-  cache_dir
 }
