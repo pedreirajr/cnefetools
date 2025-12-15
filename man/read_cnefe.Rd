@@ -35,16 +35,6 @@ ZIP URLs. Data are returned either as an Arrow \link[arrow:Table-class]{Table}
 (default) or as an \link[sf:st_as_sf]{sf} object with SIRGAS 2000 coordinates.
 }
 \details{
-Internally, \code{read_cnefe()}:
-\enumerate{
-\item Looks up the given \code{code_muni} in an internal index,
-which maps municipality codes to ZIP URLs.
-\item Downloads the corresponding ZIP file (or reuses a cached copy).
-\item Finds the first \code{.csv} file inside the archive.
-\item Extracts the CSV to a temporary directory.
-\item Reads it with \code{\link[arrow:read_delim_arrow]{arrow::read_delim_arrow()}} assuming \code{";"} as delimiter.
-}
-
 When \code{output = "arrow"} (default), the function does not perform any spatial
 conversion and simply returns the Arrow table. When \code{output = "sf"}, the
 function converts the result to an \link[sf:st_as_sf]{sf} point object using the
