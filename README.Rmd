@@ -84,9 +84,44 @@ cnefe_doc()
 cnefe_dictionary()
 ```
 
+## Hexagon-level address counts with `hex_cnefe_counts()`
+
+The `hex_cnefe_counts()` function aggregates CNEFE address points into an H3 hexagonal grid of any resolution and returns an `sf` object with one row per hexagon. It includes:
+
+-   `id_hex`: H3 cell identifier.
+-   `addr_type1` ... `addr_type8`: counts by address category (see `?hex_cnefe_counts` for the mapping).
+-   `geometry`: hexagon geometry (CRS 4326).
+
+Below is an example for São Paulo (IBGE code 3550308) at H3 resolution 9:
+
+``` r
+library(cnefetools)
+library(sf)
+library(ggplot2)
+library(dplyr)
+
+# Hexagon-level counts (H3 res. 9) for São Paulo (IBGE code 3550308)
+hex_sp <- hex_cnefe_counts(code_muni = 3550308, h3_resolution = 9, verbose = TRUE)
+```
+
+You can visualize the spatial distribution of private households (`addr_type1`) with `ggplot2`:
+
+``` r
+ggplot(hex_sp) +
+  geom_sf(aes(fill = addr_type1), color = NA) +
+  scale_fill_viridis_c(option = "magma", trans = "sqrt") +
+  coord_sf() +
+  labs(
+    fill = "Count",
+    title = "Private households (addr_type1)",
+    subtitle = "São Paulo (IBGE 3550308), H3 resolution 9"
+  ) +
+  theme_minimal()
+```
+
 ## Land-use mix indicators with `compute_lumi()`
 
-The `compute_lumi()` function computes land-use mix indicators on an H3 hexagonal grid at any user-defined resolution for any Brazilian municipality covered by the 2022 CNEFE dataset (Pedreira Junior et al, 2025). Internally, it: (i) Reads and preprocesses address points from CNEFE; (ii) Builds an H3 grid over the municipal boundary; (iii) Aggregates residential and non-residential addresses per hexagon; and (iv) Computes the following indicators:
+The `compute_lumi()` function computes land-use mix indicators on an H3 hexagonal grid at any user-defined resolution for any Brazilian municipality covered by the 2022 CNEFE dataset (Pedreira Junior et al., 2025). Internally, it: (i) Reads and preprocesses address points from CNEFE; (ii) Builds an H3 grid over the municipal boundary; (iii) Aggregates residential and non-residential addresses per hexagon; and (iv) Computes the following indicators:
 
 -   `p_res`: proportion of residential addresses in each hexagon.
 -   `ei`: Entropy Index (EI), ranging from 0 (single use) to 1 (balanced residential/non-residential).
