@@ -62,19 +62,3 @@ When \code{cache = FALSE}, the ZIP file is stored in a temporary location and
 removed when the function exits.
 }
 
-\examples{
-\dontrun{
-# Example: read CNEFE data for a municipality (Salvador) as Arrow table
-tab <- read_cnefe(2927408)
-
-# Convert to a data frame
-df <- tab \%>\%
-  as.data.frame()
-head(df)
-
-# Read directly as sf object (points in SIRGAS 2000)
-pts <- read_cnefe(2927408, output = "sf")
-pts
-}
-
-}
