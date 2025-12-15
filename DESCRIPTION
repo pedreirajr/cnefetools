@@ -23,6 +23,8 @@ RoxygenNote: 7.3.3
 URL: https://github.com/pedreirajr/cnefetools
 BugReports: https://github.com/pedreirajr/cnefetools/issues
 Suggests: 
+    DBI,
+    duckdb,
     geobr,
     ggplot2,
     knitr,

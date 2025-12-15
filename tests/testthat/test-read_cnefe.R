@@ -1,12 +1,13 @@
-testthat::test_that("read_cnefe() falha para códigos inválidos", {
-  testthat::expect_error(
-    cnefetools::read_cnefe("abc"),
-    "must be coercible"
-  )
+test_that(".normalize_code_muni rejects invalid inputs", {
+  expect_error(cnefetools:::.normalize_code_muni("abc"), "code_muni")
+  expect_error(cnefetools:::.normalize_code_muni(123L),  "code_muni")
+})
 
-  testthat::expect_error(
-    cnefetools::read_cnefe(9999999L),
-    "not found in internal CNEFE index"
+test_that("read_cnefe rejects codes not in internal index", {
+  # 9999999 tem 7 dígitos, mas não existe no índice
+  expect_error(
+    cnefetools::read_cnefe(9999999L, verbose = FALSE),
+    "not found|internal CNEFE index|Municipality code"
   )
 })
 

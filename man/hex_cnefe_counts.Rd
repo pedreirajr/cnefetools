@@ -4,7 +4,12 @@
 \alias{hex_cnefe_counts}
 \title{Count CNEFE address species on an H3 grid}
 \usage{
-hex_cnefe_counts(code_muni, h3_resolution = 9, verbose = TRUE)
+hex_cnefe_counts(
+  code_muni,
+  h3_resolution = 9,
+  verbose = TRUE,
+  backend = c("duckdb", "r")
+)
 }
 \arguments{
 \item{code_muni}{Integer. Seven-digit IBGE municipality code.}
@@ -12,6 +17,9 @@ hex_cnefe_counts(code_muni, h3_resolution = 9, verbose = TRUE)
 \item{h3_resolution}{Integer. H3 grid resolution (default: 9).}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
+
+\item{backend}{Character. \code{"duckdb"} (default) uses DuckDB H3 extension to
+aggregate directly from the cached ZIP. \code{"r"} uses h3jsr in R.}
 }
 \value{
 An \code{\link[sf:sf]{sf::sf}} object with CRS 4326 containing:
@@ -26,17 +34,4 @@ An \code{\link[sf:sf]{sf::sf}} object with CRS 4326 containing:
 each address point to an H3 cell, builds the full H3 grid over the municipal
 boundary (year fixed at 2024), and returns per-hexagon counts of \code{COD_ESPECIE}
 as \code{addr_type1} to \code{addr_type8}.
-}
-\details{
-Mapping between \verb{addr_type*} and \code{COD_ESPECIE}:
-\itemize{
-\item \code{addr_type1} (1): Private household (Domicílio particular)
-\item \code{addr_type2} (2): Collective household (Domicílio coletivo)
-\item \code{addr_type3} (3): Agricultural establishment (Estabelecimento agropecuário)
-\item \code{addr_type4} (4): Educational establishment (Estabelecimento de ensino)
-\item \code{addr_type5} (5): Health establishment (Estabelecimento de saúde)
-\item \code{addr_type6} (6): Establishment for other purposes (Estabelecimento de outras finalidades)
-\item \code{addr_type7} (7): Building under construction or renovation (Edificação em construção ou reforma)
-\item \code{addr_type8} (8): Religious establishment (Estabelecimento religioso)
-}
 }
