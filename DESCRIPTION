@@ -1,6 +1,6 @@
 Package: cnefetools
 Title: Tools for Working with Brazilian CNEFE 2022 Address Data
-Version: 0.0.3
+Version: 0.0.4
 Authors@R:
     c(
       person(given = "Jorge Ubirajara", family = "Pedreira Junior",

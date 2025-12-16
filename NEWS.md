@@ -1,3 +1,9 @@
+# cnefetools 0.0.4
+
+- More robust downloads with retry logic and increased timeout when needed
+- Avoids leaving partial or corrupted ZIP files in the cache
+- Automatically detects corrupted cached ZIPs and re-downloads before extraction
+
 # cnefetools 0.0.3
 
 - More robust downloads with retry logic and increased timeout when needed
