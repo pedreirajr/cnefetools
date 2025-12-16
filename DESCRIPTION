@@ -1,6 +1,6 @@
 Package: cnefetools
 Title: Tools for Working with Brazilian CNEFE 2022 Address Data
-Version: 0.0.3
+Version: 0.0.5
 Authors@R:
     c(
       person(given = "Jorge Ubirajara", family = "Pedreira Junior",
@@ -25,11 +25,11 @@ BugReports: https://github.com/pedreirajr/cnefetools/issues
 Suggests: 
     DBI,
     duckdb,
-    geobr,
     ggplot2,
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    zip
 Config/testthat/edition: 3
 Depends: 
     R (>= 4.1.0)
@@ -38,6 +38,7 @@ Imports:
     arrow,
     dplyr,
     sf,
+    geobr,
     lifecycle,
     magrittr,
     rlang,

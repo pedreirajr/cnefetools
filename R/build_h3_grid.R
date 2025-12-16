@@ -1,39 +1,3 @@
-#' Read municipality boundary using geobr, fixed year = 2024
-#'
-#' @keywords internal
-.read_muni_boundary_2024 <- function(code_muni) {
-
-  code_muni <- .normalize_code_muni(code_muni)
-
-  args <- list(
-    code_muni    = code_muni,
-    year         = 2024L,
-    simplified   = TRUE,
-    showProgress = FALSE,
-    cache        = TRUE
-  )
-
-  if ("keep_areas_operacionais" %in% names(formals(geobr::read_municipality))) {
-    args$keep_areas_operacionais <- FALSE
-  }
-
-  muni <- tryCatch(
-    suppressMessages(suppressWarnings(do.call(geobr::read_municipality, args))),
-    error = function(e) NULL
-  )
-
-  if (is.null(muni) || !inherits(muni, "sf") || nrow(muni) == 0L) {
-    rlang::abort(
-      paste0(
-        "Could not read municipality boundary via geobr with year = 2024. ",
-        "Try updating {geobr} if needed."
-      )
-    )
-  }
-
-  muni
-}
-
 #' Build an H3 grid as an sf object
 #'
 #' @description

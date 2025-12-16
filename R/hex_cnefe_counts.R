@@ -17,6 +17,17 @@
 #' - `addr_type1` ... `addr_type8`: counts per type
 #' - `geometry`: hexagon geometry
 #'
+#' @details
+#' The counts in the columns `addr_type1` to `addr_type8` correspond to:
+#' - `addr_type1`: Private household (Domicílio particular)
+#' - `addr_type2`: Collective household (Domicílio coletivo)
+#' - `addr_type3`: Agricultural establishment (Estabelecimento agropecuário)
+#' - `addr_type4`: Educational establishment (Estabelecimento de ensino)
+#' - `addr_type5`: Health establishment (Estabelecimento de saúde)
+#' - `addr_type6`: Establishment for other purposes (Estabelecimento de outras finalidades)
+#' - `addr_type7`: Building under construction or renovation (Edificação em construção ou reforma)
+#' - `addr_type8`: Religious establishment (Estabelecimento religioso)
+#'
 #' @export
 hex_cnefe_counts <- function(code_muni,
                              h3_resolution = 9,
@@ -235,10 +246,11 @@ hex_cnefe_counts <- function(code_muni,
 
     counts_wide <- counts_long %>%
       tidyr::pivot_wider(
-        names_from   = .data$COD_ESPECIE,
-        values_from  = .data$n,
+        id_cols      = "id_hex",
+        names_from   = "COD_ESPECIE",
+        values_from  = "n",
         names_prefix = "addr_type",
-        values_fill  = 0
+        values_fill  = list(n = 0L)
       )
 
     for (k in 1:8) {

@@ -35,3 +35,16 @@ each address point to an H3 cell, builds the full H3 grid over the municipal
 boundary (year fixed at 2024), and returns per-hexagon counts of \code{COD_ESPECIE}
 as \code{addr_type1} to \code{addr_type8}.
 }
+\details{
+The counts in the columns \code{addr_type1} to \code{addr_type8} correspond to:
+\itemize{
+\item \code{addr_type1}: Private household (Domicílio particular)
+\item \code{addr_type2}: Collective household (Domicílio coletivo)
+\item \code{addr_type3}: Agricultural establishment (Estabelecimento agropecuário)
+\item \code{addr_type4}: Educational establishment (Estabelecimento de ensino)
+\item \code{addr_type5}: Health establishment (Estabelecimento de saúde)
+\item \code{addr_type6}: Establishment for other purposes (Estabelecimento de outras finalidades)
+\item \code{addr_type7}: Building under construction or renovation (Edificação em construção ou reforma)
+\item \code{addr_type8}: Religious establishment (Estabelecimento religioso)
+}
+}
