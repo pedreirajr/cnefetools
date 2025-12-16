@@ -1,52 +1,84 @@
-test_that("hex_cnefe_counts works offline using cached ZIP (structure + nonnegative counts)", {
+testthat::test_that("hex_cnefe_counts works offline using ZIP fixture (backend r)", {
 
-  skip_if_not_installed("sf")
-  skip_if_not_installed("h3jsr")
-  skip_if_not_installed("archive")
+  testthat::skip_if_not_installed("archive")
+  testthat::skip_if_not_installed("arrow")
+  testthat::skip_if_not_installed("dplyr")
+  testthat::skip_if_not_installed("h3jsr")
+  testthat::skip_if_not_installed("sf")
+  testthat::skip_if_not_installed("tidyr")
 
-  # 1) Require a cached ZIP (no internet in tests)
-  cache_dir <- tools::R_user_dir("cnefetools", "cache")
-  zips <- list.files(cache_dir, pattern = "^\\d{7}_.+\\.zip$", full.names = TRUE)
+  code_muni <- 2927408L
+  h3_res <- 9L
 
-  if (length(zips) == 0L) {
-    skip("No cached CNEFE ZIP found. Run read_cnefe(code_muni, cache=TRUE) once before testing.")
-  }
-
-  # pick the first cached file and parse code_muni from filename
-  zip_path <- zips[[1]]
-  code_muni <- as.integer(sub("^([0-9]{7})_.*$", "\\1", basename(zip_path)))
-
-  # 2) Run (backend r avoids DuckDB extension installation)
-  out <- tryCatch(
-    suppressMessages(suppressWarnings(
-      cnefetools::hex_cnefe_counts(code_muni, h3_resolution = 9L, backend = "r", verbose = FALSE)
-    )),
-    error = function(e) {
-      skip(paste("hex_cnefe_counts failed in this environment:", conditionMessage(e)))
-    }
+  tab <- testthat::with_mocked_bindings(
+    cnefetools::read_cnefe(code_muni, verbose = FALSE, cache = TRUE, output = "arrow"),
+    .cnefe_ensure_zip = mock_ensure_zip_fixture,
+    .package = "cnefetools"
   )
 
-  # 3) Structure checks
-  expect_s3_class(out, "sf")
-  expect_true("id_hex" %in% names(out))
+  df <- as.data.frame(tab) %>%
+    dplyr::transmute(
+      LONGITUDE   = suppressWarnings(as.numeric(.data$LONGITUDE)),
+      LATITUDE    = suppressWarnings(as.numeric(.data$LATITUDE)),
+      COD_ESPECIE = suppressWarnings(as.integer(.data$COD_ESPECIE))
+    ) %>%
+    dplyr::filter(
+      !is.na(.data$LONGITUDE),
+      !is.na(.data$LATITUDE),
+      !is.na(.data$COD_ESPECIE),
+      .data$COD_ESPECIE %in% 1L:8L
+    )
+
+  ids <- suppressMessages(
+    h3jsr::point_to_cell(
+      df %>% dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE),
+      res = h3_res,
+      simple = TRUE
+    )
+  )
+
+  counts_long <- df %>%
+    dplyr::mutate(id_hex = as.character(ids)) %>%
+    dplyr::count(.data$id_hex, .data$COD_ESPECIE, name = "n")
+
+  expected <- counts_long %>%
+    dplyr::mutate(col = paste0("addr_type", .data$COD_ESPECIE)) %>%
+    dplyr::select("id_hex", "col", "n") %>%
+    tidyr::pivot_wider(
+      names_from = "col",
+      values_from = "n",
+      values_fill = 0L
+    )
 
   cols <- paste0("addr_type", 1:8)
-  expect_true(all(cols %in% names(out)))
+  for (cc in cols) {
+    if (!cc %in% names(expected)) expected[[cc]] <- 0L
+  }
+  expected <- expected %>% dplyr::select("id_hex", dplyr::all_of(cols))
 
-  # CRS should be lon/lat (EPSG:4326 output)
-  expect_true(sf::st_is_longlat(out))
-  expect_false(any(sf::st_is_empty(out)))
+  # grid only for observed ids (no geobr dependency)
+  hex_grid <- cnefetools:::build_h3_grid(h3_resolution = h3_res, id_hex = expected$id_hex)
 
-  # 4) Count checks (robust to integer/numeric/integer64)
-  x <- sf::st_drop_geometry(out[, cols, drop = FALSE])
+  out <- testthat::with_mocked_bindings(
+    cnefetools::hex_cnefe_counts(code_muni, h3_resolution = h3_res, backend = "r", verbose = FALSE),
+    .cnefe_ensure_zip = mock_ensure_zip_fixture,
+    build_h3_grid = function(...) hex_grid,
+    .package = "cnefetools"
+  )
 
-  # Convert safely to numeric for comparisons
-  vals_num <- unlist(lapply(x, function(v) as.numeric(v)), use.names = FALSE)
+  testthat::expect_s3_class(out, "sf")
 
-  expect_false(anyNA(vals_num))
-  expect_true(all(vals_num >= 0))
-  expect_true(all(vals_num == floor(vals_num)))
+  out_df <- sf::st_drop_geometry(out) %>%
+    dplyr::select("id_hex", dplyr::all_of(cols)) %>%
+    dplyr::inner_join(expected, by = "id_hex", suffix = c("", "_exp"))
 
-  # At least something counted (if you cached a real municipality ZIP)
-  expect_true(sum(vals_num) > 0)
+  testthat::expect_true(nrow(out_df) > 0L)
+
+  for (cc in cols) {
+    x <- suppressWarnings(as.integer(out_df[[cc]]))
+    y <- suppressWarnings(as.integer(out_df[[paste0(cc, "_exp")]]))
+    x[is.na(x)] <- 0L
+    y[is.na(y)] <- 0L
+    testthat::expect_equal(x, y, tolerance = 0)
+  }
 })
