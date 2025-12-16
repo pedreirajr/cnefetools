@@ -1,27 +1,63 @@
-test_that(".normalize_code_muni rejects invalid inputs", {
-  expect_error(cnefetools:::.normalize_code_muni("abc"), "code_muni")
-  expect_error(cnefetools:::.normalize_code_muni(123L),  "code_muni")
-})
+testthat::test_that(".normalize_code_muni validates inputs", {
 
-test_that("read_cnefe rejects codes not in internal index", {
-  # 9999999 tem 7 dígitos, mas não existe no índice
-  expect_error(
-    cnefetools::read_cnefe(9999999L, verbose = FALSE),
-    "not found|internal CNEFE index|Municipality code"
+  testthat::expect_error(
+    cnefetools:::.normalize_code_muni(c(2927408, 2919207)),
+    "`code_muni` must be a single value"
+  )
+
+  testthat::expect_error(
+    cnefetools:::.normalize_code_muni("abcdefg"),
+    "valid integer IBGE code"
+  )
+
+  testthat::expect_error(
+    cnefetools:::.normalize_code_muni("123"),
+    "valid integer IBGE code"
+  )
+
+  testthat::expect_equal(
+    cnefetools:::.normalize_code_muni("2927408"),
+    2927408L
+  )
+
+  testthat::expect_equal(
+    cnefetools:::.normalize_code_muni(2927408),
+    2927408L
   )
 })
 
-testthat::test_that("read_cnefe() baixa dados de um município real (teste opcional online)", {
-  testthat::skip_on_cran()
-  testthat::skip_if_offline(host = "ftp.ibge.gov.br")
+testthat::test_that("read_cnefe reads from internal ZIP fixture (offline) as Arrow table", {
 
-  testthat::skip_if_not(
-    identical(Sys.getenv("CNEFETOOLS_RUN_DOWNLOAD_TESTS"), "true"),
-    "Live download tests are disabled by default."
+  testthat::skip_if_not_installed("archive")
+  testthat::skip_if_not_installed("arrow")
+
+  code_muni <- 2927408L
+
+  tab <- testthat::with_mocked_bindings(
+    cnefetools::read_cnefe(code_muni, verbose = FALSE, cache = TRUE, output = "arrow"),
+    .cnefe_ensure_zip = mock_ensure_zip_fixture,
+    .package = "cnefetools"
   )
-
-  tab <- cnefetools::read_cnefe(2927408, cache = FALSE, verbose = FALSE)
 
   testthat::expect_s3_class(tab, "Table")
-  testthat::expect_true(all(c("LONGITUDE", "LATITUDE") %in% names(tab)))
+  testthat::expect_true(all(c("LONGITUDE", "LATITUDE", "COD_ESPECIE") %in% names(tab)))
+})
+
+testthat::test_that("read_cnefe reads from internal ZIP fixture (offline) as sf", {
+
+  testthat::skip_if_not_installed("archive")
+  testthat::skip_if_not_installed("arrow")
+  testthat::skip_if_not_installed("sf")
+
+  code_muni <- 2927408L
+
+  sfobj <- testthat::with_mocked_bindings(
+    cnefetools::read_cnefe(code_muni, verbose = FALSE, cache = TRUE, output = "sf"),
+    .cnefe_ensure_zip = mock_ensure_zip_fixture,
+    .package = "cnefetools"
+  )
+
+  testthat::expect_s3_class(sfobj, "sf")
+  testthat::expect_true(sf::st_is_longlat(sfobj))
+  testthat::expect_true("geometry" %in% names(sfobj))
 })
