@@ -1,8 +1,8 @@
 # cnefetools 0.0.4
 
-- More robust downloads with retry logic and increased timeout when needed
-- Avoids leaving partial or corrupted ZIP files in the cache
-- Automatically detects corrupted cached ZIPs and re-downloads before extraction
+- Major speed-up for H3 assignment and hex-level aggregation via DuckDB + H3 extension (SQL), with runtimes dropping from minutes to seconds for large municipalities
+- Adds a configurable backend with backwards compatibility: backend = "duckdb" (default) or backend = "r" for hex_cnefe_counts() and compute_lumi()
+- Refactors internals to reuse cached ZIPs and consolidate common helpers, reducing repeated overhead and improving maintainability
 
 # cnefetools 0.0.3
 

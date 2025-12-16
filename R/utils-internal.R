@@ -1,5 +1,8 @@
 # Internal helper functions for cnefetools (not exported)
 
+
+## Theme: Input validation
+
 #' @keywords internal
 #' @noRd
 .normalize_code_muni <- function(code_muni) {
@@ -30,6 +33,9 @@
   code_muni
 }
 
+
+## Theme: Cache management
+
 #' @keywords internal
 #' @noRd
 .cnefe_cache_dir <- function() {
@@ -39,6 +45,9 @@
   }
   cache_dir
 }
+
+
+# Theme: Download and archive handling
 
 #' @keywords internal
 #' @noRd
@@ -182,4 +191,50 @@
     rlang::abort("No .csv file found inside archive.")
   }
   csv_inside
+}
+
+
+# Theme: Spatial boundaries (geobr)
+
+#' @keywords internal
+#' @noRd
+.read_muni_boundary_2024 <- function(code_muni) {
+
+  rlang::check_installed(
+    "geobr",
+    reason = "to read municipality boundaries (needed to build the H3 grid)."
+  )
+
+  code_muni <- .normalize_code_muni(code_muni)
+
+  args <- list(
+    code_muni    = code_muni,
+    year         = 2024L,
+    simplified   = TRUE,
+    showProgress = FALSE,
+    cache        = TRUE
+  )
+
+  if ("keep_areas_operacionais" %in% names(formals(geobr::read_municipality))) {
+    args$keep_areas_operacionais <- FALSE
+  }
+
+  err <- NULL
+  muni <- tryCatch(
+    suppressMessages(suppressWarnings(do.call(geobr::read_municipality, args))),
+    error = function(e) { err <<- e; NULL }
+  )
+
+  if (is.null(muni) || !inherits(muni, "sf") || nrow(muni) == 0L) {
+    msg <- paste0(
+      "Could not read municipality boundary via geobr with year = 2024. ",
+      "Try updating {geobr} if needed."
+    )
+    if (!is.null(err)) {
+      msg <- paste0(msg, " Underlying error: ", conditionMessage(err))
+    }
+    rlang::abort(msg)
+  }
+
+  muni
 }

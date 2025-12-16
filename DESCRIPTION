@@ -25,7 +25,6 @@ BugReports: https://github.com/pedreirajr/cnefetools/issues
 Suggests: 
     DBI,
     duckdb,
-    geobr,
     ggplot2,
     knitr,
     rmarkdown,
@@ -38,6 +37,7 @@ Imports:
     arrow,
     dplyr,
     sf,
+    geobr,
     lifecycle,
     magrittr,
     rlang,
