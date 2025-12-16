@@ -235,10 +235,11 @@ hex_cnefe_counts <- function(code_muni,
 
     counts_wide <- counts_long %>%
       tidyr::pivot_wider(
-        names_from   = .data$COD_ESPECIE,
-        values_from  = .data$n,
+        id_cols      = "id_hex",
+        names_from   = "COD_ESPECIE",
+        values_from  = "n",
         names_prefix = "addr_type",
-        values_fill  = 0
+        values_fill  = list(n = 0L)
       )
 
     for (k in 1:8) {

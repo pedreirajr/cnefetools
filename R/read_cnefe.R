@@ -117,6 +117,12 @@ read_cnefe <- function(code_muni,
   df$LONGITUDE <- as.numeric(df$LONGITUDE)
   df$LATITUDE  <- as.numeric(df$LATITUDE)
 
+  df <- df[!is.na(df$LONGITUDE) & !is.na(df$LATITUDE), , drop = FALSE]
+
+  if (nrow(df) == 0L) {
+    rlang::abort("No rows with valid coordinates (LONGITUDE/LATITUDE) were found.")
+  }
+
   sf::st_as_sf(
     df,
     coords = c("LONGITUDE", "LATITUDE"),
