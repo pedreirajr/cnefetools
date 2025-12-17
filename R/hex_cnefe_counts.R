@@ -135,18 +135,9 @@ hex_cnefe_counts <- function(code_muni,
   }
 
   if (identical(backend, "duckdb")) {
-
-    # DuckDB is optional: fallback to R if not installed
-    ok_duck <- TRUE
-    ok_duck <- ok_duck && rlang::is_installed("DBI")
-    ok_duck <- ok_duck && rlang::is_installed("duckdb")
-
-    if (!ok_duck) {
-      if (verbose) {
-        message("DuckDB backend requested but DBI/duckdb not installed. Falling back to backend = 'r'.")
-      }
-      backend <- "r"
-    }
+    # Agora que DBI/duckdb viram Imports, não fazemos fallback silencioso.
+    rlang::check_installed("DBI",    reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`.")
+    rlang::check_installed("duckdb", reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`.")
   }
 
   if (identical(backend, "duckdb")) {
