@@ -1,6 +1,6 @@
 Package: cnefetools
 Title: Tools for Working with Brazilian CNEFE 2022 Address Data
-Version: 0.0.5
+Version: 0.0.6
 Authors@R:
     c(
       person(given = "Jorge Ubirajara", family = "Pedreira Junior",
@@ -23,8 +23,6 @@ RoxygenNote: 7.3.3
 URL: https://github.com/pedreirajr/cnefetools
 BugReports: https://github.com/pedreirajr/cnefetools/issues
 Suggests: 
-    DBI,
-    duckdb,
     ggplot2,
     knitr,
     rmarkdown,
@@ -43,4 +41,6 @@ Imports:
     magrittr,
     rlang,
     h3jsr,
-    tidyr
+    tidyr,
+    DBI,
+    duckdb

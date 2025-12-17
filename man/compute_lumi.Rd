@@ -36,3 +36,8 @@ assigns each address point to an H3 cell, and computes land-use mix
 indices per hexagon (EI, HHI, adapted HHI, and BGBI), following the
 methodology proposed in Pedreira Jr. et al. (2025).
 }
+\references{
+Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
+Measuring land use mix with address-level census data (2025).
+\emph{engrXiv}. https://engrxiv.org/preprint/view/5975
+}
