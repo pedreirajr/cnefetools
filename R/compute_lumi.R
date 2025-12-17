@@ -18,6 +18,11 @@
 #'   - `ei`, `hhi`, `hhi_adp`, `bgbi`: land-use mix indicators
 #'   - `geometry`: hexagon geometry
 #'
+#' @references
+#' Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
+#' Measuring land use mix with address-level census data (2025).
+#' *engrXiv*. https://engrxiv.org/preprint/view/5975
+#'
 #' @export
 compute_lumi <- function(code_muni,
                          h3_resolution = 9,
@@ -120,12 +125,9 @@ compute_lumi <- function(code_muni,
   counts_hex <- NULL
 
   if (identical(backend, "duckdb")) {
-    ok_duck <- rlang::is_installed("DBI") && rlang::is_installed("duckdb")
-
-    if (!ok_duck) {
-      if (verbose) message("DuckDB backend requested but DBI/duckdb not installed. Falling back to backend = 'r'.")
-      backend <- "r"
-    }
+    # Agora que DBI/duckdb viram Imports, não fazemos fallback silencioso.
+    rlang::check_installed("DBI",    reason = "to use backend = 'duckdb' in `compute_lumi()`.")
+    rlang::check_installed("duckdb", reason = "to use backend = 'duckdb' in `compute_lumi()`.")
   }
 
   if (identical(backend, "duckdb")) {
