@@ -1,3 +1,9 @@
+# cnefetools 0.0.6
+
+- Moves DBI and duckdb to Imports so the DuckDB backend works out of the box
+- Removes silent fallback to `backend = "r"` when `backend = "duckdb"` is requested
+- No changes to outputs; behavior is unchanged aside from dependency handling
+
 # cnefetools 0.0.5
 
 -   Makes unit tests more reproducible and CI-friendly by removing dependencies on network access and local cache state (offline ZIP fixture and mocked downloads)
