@@ -15,20 +15,19 @@ tracts_to_h3(
 \arguments{
 \item{code_muni}{Integer. Seven-digit IBGE municipality code.}
 
-\item{h3_resolution}{Integer. H3 resolution (0 to 15). Default is 9.}
+\item{h3_resolution}{Integer. H3 resolution (0 to 15). Defaults to 9.}
 
 \item{vars}{Character vector. Names of tract-level variables to interpolate.
 Supported variables:
 \itemize{
-\item \code{n_inhab_p}: population in private households (Domicílios particulares).
-\item \code{n_inhab_c}: population in collective households (Domicílios coletivos).
-\item \code{n_inhab}: total population (as provided in the tract aggregates).
+\item \code{n_inhab_p}: population in private households (\emph{Domicílios particulares}).
+\item \code{n_inhab_c}: population in collective households (\emph{Domicílios coletivos}).
 \item \code{male}: total male population.
 \item \code{female}: total female population.
 \item \code{age_0_4}, \code{age_5_9}, \code{age_10_14}, \code{age_15_19}, \code{age_20_24}, \code{age_25_29},
 \code{age_30_39}, \code{age_40_49}, \code{age_50_59}, \code{age_60_69}, \code{age_70m}: population by age group.
-\item \code{n_resp}: number of household heads in the census tract (Pessoas responsáveis por domicílios).
-\item \code{avg_inc_resp}: average income of the household head in the census tract.
+\item \code{n_resp}: number of household heads (\emph{Pessoas responsáveis por domicílios}).
+\item \code{avg_inc_resp}: average income of the household heads.
 }
 
 Allocation rules:
@@ -52,7 +51,7 @@ Attributes:
 }
 }
 \description{
-\code{tracts_to_h3()} performs a two-step dasymetric interpolation:
+\code{tracts_to_h3()} performs a dasymetric interpolation with the following steps:
 \enumerate{
 \item census tract totals are allocated to CNEFE dwelling points inside each tract; then
 \item allocated values are aggregated to an H3 grid at a user-defined resolution.
