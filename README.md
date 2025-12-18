@@ -230,9 +230,7 @@ aggregates the allocated values to an H3 grid.
     - Spatially assigns each CNEFE point to a census tract.
     - For each tract and dwelling type, computes how many eligible
       dwellings exist in the tract and allocates tract totals across
-      points:
-      - **Private households**: `COD_ESPECIE == 1`
-      - **Collective households**: `COD_ESPECIE == 2`
+      points.
 3.  **Stage 2: CNEFE points to H3**
     - Assigns each point to an H3 cell at the chosen resolution and sums
       allocated values per cell.
@@ -244,24 +242,26 @@ The output is an `sf` object (CRS 4326) with one row per H3 hexagon,
 ### Variables available for interpolation
 
 At the moment, `tracts_to_h3()` can interpolate the variables below (all
-sourced from tract-level aggregates). You choose which ones to compute
-via the `vars` argument.
+sourced from tract-level aggregates), by choosing which ones to compute
+via the `vars` argument:
 
-Population and household counts: - `n_inhab_p`: total population in
-**private households** (domicílios particulares). - `n_inhab_c`: total
-population in **collective households** (domicílios coletivos). -
-`n_inhab`: total population. - `n_resp`: number of household heads
-(pessoas responsáveis).
+- `n_inhab_p`: total population in **private households** (domicílios
+  particulares);
 
-Sex totals: - `male`: total male population. - `female`: total female
-population.
+- `n_inhab_c`: total population in **collective households** (domicílios
+  coletivos);
 
-Age groups (population counts): - `age_0_4`, `age_5_9`, `age_10_14`,
-`age_15_19` - `age_20_24`, `age_25_29`, `age_30_39`, `age_40_49` -
-`age_50_59`, `age_60_69`, `age_70m` (70+)
+- `n_resp`: number of household heads (*Pessoas responsáveis*);
 
-Income: - `avg_inc_resp`: average income of the responsible person (mean
-at tract level).
+- Sex totals: `male` (total male population) and `female` (total female
+  population);
+
+- Age groups : `age_0_4`, `age_5_9`, `age_10_14`, `age_15_19` -
+  `age_20_24`, `age_25_29`, `age_30_39`, `age_40_49`, `age_50_59`,
+  `age_60_69` and `age_70m` (70+);
+
+- Income: `avg_inc_resp`: average income of the responsible person (mean
+  at tract level).
 
 #### Allocation rules (important)
 
