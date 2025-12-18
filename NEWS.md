@@ -1,3 +1,8 @@
+# cnefetools 0.1.0
+
+- New: `tracts_to_h3()` for dasymetric interpolation from tract aggregates to CNEFE dwelling points and H3 hexagons using DuckDB (spatial + h3).
+- Added UF-level census tract Parquet assets (WKB geometry) hosted on GitHub Releases and downloaded on-demand with caching.
+
 # cnefetools 0.0.6
 
 - Moves DBI and duckdb to Imports so the DuckDB backend works out of the box
