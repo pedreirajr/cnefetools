@@ -19,7 +19,7 @@
 #'   - `age_0_4`, `age_5_9`, `age_10_14`, `age_15_19`, `age_20_24`, `age_25_29`,
 #'     `age_30_39`, `age_40_49`, `age_50_59`, `age_60_69`, `age_70m`: population by age group.
 #'   - `n_resp`: number of household heads in the census tract (Pessoas responsáveis por domicílios).
-#'   - `avg_inc_resp`: average income of the household head in the census tract.
+#'   - `avg_inc_resp`: average income of the household heads in the census tract.
 #'
 #'   Allocation rules:
 #'   - `n_inhab_p` is allocated only to private dwellings.
@@ -42,123 +42,140 @@ tracts_to_h3 <- function(code_muni,
                          cache = TRUE,
                          verbose = TRUE) {
 
-  `%||%` <- function(x, y) if (is.null(x) || length(x) == 0L || is.na(x)) y else x
-
-  t0_total <- Sys.time()
-
   code_muni <- as.integer(code_muni)
   h3_resolution <- as.integer(h3_resolution)
-
-  if (length(code_muni) != 1L || is.na(code_muni)) {
-    rlang::abort("`code_muni` must be a single integer (7-digit IBGE municipality code).")
-  }
-  if (length(h3_resolution) != 1L || is.na(h3_resolution) ||
-      h3_resolution < 0L || h3_resolution > 15L) {
-    rlang::abort("`h3_resolution` must be an integer between 0 and 15.")
-  }
-
   vars <- unique(as.character(vars))
-  if (length(vars) == 0L) {
-    rlang::abort("`vars` must contain at least one variable name.")
+
+  if (length(vars) == 0) {
+    stop("`vars` must contain at least one variable name.")
   }
 
   allowed_vars <- c(
-    "code_type",
-    "n_inhab", "male", "female",
-    "age_0_4", "age_5_9", "age_10_14", "age_15_19",
-    "age_20_24", "age_25_29", "age_30_39", "age_40_49",
-    "age_50_59", "age_60_69", "age_70m",
+    "n_inhab_p", "n_inhab_c",
+    "male", "female",
+    "age_0_4", "age_5_9", "age_10_14", "age_15_19", "age_20_24", "age_25_29",
+    "age_30_39", "age_40_49", "age_50_59", "age_60_69", "age_70m",
     "n_resp",
-    "avg_inc_resp",
-    "n_inhab_p", "n_inhab_c"
+    "avg_inc_resp"
   )
-  bad <- setdiff(vars, allowed_vars)
-  if (length(bad) > 0L) {
-    rlang::abort(paste0(
-      "Unknown `vars`: ", paste(bad, collapse = ", "),
-      ". Supported: ", paste(allowed_vars, collapse = ", "), "."
+
+  bad_vars <- setdiff(vars, allowed_vars)
+  if (length(bad_vars) > 0) {
+    stop("Unknown `vars`: ", paste(bad_vars, collapse = ", "),
+         ". See `?tracts_to_h3` for available variables.")
+  }
+
+  # helpers -------------------------------------------------------------------
+  .t0 <- function() Sys.time()
+  .td <- function(t_start, t_end) as.numeric(difftime(t_end, t_start, units = "secs"))
+
+  .duckdb_quiet_execute <- function(con, sql) {
+    invisible(utils::capture.output(
+      suppressMessages(DBI::dbExecute(con, sql)),
+      type = "output"
     ))
   }
 
-  pop_private <- "n_inhab_p"
-  pop_collect <- "n_inhab_c"
+  .duckdb_load_ext <- function(con, ext) {
+    ok <- tryCatch({
+      .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
+      TRUE
+    }, error = function(e) FALSE)
 
-  if (verbose) message("Processing code ", code_muni, "...")
+    if (!ok) {
+      .duckdb_quiet_execute(con, sprintf("INSTALL %s;", ext))
+      .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
+    }
+    invisible(TRUE)
+  }
 
-  # ---- Step 1/6: connect + load extensions ----
-  t1 <- Sys.time()
+  .fmt_pct <- function(x) sprintf("%.2f%%", x)
+
+  # timing container ----------------------------------------------------------
+  step_times <- numeric(0)
+
+  if (verbose) message(sprintf("Processing code %s...", code_muni))
+
+  # Step 1/6 ------------------------------------------------------------------
   if (verbose) message("Step 1/6: connecting to DuckDB and loading extensions...")
+  t1 <- .t0()
 
   con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
-  # Always suppress DuckDB stdout noise for extension loading
-  invisible(capture.output({
-    duckspatial::ddbs_install(con)
-    duckspatial::ddbs_load(con)
-    DBI::dbExecute(con, "INSTALL zipfs; LOAD zipfs;")
-    DBI::dbExecute(con, "INSTALL h3; LOAD h3;")
-  }))
+  duckspatial::ddbs_load(con)
 
-  t1_end <- Sys.time()
-  time_step1 <- as.numeric(difftime(t1_end, t1, units = "secs"))
-  if (verbose) message(sprintf("Step 1/6 (DuckDB ready) completed in %.2f s.", time_step1))
+  # always keep DuckDB extension load messages silent
+  .duckdb_load_ext(con, "zipfs")
+  .duckdb_load_ext(con, "h3")
 
-  # ---- Step 2/6: tracts (UF parquet) ----
-  t2 <- Sys.time()
+  t1e <- .t0()
+  step_times["DuckDB ready"] <- .td(t1, t1e)
+  if (verbose) message(sprintf("Step 1/6 (DuckDB ready) completed in %.2f s.", step_times["DuckDB ready"]))
+
+  # Step 2/6 ------------------------------------------------------------------
   if (verbose) message("Step 2/6: preparing census tracts in DuckDB...")
+  t2 <- .t0()
 
-  # Creates view `sc_muni` with columns:
-  # - code_tract (character, 15 digits)
-  # - requested aggregate variables
-  # - geom (DuckDB GEOMETRY)
-  .sc_create_views_in_duckdb(con, code_muni = code_muni, cache = cache, verbose = FALSE)
+  .sc_create_views_in_duckdb(con, code_muni = code_muni, cache = cache, verbose = verbose)
 
-  DBI::dbExecute(con, "CREATE OR REPLACE TABLE sc_muni_tbl AS SELECT * FROM sc_muni;")
-  DBI::dbExecute(con, "CREATE INDEX IF NOT EXISTS sc_muni_geom_idx ON sc_muni_tbl USING RTREE (geom);")
+  .duckdb_quiet_execute(con, "CREATE OR REPLACE TABLE sc_muni_tbl AS SELECT * FROM sc_muni;")
+  .duckdb_quiet_execute(con, "CREATE INDEX IF NOT EXISTS sc_muni_geom_idx ON sc_muni_tbl USING RTREE (geom);")
 
-  t2_end <- Sys.time()
-  time_step2 <- as.numeric(difftime(t2_end, t2, units = "secs"))
-  if (verbose) message(sprintf("Step 2/6 (tracts ready) completed in %.2f s.", time_step2))
+  t2e <- .t0()
+  step_times["tracts ready"] <- .td(t2, t2e)
+  if (verbose) message(sprintf("Step 2/6 (tracts ready) completed in %.2f s.", step_times["tracts ready"]))
 
-  # ---- Step 3/6: CNEFE points ----
-  t3 <- Sys.time()
+  # Step 3/6 ------------------------------------------------------------------
   if (verbose) message("Step 3/6: preparing CNEFE points in DuckDB...")
+  t3 <- .t0()
 
-  # Creates view `cnefe_pts` with at least: COD_ESPECIE, lon, lat, geom
-  .cnefe_create_points_view_in_duckdb(con, code_muni = code_muni, cache = cache, verbose = FALSE)
-  DBI::dbExecute(con, "CREATE OR REPLACE TABLE cnefe_pts_tbl AS SELECT * FROM cnefe_pts;")
+  .cnefe_create_points_view_in_duckdb(con, code_muni = code_muni, cache = cache, verbose = verbose)
 
-  t3_end <- Sys.time()
-  time_step3 <- as.numeric(difftime(t3_end, t3, units = "secs"))
-  if (verbose) message(sprintf("Step 3/6 (CNEFE points ready) completed in %.2f s.", time_step3))
+  .duckdb_quiet_execute(con, "
+    CREATE OR REPLACE TABLE cnefe_pts_tbl AS
+    SELECT *
+    FROM cnefe_pts
+    WHERE COD_ESPECIE IN (1, 2)
+      AND lon IS NOT NULL
+      AND lat IS NOT NULL
+      AND geom IS NOT NULL;
+  ")
 
-  # ---- Step 4/6: spatial join + allocation prep ----
-  t4 <- Sys.time()
+  total_pts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;")$n[1]
+
+  t3e <- .t0()
+  step_times["CNEFE points ready"] <- .td(t3, t3e)
+  if (verbose) message(sprintf("Step 3/6 (CNEFE points ready) completed in %.2f s.", step_times["CNEFE points ready"]))
+
+  # Step 4/6 ------------------------------------------------------------------
   if (verbose) message("Step 4/6: spatial join (points to tracts) and allocation prep...")
+  t4 <- .t0()
 
-  n_pts_coords <- DBI::dbGetQuery(con, "
-    SELECT COUNT(*) AS n
-    FROM cnefe_pts_tbl
-    WHERE lon IS NOT NULL AND lat IS NOT NULL;
-  ")$n[1]
+  # Matched points only (spatial join without LEFT JOIN)
+  # Bring only required columns from tracts into the join (plus code_tract)
+  tract_cols_sql <- paste(c("s.code_tract", paste0("s.", vars[vars != "avg_inc_resp"]), "s.avg_inc_resp"), collapse = ", ")
+  # If avg_inc_resp not requested, still safe to bring it but later we will ignore diagnostics and aggregation.
+  # Keep it simple: always bring s.avg_inc_resp so allocation SQL can include it conditionally.
+  tract_cols_sql <- paste(c("s.code_tract", paste0("s.", setdiff(vars, "avg_inc_resp")), "s.avg_inc_resp"), collapse = ", ")
 
-  # Spatial match using FROM + WHERE ST_Within
-  DBI::dbExecute(con, "
+  # Create the matched table
+  .duckdb_quiet_execute(con, sprintf("
     CREATE OR REPLACE TABLE cnefe_sc AS
     SELECT
       p.*,
-      s.code_tract
-    FROM cnefe_pts_tbl p, sc_muni_tbl s
-    WHERE p.lon IS NOT NULL AND p.lat IS NOT NULL
-      AND ST_Within(p.geom, s.geom);
-  ")
+      %s
+    FROM cnefe_pts_tbl p,
+         sc_muni_tbl s
+    WHERE ST_Within(p.geom, s.geom);
+  ", tract_cols_sql))
 
-  n_matched <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
-  n_unmatched <- max(n_pts_coords - n_matched, 0)
+  matched_pts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
+  unmatched_pts <- max(total_pts - matched_pts, 0)
 
-  DBI::dbExecute(con, "
-    CREATE OR REPLACE TABLE dom_counts AS
+  # Denominators by tract (counts of dwellings of each type)
+  .duckdb_quiet_execute(con, "
+    CREATE OR REPLACE VIEW dom_counts AS
     SELECT
       code_tract,
       SUM(CASE WHEN COD_ESPECIE = 1 THEN 1 ELSE 0 END) AS n_dom_p,
@@ -167,8 +184,8 @@ tracts_to_h3 <- function(code_muni,
     GROUP BY 1;
   ")
 
-  DBI::dbExecute(con, "
-    CREATE OR REPLACE TABLE sc_muni_w_dom AS
+  .duckdb_quiet_execute(con, "
+    CREATE OR REPLACE VIEW sc_muni_w_dom AS
     SELECT
       s.*,
       COALESCE(d.n_dom_p, 0) AS n_dom_p,
@@ -178,301 +195,273 @@ tracts_to_h3 <- function(code_muni,
       USING (code_tract);
   ")
 
-  elig_count_sql <- "(CASE WHEN s.n_dom_p > 0 THEN s.n_dom_p WHEN s.n_dom_p = 0 AND s.n_dom_c > 0 THEN s.n_dom_c ELSE 0 END)"
-  elig_type_sql  <- "(CASE WHEN s.n_dom_p > 0 THEN 1 WHEN s.n_dom_p = 0 AND s.n_dom_c > 0 THEN 2 ELSE NULL END)"
-
-  alloc_cols_sql <- character(0)
+  # Allocation view:
+  # - totals: per-point = total / eligible_count
+  # - avg_inc_resp: assigned to each eligible point, aggregated later as mean
+  # Eligibility for non-pop variables: private dwellings if any, otherwise collective dwellings.
+  alloc_exprs <- character(0)
 
   for (v in vars) {
     if (v == "avg_inc_resp") {
-      alloc_cols_sql <- c(
-        alloc_cols_sql,
-        paste0(
-          "CASE
-             WHEN s.code_tract IS NULL THEN NULL
-             WHEN s.avg_inc_resp IS NULL THEN NULL
-             WHEN ", elig_count_sql, " = 0 THEN NULL
-             WHEN p.COD_ESPECIE = ", elig_type_sql, " THEN CAST(s.avg_inc_resp AS DOUBLE)
-             ELSE NULL
-           END AS avg_inc_resp_pt"
-        )
-      )
-    } else if (v == pop_private) {
-      alloc_cols_sql <- c(
-        alloc_cols_sql,
-        "
+      alloc_exprs <- c(alloc_exprs, "
         CASE
-          WHEN s.code_tract IS NULL THEN NULL
-          WHEN s.n_inhab_p IS NULL THEN NULL
-          WHEN p.COD_ESPECIE = 1 AND s.n_dom_p > 0 THEN CAST(s.n_inhab_p AS DOUBLE) / s.n_dom_p
+          WHEN (CASE
+                  WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
+                  WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
+                  ELSE FALSE
+                END)
+           AND s.avg_inc_resp IS NOT NULL
+          THEN CAST(s.avg_inc_resp AS DOUBLE)
+          ELSE NULL
+        END AS avg_inc_resp_pt
+      ")
+    } else if (v == "n_inhab_p") {
+      alloc_exprs <- c(alloc_exprs, "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.n_inhab_p IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.n_inhab_p AS DOUBLE) / s.n_dom_p
           ELSE NULL
         END AS n_inhab_p_pt
-        "
-      )
-    } else if (v == pop_collect) {
-      alloc_cols_sql <- c(
-        alloc_cols_sql,
-        "
+      ")
+    } else if (v == "n_inhab_c") {
+      alloc_exprs <- c(alloc_exprs, "
         CASE
-          WHEN s.code_tract IS NULL THEN NULL
-          WHEN s.n_inhab_c IS NULL THEN NULL
-          WHEN p.COD_ESPECIE = 2 AND s.n_dom_c > 0 THEN CAST(s.n_inhab_c AS DOUBLE) / s.n_dom_c
+          WHEN p.COD_ESPECIE = 2
+           AND s.n_inhab_c IS NOT NULL
+           AND s.n_dom_c > 0
+          THEN CAST(s.n_inhab_c AS DOUBLE) / s.n_dom_c
           ELSE NULL
         END AS n_inhab_c_pt
-        "
-      )
+      ")
     } else {
-      alloc_cols_sql <- c(
-        alloc_cols_sql,
-        paste0(
-          "CASE
-             WHEN s.code_tract IS NULL THEN NULL
-             WHEN s.", v, " IS NULL THEN NULL
-             WHEN ", elig_count_sql, " = 0 THEN NULL
-             WHEN p.COD_ESPECIE = ", elig_type_sql, " THEN CAST(s.", v, " AS DOUBLE) / ", elig_count_sql, "
-             ELSE NULL
-           END AS ", v, "_pt"
-        )
-      )
+      # other totals
+      alloc_exprs <- c(alloc_exprs, sprintf("
+        CASE
+          WHEN (CASE
+                  WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
+                  WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
+                  ELSE FALSE
+                END)
+           AND s.%s IS NOT NULL
+           AND (CASE
+                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
+                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
+                  ELSE 0
+                END) > 0
+          THEN CAST(s.%s AS DOUBLE) /
+               (CASE
+                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
+                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
+                  ELSE 0
+                END)
+          ELSE NULL
+        END AS %s_pt
+      ", v, v, v))
     }
   }
 
-  DBI::dbExecute(con, paste0("
+  alloc_sql <- paste(alloc_exprs, collapse = ",\n")
+
+  .duckdb_quiet_execute(con, sprintf("
     CREATE OR REPLACE VIEW cnefe_alloc AS
     SELECT
       p.*,
       s.n_dom_p,
       s.n_dom_c,
-      ", paste(alloc_cols_sql, collapse = ",\n      "), "
+      h3_latlng_to_cell_string(p.lat, p.lon, %d) AS id_hex,
+      %s
     FROM cnefe_sc p
-    LEFT JOIN sc_muni_w_dom s
-      USING (code_tract);
-  "))
+    JOIN sc_muni_w_dom s
+      USING (code_tract)
+    WHERE p.lon IS NOT NULL AND p.lat IS NOT NULL;
+  ", h3_resolution, alloc_sql))
 
-  t4_end <- Sys.time()
-  time_step4 <- as.numeric(difftime(t4_end, t4, units = "secs"))
-  if (verbose) message(sprintf("Step 4/6 (join and allocation prep) completed in %.2f s.", time_step4))
+  t4e <- .t0()
+  step_times["join and allocation prep"] <- .td(t4, t4e)
+  if (verbose) message(sprintf("Step 4/6 (join and allocation prep) completed in %.2f s.", step_times["join and allocation prep"]))
 
-  # ---- Step 5/6: aggregate to H3 ----
-  t5 <- Sys.time()
+  # Step 5/6 ------------------------------------------------------------------
   if (verbose) message("Step 5/6: aggregating allocated values to H3 cells...")
+  t5 <- .t0()
 
-  DBI::dbExecute(con, sprintf("
-    CREATE OR REPLACE VIEW cnefe_alloc_hex AS
-    SELECT
-      *,
-      h3_latlng_to_cell_string(lat, lon, %d) AS id_hex
-    FROM cnefe_alloc
-    WHERE lon IS NOT NULL AND lat IS NOT NULL;
-  ", h3_resolution))
-
-  agg_cols_sql <- character(0)
+  agg_exprs <- character(0)
   for (v in vars) {
     if (v == "avg_inc_resp") {
-      agg_cols_sql <- c(agg_cols_sql, "AVG(avg_inc_resp_pt) AS avg_inc_resp")
-    } else if (v == pop_private) {
-      agg_cols_sql <- c(agg_cols_sql, "SUM(COALESCE(n_inhab_p_pt, 0)) AS n_inhab_p")
-    } else if (v == pop_collect) {
-      agg_cols_sql <- c(agg_cols_sql, "SUM(COALESCE(n_inhab_c_pt, 0)) AS n_inhab_c")
+      agg_exprs <- c(agg_exprs, "AVG(avg_inc_resp_pt) AS avg_inc_resp")
     } else {
-      agg_cols_sql <- c(agg_cols_sql, paste0("SUM(COALESCE(", v, "_pt, 0)) AS ", v))
+      agg_exprs <- c(agg_exprs, sprintf("SUM(%s_pt) AS %s", v, v))
     }
   }
 
-  DBI::dbExecute(con, paste0("
-    CREATE OR REPLACE TABLE hex_vals AS
+  .duckdb_quiet_execute(con, sprintf("
+    CREATE OR REPLACE VIEW hex_vals AS
     SELECT
       id_hex,
-      ", paste(agg_cols_sql, collapse = ",\n      "), "
-    FROM cnefe_alloc_hex
+      %s
+    FROM cnefe_alloc
     WHERE id_hex IS NOT NULL
     GROUP BY 1;
-  "))
+  ", paste(agg_exprs, collapse = ",\n      ")))
 
-  hex_vals <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
+  t5e <- .t0()
+  step_times["hex aggregation"] <- .td(t5, t5e)
+  if (verbose) message(sprintf("Step 5/6 (hex aggregation) completed in %.2f s.", step_times["hex aggregation"]))
 
-  t5_end <- Sys.time()
-  time_step5 <- as.numeric(difftime(t5_end, t5, units = "secs"))
-  if (verbose) message(sprintf("Step 5/6 (hex aggregation) completed in %.2f s.", time_step5))
-
-  # ---- Step 6/6: build H3 grid + join ----
-  t6 <- Sys.time()
+  # Step 6/6 ------------------------------------------------------------------
   if (verbose) message("Step 6/6: building H3 grid and joining results...")
+  t6 <- .t0()
 
-  # Expects an existing helper in your package that returns an sf grid with column `id_hex`
-  hex_grid <- build_h3_grid(h3_resolution = h3_resolution, code_muni = code_muni)
+  hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
-  out <- dplyr::left_join(hex_grid, hex_vals, by = "id_hex")
+  # Build polygons from the resulting cell IDs only
+  hex_sf <- h3jsr::cell_to_polygon(hex_df$id_hex, simple = FALSE) %>%
+    dplyr::rename(id_hex = "h3_address")
 
-  for (v in vars) {
-    if (v == "avg_inc_resp") next
-    if (v %in% names(out)) out[[v]] <- dplyr::coalesce(out[[v]], 0)
-  }
+  out <- hex_sf %>%
+    dplyr::left_join(hex_df, by = "id_hex") %>%
+    sf::st_as_sf()
 
-  t6_end <- Sys.time()
-  time_step6 <- as.numeric(difftime(t6_end, t6, units = "secs"))
-  if (verbose) message(sprintf("Step 6/6 (sf output) completed in %.2f s.", time_step6))
+  sf::st_crs(out) <- 4326
 
-  # ---- Diagnostics (only for requested vars) ----
-  diag_lines <- character(0)
-  tracts_na_parts <- character(0)
-  tracts_noelig_parts <- character(0)
+  t6e <- .t0()
+  step_times["sf output"] <- .td(t6, t6e)
+  if (verbose) message(sprintf("Step 6/6 (sf output) completed in %.2f s.", step_times["sf output"]))
 
-  for (v in vars) {
-    if (v == "avg_inc_resp") next
-
-    if (v == pop_private) {
-      total <- DBI::dbGetQuery(con, "SELECT SUM(n_inhab_p) AS total FROM sc_muni_w_dom;")$total[1]
-      alloc <- DBI::dbGetQuery(con, "SELECT SUM(COALESCE(n_inhab_p_pt,0)) AS a FROM cnefe_alloc;")$a[1]
-      total <- ifelse(is.na(total), 0, total)
-      alloc <- ifelse(is.na(alloc), 0, alloc)
-      unalloc <- max(total - alloc, 0)
-      pct <- if (total > 0) 100 * unalloc / total else NA_real_
-
-      if (unalloc > 0 && total > 0) {
-        diag_lines <- c(diag_lines, sprintf(
-          "- Unallocated total for population from private households (n_inhab_p) = %.0f (%.2f%% of total).",
-          unalloc, pct
-        ))
-      }
-
-      n_na <- DBI::dbGetQuery(con, "SELECT SUM(CASE WHEN n_inhab_p IS NULL THEN 1 ELSE 0 END) AS n FROM sc_muni_w_dom;")$n[1]
-      n_noelig <- DBI::dbGetQuery(con, "
-        SELECT SUM(CASE WHEN n_inhab_p IS NOT NULL AND n_inhab_p <> 0 AND n_dom_p = 0 THEN 1 ELSE 0 END) AS n
-        FROM sc_muni_w_dom;
-      ")$n[1]
-
-      if (!is.na(n_na) && n_na > 0) tracts_na_parts <- c(tracts_na_parts, sprintf("n_inhab_p NA in %d", n_na))
-      if (!is.na(n_noelig) && n_noelig > 0) tracts_noelig_parts <- c(tracts_noelig_parts, sprintf("n_inhab_p in %d tracts", n_noelig))
-
-    } else if (v == pop_collect) {
-      total <- DBI::dbGetQuery(con, "SELECT SUM(n_inhab_c) AS total FROM sc_muni_w_dom;")$total[1]
-      alloc <- DBI::dbGetQuery(con, "SELECT SUM(COALESCE(n_inhab_c_pt,0)) AS a FROM cnefe_alloc;")$a[1]
-      total <- ifelse(is.na(total), 0, total)
-      alloc <- ifelse(is.na(alloc), 0, alloc)
-      unalloc <- max(total - alloc, 0)
-      pct <- if (total > 0) 100 * unalloc / total else NA_real_
-
-      if (unalloc > 0 && total > 0) {
-        diag_lines <- c(diag_lines, sprintf(
-          "- Unallocated total for population from collective households (n_inhab_c) = %.0f (%.2f%% of total).",
-          unalloc, pct
-        ))
-      }
-
-      n_na <- DBI::dbGetQuery(con, "SELECT SUM(CASE WHEN n_inhab_c IS NULL THEN 1 ELSE 0 END) AS n FROM sc_muni_w_dom;")$n[1]
-      n_noelig <- DBI::dbGetQuery(con, "
-        SELECT SUM(CASE WHEN n_inhab_c IS NOT NULL AND n_inhab_c <> 0 AND n_dom_c = 0 THEN 1 ELSE 0 END) AS n
-        FROM sc_muni_w_dom;
-      ")$n[1]
-
-      if (!is.na(n_na) && n_na > 0) tracts_na_parts <- c(tracts_na_parts, sprintf("n_inhab_c NA in %d", n_na))
-      if (!is.na(n_noelig) && n_noelig > 0) tracts_noelig_parts <- c(tracts_noelig_parts, sprintf("n_inhab_c in %d tracts", n_noelig))
-
-    } else {
-      total <- DBI::dbGetQuery(con, sprintf("SELECT SUM(%s) AS total FROM sc_muni_w_dom;", v))$total[1]
-      alloc <- DBI::dbGetQuery(con, sprintf("SELECT SUM(COALESCE(%s_pt,0)) AS a FROM cnefe_alloc;", v))$a[1]
-      total <- ifelse(is.na(total), 0, total)
-      alloc <- ifelse(is.na(alloc), 0, alloc)
-      unalloc <- max(total - alloc, 0)
-      pct <- if (total > 0) 100 * unalloc / total else NA_real_
-
-      if (unalloc > 0 && total > 0) {
-        diag_lines <- c(diag_lines, sprintf(
-          "- Unallocated total for %s = %.0f (%.2f%% of total).",
-          v, unalloc, pct
-        ))
-      }
-
-      n_na <- DBI::dbGetQuery(con, sprintf(
-        "SELECT SUM(CASE WHEN %s IS NULL THEN 1 ELSE 0 END) AS n FROM sc_muni_w_dom;", v
-      ))$n[1]
-
-      n_noelig <- DBI::dbGetQuery(con, sprintf("
-        SELECT SUM(
-          CASE
-            WHEN %s IS NOT NULL AND %s <> 0
-             AND (CASE WHEN n_dom_p > 0 THEN n_dom_p WHEN n_dom_p = 0 AND n_dom_c > 0 THEN n_dom_c ELSE 0 END) = 0
-            THEN 1 ELSE 0
-          END
-        ) AS n
-        FROM sc_muni_w_dom;
-      ", v, v))$n[1]
-
-      if (!is.na(n_na) && n_na > 0) tracts_na_parts <- c(tracts_na_parts, sprintf("%s NA in %d", v, n_na))
-      if (!is.na(n_noelig) && n_noelig > 0) tracts_noelig_parts <- c(tracts_noelig_parts, sprintf("%s in %d tracts", v, n_noelig))
-    }
-  }
-
-  if ("avg_inc_resp" %in% vars) {
-    n_assigned <- DBI::dbGetQuery(con, "
-      SELECT SUM(CASE WHEN avg_inc_resp_pt IS NOT NULL THEN 1 ELSE 0 END) AS n
-      FROM cnefe_alloc;
-    ")$n[1]
-
-    n_eligible <- DBI::dbGetQuery(con, "
-      SELECT SUM(
-        CASE
-          WHEN (CASE WHEN n_dom_p > 0 THEN n_dom_p WHEN n_dom_p = 0 AND n_dom_c > 0 THEN n_dom_c ELSE 0 END) > 0
-          THEN (CASE WHEN n_dom_p > 0 THEN n_dom_p WHEN n_dom_p = 0 AND n_dom_c > 0 THEN n_dom_c ELSE 0 END)
-          ELSE 0
-        END
-      ) AS n
-      FROM sc_muni_w_dom;
-    ")$n[1]
-
-    n_income_na <- DBI::dbGetQuery(con, "
-      SELECT SUM(CASE WHEN avg_inc_resp IS NULL THEN 1 ELSE 0 END) AS n
-      FROM sc_muni_w_dom;
-    ")$n[1]
-
-    diag_lines <- c(diag_lines, sprintf(
-      "- avg_inc_resp assigned to %d of %d eligible points.",
-      as.integer(n_assigned %||% 0), as.integer(n_eligible %||% 0)
-    ))
-    if (!is.na(n_income_na) && n_income_na > 0) {
-      diag_lines <- c(diag_lines, sprintf("- avg_inc_resp NA in %d tracts.", n_income_na))
-    }
-  }
-
-  if (!is.na(n_unmatched) && n_unmatched > 0) {
-    diag_lines <- c(diag_lines, sprintf("- Unmatched CNEFE points (no tract) = %d.", n_unmatched))
-  }
-
-  if (length(tracts_na_parts) > 0) {
-    diag_lines <- c(diag_lines, paste0("- Tracts with NA totals: ", paste(tracts_na_parts, collapse = "; "), "."))
-  }
-  if (length(tracts_noelig_parts) > 0) {
-    diag_lines <- c(diag_lines, paste0("- Tracts with no eligible dwellings: ", paste(tracts_noelig_parts, collapse = "; "), "."))
-  }
-
-  if (length(diag_lines) > 0) {
-    warning(
-      paste0("Dasymetric interpolation diagnostics:\n", paste(diag_lines, collapse = "\n")),
-      call. = FALSE
-    )
-  }
-
-  timing <- c(
-    step_1_duckdb_ready = time_step1,
-    step_2_tracts_ready = time_step2,
-    step_3_cnefe_ready  = time_step3,
-    step_4_join_alloc   = time_step4,
-    step_5_hex_agg      = time_step5,
-    step_6_sf_output    = time_step6,
-    total               = as.numeric(difftime(Sys.time(), t0_total, units = "secs"))
-  )
-  attr(out, "timing") <- timing
+  # attributes ----------------------------------------------------------------
+  attr(out, "timing") <- as.list(step_times)
 
   if (verbose) {
+    total_time <- sum(step_times)
     message("Timing summary (seconds):")
-    message(sprintf(" - Step 1/6 (DuckDB ready): %.2f", timing["step_1_duckdb_ready"]))
-    message(sprintf(" - Step 2/6 (tracts ready): %.2f", timing["step_2_tracts_ready"]))
-    message(sprintf(" - Step 3/6 (CNEFE points ready): %.2f", timing["step_3_cnefe_ready"]))
-    message(sprintf(" - Step 4/6 (join and allocation prep): %.2f", timing["step_4_join_alloc"]))
-    message(sprintf(" - Step 5/6 (hex aggregation): %.2f", timing["step_5_hex_agg"]))
-    message(sprintf(" - Step 6/6 (sf output): %.2f", timing["step_6_sf_output"]))
-    message(sprintf("Total time: %.2f s.", timing["total"]))
+    for (nm in names(step_times)) {
+      message(sprintf(" - %s: %.2f", nm, step_times[[nm]]))
+    }
+    message(sprintf("Total time: %.2f s.", total_time))
+  }
+
+  # diagnostics and warning ----------------------------------------------------
+  warn_lines <- character(0)
+
+  # Unallocated totals for requested totals vars
+  totals_vars <- setdiff(vars, "avg_inc_resp")
+
+  for (v in totals_vars) {
+    total_v <- DBI::dbGetQuery(con, sprintf("SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;", v, v))$total[1]
+    alloc_v  <- DBI::dbGetQuery(con, sprintf("SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;", v, v))$alloc[1]
+
+    total_v <- if (is.null(total_v) || is.na(total_v)) 0 else as.numeric(total_v)
+    alloc_v  <- if (is.null(alloc_v)  || is.na(alloc_v)) 0 else as.numeric(alloc_v)
+
+    unalloc <- max(total_v - alloc_v, 0)
+    if (total_v > 0 && unalloc > 0) {
+      pct <- 100 * unalloc / total_v
+
+      label <- v
+      if (v == "n_inhab_p") label <- "population from private households (n_inhab_p)"
+      if (v == "n_inhab_c") label <- "population from collective households (n_inhab_c)"
+
+      warn_lines <- c(
+        warn_lines,
+        sprintf("- Unallocated total for %s = %.0f (%s of total).", label, unalloc, .fmt_pct(pct))
+      )
+    }
+  }
+
+  # avg_inc_resp diagnostics only if requested
+  if ("avg_inc_resp" %in% vars) {
+    eligible_avg <- DBI::dbGetQuery(con, "
+      SELECT COUNT(*) AS n
+      FROM cnefe_sc p
+      JOIN sc_muni_w_dom s USING (code_tract)
+      WHERE
+        (CASE
+           WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
+           WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
+           ELSE FALSE
+         END);
+    ")$n[1]
+
+    assigned_avg <- DBI::dbGetQuery(con, "
+      SELECT COUNT(*) AS n
+      FROM cnefe_alloc
+      WHERE avg_inc_resp_pt IS NOT NULL;
+    ")$n[1]
+
+    warn_lines <- c(
+      warn_lines,
+      sprintf("- avg_inc_resp assigned to %d of %d eligible points.", assigned_avg, eligible_avg)
+    )
+
+    na_avg_tracts <- DBI::dbGetQuery(con, "
+      SELECT COUNT(*) AS n
+      FROM sc_muni_tbl
+      WHERE avg_inc_resp IS NULL;
+    ")$n[1]
+
+    if (na_avg_tracts > 0) {
+      warn_lines <- c(warn_lines, sprintf("- avg_inc_resp NA in %d tracts.", na_avg_tracts))
+    }
+  }
+
+  if (unmatched_pts > 0) {
+    warn_lines <- c(warn_lines, sprintf("- Unmatched CNEFE points (no tract) = %d.", unmatched_pts))
+  }
+
+  # Tracts with NA totals for requested totals vars
+  na_totals <- character(0)
+  for (v in totals_vars) {
+    n_na <- DBI::dbGetQuery(con, sprintf("SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;", v))$n[1]
+    if (n_na > 0) {
+      na_totals <- c(na_totals, sprintf("%s NA in %d", v, n_na))
+    }
+  }
+  if (length(na_totals) > 0) {
+    warn_lines <- c(warn_lines, paste0("- Tracts with NA totals: ", paste(na_totals, collapse = "; "), "."))
+  }
+
+  # Tracts with no eligible dwellings (denominator = 0) for requested totals vars
+  no_elig <- character(0)
+  for (v in totals_vars) {
+    if (v == "n_inhab_p") {
+      n0 <- DBI::dbGetQuery(con, "
+        SELECT COUNT(*) AS n
+        FROM sc_muni_w_dom
+        WHERE n_inhab_p IS NOT NULL AND n_inhab_p > 0 AND n_dom_p = 0;
+      ")$n[1]
+    } else if (v == "n_inhab_c") {
+      n0 <- DBI::dbGetQuery(con, "
+        SELECT COUNT(*) AS n
+        FROM sc_muni_w_dom
+        WHERE n_inhab_c IS NOT NULL AND n_inhab_c > 0 AND n_dom_c = 0;
+      ")$n[1]
+    } else {
+      n0 <- DBI::dbGetQuery(con, sprintf("
+        SELECT COUNT(*) AS n
+        FROM sc_muni_w_dom
+        WHERE %s IS NOT NULL AND %s > 0
+          AND (CASE
+                 WHEN n_dom_p > 0 THEN n_dom_p
+                 WHEN n_dom_c > 0 THEN n_dom_c
+                 ELSE 0
+               END) = 0;
+      ", v, v))$n[1]
+    }
+
+    if (n0 > 0) {
+      no_elig <- c(no_elig, sprintf("%s in %d tracts", v, n0))
+    }
+  }
+  if (length(no_elig) > 0) {
+    warn_lines <- c(warn_lines, paste0("- Tracts with no eligible dwellings: ", paste(no_elig, collapse = "; "), "."))
+  }
+
+  if (length(warn_lines) > 0) {
+    warning(
+      paste(c("Dasymetric interpolation diagnostics:", warn_lines), collapse = "\n"),
+      call. = FALSE
+    )
   }
 
   out

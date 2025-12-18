@@ -43,4 +43,5 @@ Imports:
     h3jsr,
     tidyr,
     DBI,
-    duckdb
+    duckdb,
+    duckspatial
