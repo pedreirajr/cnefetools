@@ -238,3 +238,330 @@
 
   muni
 }
+
+## Theme: Census tract (SC) Parquet assets (GitHub Release)
+
+#' @keywords internal
+#' @noRd
+.sc_assets_tag <- function() {
+  # Advanced users can override via options() without changing the API
+  getOption("cnefetools.sc_assets_tag", "sc-assets-v1")
+}
+
+#' @keywords internal
+#' @noRd
+.cnefetools_github_url <- function() {
+  # Prefer DESCRIPTION URL so forks still work when installed from a fork
+  url <- getOption("cnefetools.github_url", NA_character_)
+
+  if (is.na(url) || !nzchar(url)) {
+    desc <- tryCatch(utils::packageDescription("cnefetools"), error = function(e) NULL)
+    url  <- if (!is.null(desc) && !is.null(desc$URL)) desc$URL else ""
+  }
+
+  # URL may have multiple entries separated by commas
+  url <- trimws(strsplit(url, ",", fixed = TRUE)[[1L]][1L])
+
+  if (!nzchar(url) || !grepl("^https?://github\\.com/", url)) {
+    url <- "https://github.com/pedreirajr/cnefetools"
+  }
+
+  url
+}
+
+#' @keywords internal
+#' @noRd
+.sc_assets_download_base_url <- function() {
+  paste0(.cnefetools_github_url(), "/releases/download")
+}
+
+#' @keywords internal
+#' @noRd
+.sc_asset_filename <- function(uf) {
+  uf <- as.character(uf)
+  uf <- trimws(uf)
+  if (nchar(uf) == 1L) uf <- paste0("0", uf)
+  if (!grepl("^[0-9]{2}$", uf)) {
+    rlang::abort("`uf` must be a two-digit string like '29'.")
+  }
+  sprintf("sc_%s.parquet", uf)
+}
+
+#' @keywords internal
+#' @noRd
+.uf_from_code_muni <- function(code_muni) {
+  code_muni <- .normalize_code_muni(code_muni)
+  substr(sprintf("%07d", code_muni), 1L, 2L)
+}
+
+#' @keywords internal
+#' @noRd
+.sc_cache_dir <- function() {
+  dir <- file.path(.cnefe_cache_dir(), "sc_assets")
+  if (!dir.exists(dir)) {
+    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  dir
+}
+
+#' @keywords internal
+#' @noRd
+.sc_asset_local_path <- function(uf) {
+  file.path(.sc_cache_dir(), .sc_asset_filename(uf))
+}
+
+#' @keywords internal
+#' @noRd
+.sc_asset_url <- function(uf) {
+  paste0(
+    .sc_assets_download_base_url(), "/",
+    .sc_assets_tag(), "/",
+    .sc_asset_filename(uf)
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.validate_sc_parquet <- function(path) {
+  # Cheap validation: open Parquet metadata and check required fields
+  tryCatch({
+    reader <- arrow::ParquetFileReader$create(path)
+    schema <- reader$GetSchema()
+    fields <- schema$names
+    all(c("code_tract", "geom_wkb") %in% fields)
+  }, error = function(e) {
+    FALSE
+  })
+}
+
+#' @keywords internal
+#' @noRd
+.download_file_with_retry <- function(url,
+                                      destfile,
+                                      validate_fun = NULL,
+                                      verbose = TRUE,
+                                      base_timeout = 300L,
+                                      timeouts = c(300L, 600L, 1800L)) {
+
+  old_timeout <- getOption("timeout")
+  on.exit(options(timeout = old_timeout), add = TRUE)
+
+  timeouts <- unique(as.integer(c(base_timeout, timeouts)))
+  timeouts <- timeouts[!is.na(timeouts) & timeouts > 0]
+  timeouts <- sort(timeouts)
+
+  last_err <- NULL
+
+  dir.create(dirname(destfile), recursive = TRUE, showWarnings = FALSE)
+
+  for (t in timeouts) {
+    options(timeout = t)
+
+    tmp <- tempfile(fileext = ".tmp")
+
+    ok <- tryCatch({
+      if (verbose) message("Downloading: ", url, " (timeout = ", t, "s)")
+
+      utils::download.file(
+        url      = url,
+        destfile = tmp,
+        mode     = "wb",
+        quiet    = !isTRUE(verbose)
+      )
+
+      if (!file.exists(tmp) || is.na(file.info(tmp)$size) || file.info(tmp)$size <= 0) {
+        stop("Downloaded file is missing or empty.")
+      }
+
+      if (!is.null(validate_fun)) {
+        if (!isTRUE(validate_fun(tmp))) {
+          stop("Downloaded file failed validation.")
+        }
+      }
+
+      if (file.exists(destfile)) unlink(destfile)
+      ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
+      if (!isTRUE(ok_copy)) stop("Failed to move downloaded file into destination.")
+
+      TRUE
+    }, error = function(e) {
+      last_err <<- e
+      FALSE
+    }, finally = {
+      if (file.exists(tmp)) unlink(tmp)
+    })
+
+    if (isTRUE(ok)) return(invisible(TRUE))
+
+    if (verbose && !is.null(last_err)) {
+      message("Download attempt failed: ", conditionMessage(last_err))
+    }
+  }
+
+  if (!is.null(last_err)) rlang::abort(conditionMessage(last_err))
+  rlang::abort("Download failed for unknown reasons.")
+}
+
+#' @keywords internal
+#' @noRd
+.sc_ensure_parquet_uf <- function(uf,
+                                  cache = TRUE,
+                                  verbose = TRUE,
+                                  base_timeout = 300L,
+                                  timeouts = c(300L, 600L, 1800L)) {
+
+  uf <- as.character(uf)
+  uf <- trimws(uf)
+  if (nchar(uf) == 1L) uf <- paste0("0", uf)
+  if (!grepl("^[0-9]{2}$", uf)) {
+    rlang::abort("`uf` must be a two-digit string like '29'.")
+  }
+
+  url <- .sc_asset_url(uf)
+
+  if (isTRUE(cache)) {
+    destfile <- .sc_asset_local_path(uf)
+
+    if (file.exists(destfile)) {
+      valid <- .validate_sc_parquet(destfile)
+      if (isTRUE(valid)) return(destfile)
+
+      if (verbose) message("Cached SC Parquet appears corrupted. Deleting it...")
+      unlink(destfile)
+    }
+
+    .download_file_with_retry(
+      url          = url,
+      destfile     = destfile,
+      validate_fun = .validate_sc_parquet,
+      verbose      = verbose,
+      base_timeout = base_timeout,
+      timeouts     = timeouts
+    )
+
+    return(destfile)
+  }
+
+  # No-cache mode: download to a temp file and return its path
+  tmp <- tempfile(fileext = ".parquet")
+  .download_file_with_retry(
+    url          = url,
+    destfile     = tmp,
+    validate_fun = .validate_sc_parquet,
+    verbose      = verbose,
+    base_timeout = base_timeout,
+    timeouts     = timeouts
+  )
+
+  tmp
+}
+
+#' @keywords internal
+#' @noRd
+.sc_create_views_in_duckdb <- function(con,
+                                       code_muni,
+                                       cache = TRUE,
+                                       verbose = TRUE) {
+  code_muni <- .normalize_code_muni(code_muni)
+  uf <- .uf_from_code_muni(code_muni)
+
+  # Ensure UF parquet is available locally
+  parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, verbose = verbose)
+  parquet_path <- normalizePath(parquet_path, winslash = "/", mustWork = TRUE)
+
+  # 7-digit municipality prefix inside 15-digit tract code
+  muni_prefix <- sprintf("%07d", code_muni)
+
+  # View with tract attributes + geometry as DuckDB GEOMETRY
+  DBI::dbExecute(con, sprintf("
+    CREATE OR REPLACE VIEW sc_uf_raw AS
+    SELECT *
+    FROM read_parquet('%s');
+  ", parquet_path))
+
+  DBI::dbExecute(con, sprintf("
+    CREATE OR REPLACE VIEW sc_muni AS
+    SELECT
+      *,
+      ST_GeomFromWKB(geom_wkb) AS geom
+    FROM sc_uf_raw
+    WHERE substr(code_tract, 1, 7) = '%s';
+  ", muni_prefix))
+
+  invisible(TRUE)
+}
+
+#' @keywords internal
+#' @noRd
+.cnefe_create_points_view_in_duckdb <- function(con,
+                                                code_muni,
+                                                index = cnefe_index_2022,
+                                                cache = TRUE,
+                                                verbose = TRUE) {
+  code_muni <- .normalize_code_muni(code_muni)
+
+  # Ensure zipfs is available
+  ok_zipfs <- tryCatch({
+    DBI::dbExecute(con, "LOAD zipfs;")
+    TRUE
+  }, error = function(e) FALSE)
+
+  if (!ok_zipfs) {
+    DBI::dbExecute(con, "INSTALL zipfs;")
+    DBI::dbExecute(con, "LOAD zipfs;")
+  }
+
+  # Ensure the municipality ZIP exists locally (reuses your existing cache logic)
+  zip_info <- .cnefe_ensure_zip(
+    code_muni = code_muni,
+    index     = index,
+    cache     = cache,
+    verbose   = verbose
+  )
+
+  zip_path <- zip_info$zip_path
+  zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
+
+  arch_info  <- archive::archive(zip_norm)
+  csv_inside <- .cnefe_first_csv_in_archive(arch_info)
+
+  # DuckDB zipfs URI: zip://<zipfile>/<file_inside_zip>
+  uri     <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+  uri_sql <- gsub("'", "''", uri)
+
+  DBI::dbExecute(con, sprintf("
+    CREATE OR REPLACE VIEW cnefe_raw AS
+    SELECT
+      CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
+      CAST(COD_SETOR         AS VARCHAR) AS COD_SETOR,
+      try_cast(COD_ESPECIE   AS INTEGER) AS COD_ESPECIE,
+      CAST(LONGITUDE         AS DOUBLE)  AS lon,
+      CAST(LATITUDE          AS DOUBLE)  AS lat
+    FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false);
+  ", uri_sql))
+
+  DBI::dbExecute(con, "
+    CREATE OR REPLACE VIEW cnefe_pts AS
+    SELECT
+      COD_UNICO_ENDERECO,
+      COD_SETOR,
+      COD_ESPECIE,
+      lon,
+      lat,
+      ST_Point(lon, lat) AS geom
+    FROM cnefe_raw
+    WHERE
+      COD_ESPECIE IN (1, 2)
+      AND lon IS NOT NULL
+      AND lat IS NOT NULL;
+  ")
+
+  # Clean up temp ZIP if cache = FALSE
+  if (isTRUE(zip_info$cleanup_zip)) {
+    on.exit(unlink(zip_path), add = TRUE)
+  }
+
+  invisible(TRUE)
+}
+
+
