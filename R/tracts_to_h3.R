@@ -1,25 +1,24 @@
 #' Convert census tract aggregates to an H3 grid using CNEFE points (DuckDB backend)
 #'
 #' @description
-#' `tracts_to_h3()` performs a two-step dasymetric interpolation:
+#' `tracts_to_h3()` performs a dasymetric interpolation with the following steps:
 #' 1) census tract totals are allocated to CNEFE dwelling points inside each tract; then
 #' 2) allocated values are aggregated to an H3 grid at a user-defined resolution.
 #'
 #' The function uses DuckDB with the spatial and H3 extensions for the heavy work.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
-#' @param h3_resolution Integer. H3 resolution (0 to 15). Default is 9.
+#' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to 9.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
 #'   Supported variables:
-#'   - `n_inhab_p`: population in private households (Domicílios particulares).
-#'   - `n_inhab_c`: population in collective households (Domicílios coletivos).
-#'   - `n_inhab`: total population (as provided in the tract aggregates).
+#'   - `n_inhab_p`: population in private households (*Domicílios particulares*).
+#'   - `n_inhab_c`: population in collective households (*Domicílios coletivos*).
 #'   - `male`: total male population.
 #'   - `female`: total female population.
 #'   - `age_0_4`, `age_5_9`, `age_10_14`, `age_15_19`, `age_20_24`, `age_25_29`,
 #'     `age_30_39`, `age_40_49`, `age_50_59`, `age_60_69`, `age_70m`: population by age group.
-#'   - `n_resp`: number of household heads in the census tract (Pessoas responsáveis por domicílios).
-#'   - `avg_inc_resp`: average income of the household heads in the census tract.
+#'   - `n_resp`: number of household heads (*Pessoas responsáveis por domicílios*).
+#'   - `avg_inc_resp`: average income of the household heads.
 #'
 #'   Allocation rules:
 #'   - `n_inhab_p` is allocated only to private dwellings.
