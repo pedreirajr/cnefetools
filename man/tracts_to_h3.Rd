@@ -15,10 +15,10 @@ tracts_to_h3(
 \arguments{
 \item{code_muni}{Integer. Seven-digit IBGE municipality code.}
 
-\item{h3_resolution}{Integer. H3 resolution (0 to 15). Defaults to resolution 9.}
+\item{h3_resolution}{Integer. H3 resolution (0 to 15). Defaults to res. 9.}
 
 \item{vars}{Character vector. Names of tract-level variables to interpolate.
-Supported variables:
+Currently supported variables:
 \itemize{
 \item \code{n_inhab_p}: population in private households (\emph{Domicílios particulares}).
 \item \code{n_inhab_c}: population in collective households (\emph{Domicílios coletivos}).

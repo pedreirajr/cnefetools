@@ -8,9 +8,9 @@
 #' The function uses DuckDB with the spatial and H3 extensions for the heavy work.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
-#' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to resolution 9.
+#' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to res. 9.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
-#'   Supported variables:
+#'   Currently supported variables:
 #'   - `n_inhab_p`: population in private households (*Domicílios particulares*).
 #'   - `n_inhab_c`: population in collective households (*Domicílios coletivos*).
 #'   - `n_inhab`: total population (as provided in the tract aggregates).
