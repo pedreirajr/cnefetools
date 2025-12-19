@@ -2,7 +2,7 @@
 % Please edit documentation in R/tracts_to_h3.R
 \name{tracts_to_h3}
 \alias{tracts_to_h3}
-\title{Convert census tract aggregates to an H3 grid using CNEFE points (DuckDB backend)}
+\title{Convert census tract aggregates to an H3 grid using CNEFE points}
 \usage{
 tracts_to_h3(
   code_muni,
@@ -53,7 +53,7 @@ Attributes:
 \description{
 \code{tracts_to_h3()} performs a dasymetric interpolation with the following steps:
 \enumerate{
-\item census tract totals are allocated to CNEFE dwelling points inside each tract; then
+\item census tract totals are allocated to CNEFE dwelling points inside each tract;
 \item allocated values are aggregated to an H3 grid at a user-defined resolution.
 }
 
