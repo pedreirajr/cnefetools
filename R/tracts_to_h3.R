@@ -1,8 +1,8 @@
-#' Convert census tract aggregates to an H3 grid using CNEFE points (DuckDB backend)
+#' Convert census tract aggregates to an H3 grid using CNEFE points
 #'
 #' @description
 #' `tracts_to_h3()` performs a dasymetric interpolation with the following steps:
-#' 1) census tract totals are allocated to CNEFE dwelling points inside each tract; then
+#' 1) census tract totals are allocated to CNEFE dwelling points inside each tract;
 #' 2) allocated values are aggregated to an H3 grid at a user-defined resolution.
 #'
 #' The function uses DuckDB with the spatial and H3 extensions for the heavy work.
@@ -41,7 +41,13 @@ tracts_to_h3 <- function(code_muni,
                          cache = TRUE,
                          verbose = TRUE) {
 
-  code_muni <- as.integer(code_muni)
+  # normalize inputs ----------------------------------------------------------
+  if (exists(".normalize_code_muni", mode = "function")) {
+    code_muni <- .normalize_code_muni(code_muni)
+  } else {
+    code_muni <- as.integer(code_muni)
+  }
+
   h3_resolution <- as.integer(h3_resolution)
   vars <- unique(as.character(vars))
 
@@ -60,8 +66,10 @@ tracts_to_h3 <- function(code_muni,
 
   bad_vars <- setdiff(vars, allowed_vars)
   if (length(bad_vars) > 0) {
-    stop("Unknown `vars`: ", paste(bad_vars, collapse = ", "),
-         ". See `?tracts_to_h3` for available variables.")
+    stop(
+      "Unknown `vars`: ", paste(bad_vars, collapse = ", "),
+      ". See `?tracts_to_h3` for available variables."
+    )
   }
 
   # helpers -------------------------------------------------------------------
@@ -152,22 +160,17 @@ tracts_to_h3 <- function(code_muni,
   t4 <- .t0()
 
   # Matched points only (spatial join without LEFT JOIN)
-  # Bring only required columns from tracts into the join (plus code_tract)
-  tract_cols_sql <- paste(c("s.code_tract", paste0("s.", vars[vars != "avg_inc_resp"]), "s.avg_inc_resp"), collapse = ", ")
-  # If avg_inc_resp not requested, still safe to bring it but later we will ignore diagnostics and aggregation.
-  # Keep it simple: always bring s.avg_inc_resp so allocation SQL can include it conditionally.
-  tract_cols_sql <- paste(c("s.code_tract", paste0("s.", setdiff(vars, "avg_inc_resp")), "s.avg_inc_resp"), collapse = ", ")
-
-  # Create the matched table
-  .duckdb_quiet_execute(con, sprintf("
+  # IMPORTANT: bring ONLY code_tract from tracts (fixes the `s.` parser bug
+  # and avoids carrying unrequested columns).
+  .duckdb_quiet_execute(con, "
     CREATE OR REPLACE TABLE cnefe_sc AS
     SELECT
       p.*,
-      %s
+      s.code_tract
     FROM cnefe_pts_tbl p,
          sc_muni_tbl s
     WHERE ST_Within(p.geom, s.geom);
-  ", tract_cols_sql))
+  ")
 
   matched_pts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
   unmatched_pts <- max(total_pts - matched_pts, 0)
@@ -197,7 +200,6 @@ tracts_to_h3 <- function(code_muni,
   # Allocation view:
   # - totals: per-point = total / eligible_count
   # - avg_inc_resp: assigned to each eligible point, aggregated later as mean
-  # Eligibility for non-pop variables: private dwellings if any, otherwise collective dwellings.
   alloc_exprs <- character(0)
 
   for (v in vars) {
@@ -235,7 +237,6 @@ tracts_to_h3 <- function(code_muni,
         END AS n_inhab_c_pt
       ")
     } else {
-      # other totals
       alloc_exprs <- c(alloc_exprs, sprintf("
         CASE
           WHEN (CASE
@@ -314,13 +315,13 @@ tracts_to_h3 <- function(code_muni,
 
   hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
-  # Build polygons from the resulting cell IDs only
   hex_sf <- h3jsr::cell_to_polygon(hex_df$id_hex, simple = FALSE) %>%
     dplyr::rename(id_hex = "h3_address")
 
   out <- hex_sf %>%
     dplyr::left_join(hex_df, by = "id_hex") %>%
-    sf::st_as_sf()
+    sf::st_as_sf() %>%
+    dplyr::select(id_hex, dplyr::all_of(vars), geometry)
 
   sf::st_crs(out) <- 4326
 
@@ -343,15 +344,18 @@ tracts_to_h3 <- function(code_muni,
   # diagnostics and warning ----------------------------------------------------
   warn_lines <- character(0)
 
-  # Unallocated totals for requested totals vars
   totals_vars <- setdiff(vars, "avg_inc_resp")
 
   for (v in totals_vars) {
-    total_v <- DBI::dbGetQuery(con, sprintf("SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;", v, v))$total[1]
-    alloc_v  <- DBI::dbGetQuery(con, sprintf("SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;", v, v))$alloc[1]
+    total_v <- DBI::dbGetQuery(con, sprintf(
+      "SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;", v, v
+    ))$total[1]
+    alloc_v <- DBI::dbGetQuery(con, sprintf(
+      "SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;", v, v
+    ))$alloc[1]
 
     total_v <- if (is.null(total_v) || is.na(total_v)) 0 else as.numeric(total_v)
-    alloc_v  <- if (is.null(alloc_v)  || is.na(alloc_v)) 0 else as.numeric(alloc_v)
+    alloc_v <- if (is.null(alloc_v)  || is.na(alloc_v)) 0 else as.numeric(alloc_v)
 
     unalloc <- max(total_v - alloc_v, 0)
     if (total_v > 0 && unalloc > 0) {
@@ -368,7 +372,6 @@ tracts_to_h3 <- function(code_muni,
     }
   }
 
-  # avg_inc_resp diagnostics only if requested
   if ("avg_inc_resp" %in% vars) {
     eligible_avg <- DBI::dbGetQuery(con, "
       SELECT COUNT(*) AS n
@@ -408,10 +411,11 @@ tracts_to_h3 <- function(code_muni,
     warn_lines <- c(warn_lines, sprintf("- Unmatched CNEFE points (no tract) = %d.", unmatched_pts))
   }
 
-  # Tracts with NA totals for requested totals vars
   na_totals <- character(0)
   for (v in totals_vars) {
-    n_na <- DBI::dbGetQuery(con, sprintf("SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;", v))$n[1]
+    n_na <- DBI::dbGetQuery(con, sprintf(
+      "SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;", v
+    ))$n[1]
     if (n_na > 0) {
       na_totals <- c(na_totals, sprintf("%s NA in %d", v, n_na))
     }
@@ -420,7 +424,6 @@ tracts_to_h3 <- function(code_muni,
     warn_lines <- c(warn_lines, paste0("- Tracts with NA totals: ", paste(na_totals, collapse = "; "), "."))
   }
 
-  # Tracts with no eligible dwellings (denominator = 0) for requested totals vars
   no_elig <- character(0)
   for (v in totals_vars) {
     if (v == "n_inhab_p") {
@@ -465,3 +468,4 @@ tracts_to_h3 <- function(code_muni,
 
   out
 }
+
