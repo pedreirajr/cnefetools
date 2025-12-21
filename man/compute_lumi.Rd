@@ -26,7 +26,7 @@ An \code{\link[sf:sf]{sf::sf}} object with CRS 4326 containing:
 \itemize{
 \item \code{id_hex}: H3 cell identifier
 \item \code{p_res}: share of residential addresses in the hexagon
-\item \code{ei}, \code{hhi}, \code{hhi_adp}, \code{bgbi}: land-use mix indicators
+\item \code{ei},\code{bal}, \code{hhi}, \code{hhi_adp}, \code{bgbi}: land-use mix indicators
 \item \code{geometry}: hexagon geometry
 }
 }
