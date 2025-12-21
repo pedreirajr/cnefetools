@@ -161,23 +161,29 @@ ggplot(hex_sp) +
 
 The `compute_lumi()` function computes land-use mix indicators on an H3
 hexagonal grid at any user-defined resolution for any Brazilian
-municipality covered by the 2022 CNEFE dataset (Pedreira Junior et al.,
-2025). Internally, it: (i) reads and preprocesses address points from
-CNEFE; (ii) assigns each point to an H3 cell; (iii) aggregates
-residential and non-residential addresses per hexagon; and (iv) computes
-the following indicators:
+municipality covered by the 2022 CNEFE dataset ([Pedreira Junior et al.,
+2025](https://engrxiv.org/preprint/view/5975/version/7846)). Internally,
+it: (i) reads and preprocesses address points from CNEFE; (ii) assigns
+each point to an H3 cell; (iii) aggregates residential and
+non-residential addresses per hexagon; and (iv) computes the following
+indicators:
 
 - `p_res`: proportion of residential addresses in each hexagon.
-- `ei`: Entropy Index (EI), ranging from 0 (single use) to 1 (balanced
-  residential vs. non-residential).
-- `hhi`: Herfindahl–Hirschman Index (HHI) for two uses (residential
-  vs. non-residential), ranging from 0.5 (balanced) to 1 (single use).
+- `ei`: Entropy Index (EI), ranging from 0 (single use) to 1 (maximum
+  mix), with the maximum attained at `p_res` = 0.5.
+- `hhi`: Herfindahl–Hirschman Index (HHI), ranging from 0.5 (maximum mix
+  at `p_res` = 0.5) to 1 (single use).
+- `bal`: Balance Index (BAL), ranging from 0 (single use) to 1 (maximum
+  balance), where balance is defined relative to the citywide
+  residential proportion (i.e., the maximum occurs when `p_res` equals
+  the citywide residential share).
 - `hhi_adp`: adapted HHI, which adds directionality and takes values in
   \[-1, 1\], where negative values indicate non-residential dominance
-  and positive values indicate residential dominance.
+  and positive values indicate residential dominance (0 indicates a
+  50/50 split).
 - `bgbi`: Bidirectional Global-centered Balance Index (BGBI), which
-  measures the deviation of the local residential share from the
-  citywide residential proportion, also in \[-1, 1\].
+  measures the deviation of the local residential share (`p_res`) from
+  the citywide residential proportion, also in \[-1, 1\].
 
 ### Choosing a backend (performance)
 

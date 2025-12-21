@@ -14,6 +14,7 @@ utils::globalVariables(c(
   "min_hhi",
   "hhi_sc",
   "ei",
+  "bal",
   "hhi_adp",
   "bgbi",
   "geometry"
