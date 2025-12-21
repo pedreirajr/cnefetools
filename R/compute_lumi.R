@@ -15,7 +15,7 @@
 #' @return An [`sf::sf`] object with CRS 4326 containing:
 #'   - `id_hex`: H3 cell identifier
 #'   - `p_res`: share of residential addresses in the hexagon
-#'   - `ei`, `hhi`, `hhi_adp`, `bgbi`: land-use mix indicators
+#'   - `ei`,`bal`, `hhi`, `hhi_adp`, `bgbi`: land-use mix indicators
 #'   - `geometry`: hexagon geometry
 #'
 #' @references
@@ -240,14 +240,22 @@ compute_lumi <- function(code_muni,
     id_hex        = counts_hex$id_hex
   )
 
-  # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
+    # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
   P <- sum(counts_hex$n_res, na.rm = TRUE) / sum(counts_hex$n_tot, na.rm = TRUE)
 
+  # Balance index (BAL)
+  bal_fun <- function(p, P){
+    num <- abs(p - (P/(1-P))*(1-p))
+    den <- p + (P/(1-P))*(1-p)
+    ifelse(is.na(num) | is.na(den), NA_real_, 1 - num/den)
+  }
+
+  # BGBI function
   bgbi_fun <- function(p, P) {
     num <- (2 * p - 1) - (2 * P - 1)
     den <- 1 - (2 * p - 1) * (2 * P - 1)
     den[den == 0] <- NA_real_
-    ifelse(is.na(num) | is.na(den), NA_real_, num / den)
+    ifelse(is.na(num) | is.na(den), NA_real_, num/den)
   }
 
   # numerically safe entropy term: treat 0*log(0) as 0
@@ -278,6 +286,13 @@ compute_lumi <- function(code_muni,
         NA_real_
       ),
 
+      # BAL
+      bal = dplyr::if_else(
+        !is.na(.data$p_res),
+        bal_fun(.data$p_res, P),
+        NA_real_
+      ),
+
       # scaled HHI (min=0.5 for k=2)
       hhi_sc = dplyr::if_else(
         !is.na(.data$hhi),
@@ -298,6 +313,7 @@ compute_lumi <- function(code_muni,
       p_res,
       ei,
       hhi,
+      bal,
       hhi_adp,
       bgbi,
       geometry

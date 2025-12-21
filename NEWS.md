@@ -1,3 +1,7 @@
+# cnefetools 0.1.1
+
+- Adds Balance Index (BAL), `bal` to the `compute_lumi()` function.
+
 # cnefetools 0.1.0
 
 - New: `tracts_to_h3()` for dasymetric interpolation from tract aggregates to CNEFE dwelling points and H3 hexagons using DuckDB (spatial + h3).
