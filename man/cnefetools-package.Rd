@@ -14,6 +14,7 @@ Provides helper functions to work with the Cadastro Nacional de Endereços para 
 Useful links:
 \itemize{
   \item \url{https://github.com/pedreirajr/cnefetools}
+  \item \url{https://pedreirajr.github.io/cnefetools/}
   \item Report bugs at \url{https://github.com/pedreirajr/cnefetools/issues}
 }
 

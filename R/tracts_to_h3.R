@@ -315,12 +315,12 @@ tracts_to_h3 <- function(code_muni,
 
   hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
-  hex_sf <- h3jsr::cell_to_polygon(hex_df$id_hex, simple = FALSE) %>%
+  hex_sf <- h3jsr::cell_to_polygon(hex_df$id_hex, simple = FALSE) |>
     dplyr::rename(id_hex = "h3_address")
 
-  out <- hex_sf %>%
-    dplyr::left_join(hex_df, by = "id_hex") %>%
-    sf::st_as_sf() %>%
+  out <- hex_sf |>
+    dplyr::left_join(hex_df, by = "id_hex") |>
+    sf::st_as_sf() |>
     dplyr::select(id_hex, dplyr::all_of(vars), geometry)
 
   sf::st_crs(out) <- 4326

@@ -168,8 +168,8 @@ compute_lumi <- function(code_muni,
       GROUP BY 1;
     ", uri_sql, as.integer(h3_resolution))
 
-    counts_hex <- DBI::dbGetQuery(con, sql) %>%
-      dplyr::as_tibble() %>%
+    counts_hex <- DBI::dbGetQuery(con, sql) |>
+      dplyr::as_tibble() |>
       dplyr::mutate(
         id_hex = as.character(.data$id_hex),
         n_res  = as.integer(.data$n_res),
@@ -185,12 +185,12 @@ compute_lumi <- function(code_muni,
       verbose   = verbose
     )
 
-    df <- as.data.frame(tab) %>%
+    df <- as.data.frame(tab) |>
       dplyr::transmute(
         LONGITUDE   = as.numeric(.data$LONGITUDE),
         LATITUDE    = as.numeric(.data$LATITUDE),
         COD_ESPECIE = as.integer(.data$COD_ESPECIE)
-      ) %>%
+      ) |>
       dplyr::filter(
         !is.na(.data$LONGITUDE),
         !is.na(.data$LATITUDE),
@@ -204,18 +204,21 @@ compute_lumi <- function(code_muni,
       return(NULL)
     }
 
-    coords <- df %>% dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
+    coords <- df |>
+      dplyr::transmute(lon = .data$LONGITUDE,
+                       lat = .data$LATITUDE)
+
     id_hex <- suppressMessages(h3jsr::point_to_cell(coords, res = h3_resolution, simple = TRUE))
 
-    counts_hex <- df %>%
-      dplyr::mutate(id_hex = as.character(id_hex)) %>%
-      dplyr::filter(!is.na(.data$id_hex)) %>%
-      dplyr::group_by(.data$id_hex) %>%
+    counts_hex <- df |>
+      dplyr::mutate(id_hex = as.character(id_hex)) |>
+      dplyr::filter(!is.na(.data$id_hex)) |>
+      dplyr::group_by(.data$id_hex) |>
       dplyr::summarise(
         n_res = sum(.data$COD_ESPECIE == 1L, na.rm = TRUE),
         n_tot = dplyr::n(),
         .groups = "drop"
-      ) %>%
+      ) |>
       dplyr::mutate(
         n_res = as.integer(.data$n_res),
         n_tot = as.integer(.data$n_tot)
@@ -263,8 +266,8 @@ compute_lumi <- function(code_muni,
     ifelse(is.na(x) | x <= 0, 0, x * log(x))
   }
 
-  out <- hex_grid %>%
-    dplyr::left_join(counts_hex, by = "id_hex") %>%
+  out <- hex_grid |>
+    dplyr::left_join(counts_hex, by = "id_hex") |>
     dplyr::mutate(
       n_res = dplyr::coalesce(as.integer(.data$n_res), 0L),
       n_tot = dplyr::coalesce(as.integer(.data$n_tot), 0L),
@@ -306,8 +309,11 @@ compute_lumi <- function(code_muni,
         NA_real_
       ),
 
-      bgbi = dplyr::if_else(!is.na(.data$p_res), bgbi_fun(.data$p_res, P), NA_real_)
-    ) %>%
+      bgbi = dplyr::if_else(
+        !is.na(.data$p_res),
+        bgbi_fun(.data$p_res, P),
+        NA_real_)
+    ) |>
     dplyr::select(
       id_hex,
       p_res,
