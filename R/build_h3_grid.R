@@ -40,8 +40,8 @@ build_h3_grid <- function(h3_resolution,
       boundary <- .read_muni_boundary_2024(code_muni)
     }
 
-    boundary <- boundary %>%
-      sf::st_transform(4326) %>%
+    boundary <- boundary |>
+      sf::st_transform(4326) |>
       sf::st_make_valid()
 
     geom1 <- sf::st_union(sf::st_geometry(boundary))

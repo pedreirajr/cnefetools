@@ -15,12 +15,12 @@ testthat::test_that("compute_lumi computes expected p_res on offline fixture (ba
     .package = "cnefetools"
   )
 
-  df <- as.data.frame(tab) %>%
+  df <- as.data.frame(tab) |>
     dplyr::transmute(
       LONGITUDE   = suppressWarnings(as.numeric(.data$LONGITUDE)),
       LATITUDE    = suppressWarnings(as.numeric(.data$LATITUDE)),
       COD_ESPECIE = suppressWarnings(as.integer(.data$COD_ESPECIE))
-    ) %>%
+    ) |>
     dplyr::filter(
       !is.na(.data$LONGITUDE),
       !is.na(.data$LATITUDE),
@@ -30,14 +30,17 @@ testthat::test_that("compute_lumi computes expected p_res on offline fixture (ba
     )
 
   ids <- h3jsr::point_to_cell(
-    df %>% dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE),
+    df |>
+      dplyr::transmute(
+      lon = .data$LONGITUDE,
+      lat = .data$LATITUDE),
     res = h3_res,
     simple = TRUE
   )
 
-  expected <- df %>%
-    dplyr::mutate(id_hex = as.character(ids)) %>%
-    dplyr::group_by(.data$id_hex) %>%
+  expected <- df |>
+    dplyr::mutate(id_hex = as.character(ids)) |>
+    dplyr::group_by(.data$id_hex) |>
     dplyr::summarise(
       p_res = sum(.data$COD_ESPECIE == 1L) / dplyr::n(),
       .groups = "drop"
@@ -52,8 +55,8 @@ testthat::test_that("compute_lumi computes expected p_res on offline fixture (ba
   testthat::expect_s3_class(out, "sf")
   testthat::expect_true(all(c("id_hex", "p_res", "ei", "hhi", "hhi_adp", "bgbi") %in% names(out)))
 
-  out_df <- sf::st_drop_geometry(out) %>%
-    dplyr::select("id_hex", "p_res") %>%
+  out_df <- sf::st_drop_geometry(out) |>
+    dplyr::select("id_hex", "p_res") |>
     dplyr::inner_join(expected, by = "id_hex", suffix = c("", "_exp"))
 
   testthat::expect_true(nrow(out_df) > 0L)

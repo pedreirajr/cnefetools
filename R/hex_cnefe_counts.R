@@ -171,8 +171,8 @@ hex_cnefe_counts <- function(code_muni,
       GROUP BY 1, 2;
     ", uri_sql, as.integer(h3_resolution))
 
-    counts_long <- DBI::dbGetQuery(con, sql) %>%
-      dplyr::as_tibble() %>%
+    counts_long <- DBI::dbGetQuery(con, sql) |>
+      dplyr::as_tibble() |>
       dplyr::mutate(
         id_hex      = as.character(.data$id_hex),
         COD_ESPECIE = as.integer(.data$COD_ESPECIE),
@@ -189,12 +189,12 @@ hex_cnefe_counts <- function(code_muni,
       verbose   = verbose
     )
 
-    df <- as.data.frame(tab) %>%
+    df <- as.data.frame(tab) |>
       dplyr::transmute(
         LONGITUDE   = as.numeric(.data$LONGITUDE),
         LATITUDE    = as.numeric(.data$LATITUDE),
         COD_ESPECIE = as.integer(.data$COD_ESPECIE)
-      ) %>%
+      ) |>
       dplyr::filter(
         !is.na(.data$LONGITUDE),
         !is.na(.data$LATITUDE),
@@ -203,17 +203,20 @@ hex_cnefe_counts <- function(code_muni,
       )
 
     if (nrow(df) > 0L) {
-      coords <- df %>%
-        dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
+      coords <- df |>
+        dplyr::transmute(lon = .data$LONGITUDE,
+                         lat = .data$LATITUDE)
 
       id_hex <- suppressMessages(
-        h3jsr::point_to_cell(coords, res = h3_resolution, simple = TRUE)
+        h3jsr::point_to_cell(coords,
+                             res = h3_resolution,
+                             simple = TRUE)
       )
 
-      counts_long <- df %>%
-        dplyr::mutate(id_hex = as.character(id_hex)) %>%
-        dplyr::filter(!is.na(.data$id_hex)) %>%
-        dplyr::count(.data$id_hex, .data$COD_ESPECIE, name = "n") %>%
+      counts_long <- df |>
+        dplyr::mutate(id_hex = as.character(id_hex)) |>
+        dplyr::filter(!is.na(.data$id_hex)) |>
+        dplyr::count(.data$id_hex, .data$COD_ESPECIE, name = "n") |>
         dplyr::mutate(
           COD_ESPECIE = as.integer(.data$COD_ESPECIE),
           n           = as.integer(.data$n)
@@ -235,7 +238,7 @@ hex_cnefe_counts <- function(code_muni,
 
   } else {
 
-    counts_wide <- counts_long %>%
+    counts_wide <- counts_long |>
       tidyr::pivot_wider(
         id_cols      = "id_hex",
         names_from   = "COD_ESPECIE",
@@ -249,14 +252,14 @@ hex_cnefe_counts <- function(code_muni,
       if (!nm %in% names(counts_wide)) counts_wide[[nm]] <- 0L
     }
 
-    counts_wide <- counts_wide %>%
-      dplyr::select("id_hex", dplyr::all_of(paste0("addr_type", 1:8))) %>%
+    counts_wide <- counts_wide |>
+      dplyr::select("id_hex", dplyr::all_of(paste0("addr_type", 1:8))) |>
       dplyr::mutate(
         dplyr::across(dplyr::starts_with("addr_type"), ~ as.integer(.x))
       )
 
-    out <- hex_grid %>%
-      dplyr::left_join(counts_wide, by = "id_hex") %>%
+    out <- hex_grid |>
+      dplyr::left_join(counts_wide, by = "id_hex") |>
       dplyr::mutate(
         dplyr::across(
           dplyr::starts_with("addr_type"),
@@ -266,7 +269,7 @@ hex_cnefe_counts <- function(code_muni,
   }
 
   # Final safety: force integer and non-negative
-  out <- out %>%
+  out <- out |>
     dplyr::mutate(
       dplyr::across(
         dplyr::starts_with("addr_type"),
