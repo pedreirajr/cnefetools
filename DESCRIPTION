@@ -43,4 +43,5 @@ Imports:
     tidyr,
     DBI,
     duckdb,
-    duckspatial
+    duckspatial,
+    cli

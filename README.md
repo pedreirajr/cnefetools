@@ -35,24 +35,23 @@ df_ssa <- tab_ssa |>
   dplyr::tibble()
 
 head(df_ssa)
+#> # A tibble: 6 × 34
+#>   COD_UNICO_ENDERECO COD_UF COD_MUNICIPIO COD_DISTRITO COD_SUBDISTRITO COD_SETOR
+#>                <int>  <int>         <int>        <int>         <int64> <chr>    
+#> 1          222386741     29       2927408    292740805     29274080518 29274080…
+#> 2           27995350     29       2927408    292740805     29274080522 29274080…
+#> 3           28034841     29       2927408    292740805     29274080522 29274080…
+#> 4          217544957     29       2927408    292740805     29274080518 29274080…
+#> 5          217639781     29       2927408    292740805     29274080526 29274080…
+#> 6          217639701     29       2927408    292740805     29274080526 29274080…
+#> # ℹ 28 more variables: NUM_QUADRA <int>, NUM_FACE <int>, CEP <int>,
+#> #   DSC_LOCALIDADE <chr>, NOM_TIPO_SEGLOGR <chr>, NOM_TITULO_SEGLOGR <chr>,
+#> #   NOM_SEGLOGR <chr>, NUM_ENDERECO <int>, DSC_MODIFICADOR <chr>,
+#> #   NOM_COMP_ELEM1 <chr>, VAL_COMP_ELEM1 <chr>, NOM_COMP_ELEM2 <chr>,
+#> #   VAL_COMP_ELEM2 <chr>, NOM_COMP_ELEM3 <chr>, VAL_COMP_ELEM3 <chr>,
+#> #   NOM_COMP_ELEM4 <chr>, VAL_COMP_ELEM4 <chr>, NOM_COMP_ELEM5 <chr>,
+#> #   VAL_COMP_ELEM5 <chr>, LATITUDE <dbl>, LONGITUDE <dbl>, …
 ```
-
-    ## # A tibble: 6 × 34
-    ##   COD_UNICO_ENDERECO COD_UF COD_MUNICIPIO COD_DISTRITO COD_SUBDISTRITO COD_SETOR
-    ##                <int>  <int>         <int>        <int>         <int64> <chr>    
-    ## 1          222386741     29       2927408    292740805     29274080518 29274080…
-    ## 2           27995350     29       2927408    292740805     29274080522 29274080…
-    ## 3           28034841     29       2927408    292740805     29274080522 29274080…
-    ## 4          217544957     29       2927408    292740805     29274080518 29274080…
-    ## 5          217639781     29       2927408    292740805     29274080526 29274080…
-    ## 6          217639701     29       2927408    292740805     29274080526 29274080…
-    ## # ℹ 28 more variables: NUM_QUADRA <int>, NUM_FACE <int>, CEP <int>,
-    ## #   DSC_LOCALIDADE <chr>, NOM_TIPO_SEGLOGR <chr>, NOM_TITULO_SEGLOGR <chr>,
-    ## #   NOM_SEGLOGR <chr>, NUM_ENDERECO <int>, DSC_MODIFICADOR <chr>,
-    ## #   NOM_COMP_ELEM1 <chr>, VAL_COMP_ELEM1 <chr>, NOM_COMP_ELEM2 <chr>,
-    ## #   VAL_COMP_ELEM2 <chr>, NOM_COMP_ELEM3 <chr>, VAL_COMP_ELEM3 <chr>,
-    ## #   NOM_COMP_ELEM4 <chr>, VAL_COMP_ELEM4 <chr>, NOM_COMP_ELEM5 <chr>,
-    ## #   VAL_COMP_ELEM5 <chr>, LATITUDE <dbl>, LONGITUDE <dbl>, …
 
 ## Spatial output and quick map
 
@@ -80,7 +79,7 @@ ggplot() +
   theme_minimal()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-4-1.png" width="100%" />
 
 **Warning**
 
@@ -177,7 +176,7 @@ ggplot(hex_sp) +
   theme_minimal()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-8-1.png" width="100%" />
 
 ## Land-use mix indicators with `compute_lumi()`
 
@@ -239,7 +238,7 @@ ggplot(lumi_for) +
   theme_minimal()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-10-1.png" width="100%" />
 
 ## Dasymetric interpolation from census tracts to H3 with `tracts_to_h3()`
 
@@ -355,7 +354,7 @@ ggplot(rec_hex) +
   theme_minimal()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />
 
 ``` r
 # Map avg income of the household head
@@ -371,7 +370,7 @@ ggplot(rec_hex) +
   theme_minimal()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
 
 ## Citation
 

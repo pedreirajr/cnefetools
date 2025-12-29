@@ -1,8 +1,17 @@
 ---
 output:
-  github_document:
-    html_preview: false
+  github_document
 ---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  dpi = 600
+)
+```
 
 # cnefetools: Tools for working with Brazilian CNEFE address data <img src="man/figures/logo.png" alt="logo" align="right" width="190"/>
 
