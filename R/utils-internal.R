@@ -6,31 +6,34 @@
 #' @keywords internal
 #' @noRd
 .normalize_code_muni <- function(code_muni) {
+  # 1. Length validation
   if (length(code_muni) != 1L) {
-    rlang::abort("`code_muni` must be a single value.")
+    cli::cli_abort("{.arg code_muni} must be a single value.")
   }
 
-  if (is.factor(code_muni)) code_muni <- as.character(code_muni)
+  # 2. Safe conversion and initial cleaning
+  # Direct coercion to string simplifies pattern validation (regex)
+  code_str <- trimws(as.character(code_muni))
 
-  if (is.character(code_muni)) {
-    code_muni <- trimws(code_muni)
-    if (!nzchar(code_muni) || !grepl("^\\d{7}$", code_muni)) {
-      rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
-    }
-    code_muni <- suppressWarnings(as.integer(code_muni))
-  } else {
-    code_muni <- suppressWarnings(as.integer(code_muni))
+  # 3. Pattern validation (7 numeric digits)
+  # IBGE uses 7-digit codes; we check this before converting to integer
+  if (!grepl("^\\d{7}$", code_str)) {
+    cli::cli_abort(c(
+      "{.arg code_muni} must be coercible to a valid 7-digit IBGE code.",
+      "i" = "Value received: {.val {code_muni}}",
+      "i" = "Example: {.val 2927408} (Salvador)"
+    ))
   }
 
-  if (is.na(code_muni) || !is.finite(code_muni)) {
-    rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
+  # 4. Final conversion
+  code_int <- as.integer(code_str)
+
+  # 5. Final integrity check (prevents unexpected NAs)
+  if (is.na(code_int)) {
+    cli::cli_abort("Failed to convert {.arg code_muni} to an integer.")
   }
 
-  if (nchar(sprintf("%d", code_muni)) != 7) {
-    rlang::abort("`code_muni` must be coercible to a valid integer IBGE code.")
-  }
-
-  code_muni
+  code_int
 }
 
 
@@ -199,14 +202,16 @@
 #' @keywords internal
 #' @noRd
 .read_muni_boundary_2024 <- function(code_muni) {
-
+  # 1. Dependency check with specific reason
   rlang::check_installed(
     "geobr",
     reason = "to read municipality boundaries (needed to build the H3 grid)."
   )
 
+  # 2. Input normalization
   code_muni <- .normalize_code_muni(code_muni)
 
+  # 3. Argument construction
   args <- list(
     code_muni    = code_muni,
     year         = 2024L,
@@ -215,25 +220,40 @@
     cache        = TRUE
   )
 
-  if ("keep_areas_operacionais" %in% names(formals(geobr::read_municipality))) {
+  # Conditionally add arguments based on installed geobr version
+  # This handles API changes in geobr without breaking older versions
+  geobr_args <- names(formals(geobr::read_municipality))
+  if ("keep_areas_operacionais" %in% geobr_args) {
     args$keep_areas_operacionais <- FALSE
   }
 
-  err <- NULL
+  # 4. Safe execution with error handling
   muni <- tryCatch(
-    suppressMessages(suppressWarnings(do.call(geobr::read_municipality, args))),
-    error = function(e) { err <<- e; NULL }
+    {
+      suppressMessages(
+        suppressWarnings(
+          rlang::exec(geobr::read_municipality, !!!args)
+        )
+      )
+    },
+    error = function(cnd) {
+      cli::cli_abort(
+        c(
+          "Could not read municipality boundary via {.pkg geobr} for 2024.",
+          "i" = "Municipality code: {.val {code_muni}}"
+        ),
+        parent = cnd
+      )
+    }
   )
 
-  if (is.null(muni) || !inherits(muni, "sf") || nrow(muni) == 0L) {
-    msg <- paste0(
-      "Could not read municipality boundary via geobr with year = 2024. ",
-      "Try updating {geobr} if needed."
-    )
-    if (!is.null(err)) {
-      msg <- paste0(msg, " Underlying error: ", conditionMessage(err))
-    }
-    rlang::abort(msg)
+  # 5. Output Validation
+  # Ensure we actually got a valid sf object back
+  if (!inherits(muni, "sf") || nrow(muni) == 0L) {
+    cli::cli_abort(c(
+      "{.pkg geobr} returned an empty or invalid object.",
+      "i" = "Try updating {.pkg geobr} with {.code remotes::install_github('ipeaGIT/geobr')}."
+    ))
   }
 
   muni
