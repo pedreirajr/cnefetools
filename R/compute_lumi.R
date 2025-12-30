@@ -161,7 +161,7 @@ compute_lumi <- function(
   counts_hex <- NULL
 
   if (identical(backend, "duckdb")) {
-    # Agora que DBI/duckdb viram Imports, não fazemos fallback silencioso.
+    # Agora que DBI/duckdb viram Imports, nao fazemos fallback silencioso.
     rlang::check_installed(
       "DBI",
       reason = "to use backend = 'duckdb' in `compute_lumi()`."

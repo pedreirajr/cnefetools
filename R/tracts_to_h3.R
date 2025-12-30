@@ -11,13 +11,13 @@
 #' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to 9.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
 #'   Supported variables:
-#'   - `n_inhab_p`: population in private households (*Domicílios particulares*).
-#'   - `n_inhab_c`: population in collective households (*Domicílios coletivos*).
+#'   - `n_inhab_p`: population in private households (*Domic\\u00edlios particulares*).
+#'   - `n_inhab_c`: population in collective households (*Domic\\u00edlios coletivos*).
 #'   - `male`: total male population.
 #'   - `female`: total female population.
 #'   - `age_0_4`, `age_5_9`, `age_10_14`, `age_15_19`, `age_20_24`, `age_25_29`,
 #'     `age_30_39`, `age_40_49`, `age_50_59`, `age_60_69`, `age_70m`: population by age group.
-#'   - `n_resp`: number of household heads (*Pessoas responsáveis por domicílios*).
+#'   - `n_resp`: number of household heads (*Pessoas respons\\u00e1veis por domic\\u00edlios*).
 #'   - `avg_inc_resp`: average income of the household heads.
 #'
 #'   Allocation rules:

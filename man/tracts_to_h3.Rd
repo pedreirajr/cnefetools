@@ -20,13 +20,13 @@ tracts_to_h3(
 \item{vars}{Character vector. Names of tract-level variables to interpolate.
 Supported variables:
 \itemize{
-\item \code{n_inhab_p}: population in private households (\emph{Domicílios particulares}).
-\item \code{n_inhab_c}: population in collective households (\emph{Domicílios coletivos}).
+\item \code{n_inhab_p}: population in private households (\emph{Domic\\u00edlios particulares}).
+\item \code{n_inhab_c}: population in collective households (\emph{Domic\\u00edlios coletivos}).
 \item \code{male}: total male population.
 \item \code{female}: total female population.
 \item \code{age_0_4}, \code{age_5_9}, \code{age_10_14}, \code{age_15_19}, \code{age_20_24}, \code{age_25_29},
 \code{age_30_39}, \code{age_40_49}, \code{age_50_59}, \code{age_60_69}, \code{age_70m}: population by age group.
-\item \code{n_resp}: number of household heads (\emph{Pessoas responsáveis por domicílios}).
+\item \code{n_resp}: number of household heads (\emph{Pessoas respons\\u00e1veis por domic\\u00edlios}).
 \item \code{avg_inc_resp}: average income of the household heads.
 }
 
