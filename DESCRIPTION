@@ -7,6 +7,9 @@ Authors@R:
              email = "jorge.ubirajara@ufba.br",
              role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-8243-5395")),
+      person(given = "Bruno", family = "Mioto",
+             email = "brunomioto97@gmail.com",
+             role = "ctb"),
       person(given = "Kaio Cunha", family = "Pedreira",
              email = "kaiocp7@gmail.com",
              role = "ctb")

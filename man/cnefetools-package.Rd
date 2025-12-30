@@ -24,6 +24,7 @@ Useful links:
 
 Other contributors:
 \itemize{
+  \item Bruno Mioto \email{brunomioto97@gmail.com} [contributor]
   \item Kaio Cunha Pedreira \email{kaiocp7@gmail.com} [contributor]
 }
 
