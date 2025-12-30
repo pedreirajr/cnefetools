@@ -24,4 +24,6 @@ Useful links:
 
 Other contributors:
 
+- Bruno Mioto <brunomioto97@gmail.com> \[contributor\]
+
 - Kaio Cunha Pedreira <kaiocp7@gmail.com> \[contributor\]

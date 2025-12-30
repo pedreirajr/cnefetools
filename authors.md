@@ -5,6 +5,8 @@
 - **Jorge Ubirajara Pedreira Junior**. Author, maintainer.
   [](https://orcid.org/0000-0002-8243-5395)
 
+- **Bruno Mioto**. Contributor.
+
 - **Kaio Cunha Pedreira**. Contributor.
 
 ## Citation
