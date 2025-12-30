@@ -13,26 +13,28 @@
 #' @return An sf object (CRS 4326) with columns `id_hex` and `geometry`.
 #'
 #' @keywords internal
-build_h3_grid <- function(h3_resolution,
-                          id_hex    = NULL,
-                          code_muni = NULL,
-                          boundary  = NULL) {
-
+build_h3_grid <- function(
+  h3_resolution,
+  id_hex = NULL,
+  code_muni = NULL,
+  boundary = NULL
+) {
   h3_resolution <- as.integer(h3_resolution)
-  if (length(h3_resolution) != 1L || is.na(h3_resolution) ||
-      h3_resolution < 0L || h3_resolution > 15L) {
+  if (
+    length(h3_resolution) != 1L ||
+      is.na(h3_resolution) ||
+      h3_resolution < 0L ||
+      h3_resolution > 15L
+  ) {
     rlang::abort("`h3_resolution` must be an integer between 0 and 15.")
   }
 
   if (!is.null(id_hex)) {
-
     hex_ids <- unique(stats::na.omit(as.character(id_hex)))
 
     ok <- h3jsr::is_valid(hex_ids, simple = TRUE)
     hex_ids <- hex_ids[ok]
-
   } else {
-
     if (is.null(boundary)) {
       if (is.null(code_muni)) {
         rlang::abort("Provide either `id_hex` or `code_muni`/`boundary`.")
@@ -49,7 +51,11 @@ build_h3_grid <- function(h3_resolution,
 
     boundary1 <- sf::st_sf(geometry = sf::st_sfc(geom1, crs = 4326))
 
-    hex_list <- h3jsr::polygon_to_cells(boundary1, res = h3_resolution, simple = TRUE)
+    hex_list <- h3jsr::polygon_to_cells(
+      boundary1,
+      res = h3_resolution,
+      simple = TRUE
+    )
 
     hex_ids <- unlist(hex_list, use.names = FALSE)
     hex_ids <- unique(stats::na.omit(as.character(hex_ids)))
@@ -79,7 +85,7 @@ build_h3_grid <- function(h3_resolution,
   }
 
   sf::st_sf(
-    id_hex   = hex_ids,
+    id_hex = hex_ids,
     geometry = geom_hex
   )
 }

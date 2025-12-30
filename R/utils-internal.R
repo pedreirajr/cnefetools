@@ -1,6 +1,5 @@
 # Internal helper functions for cnefetools (not exported)
 
-
 ## Theme: Input validation
 
 #' @keywords internal
@@ -54,48 +53,62 @@
 
 #' @keywords internal
 #' @noRd
-.cnefe_ensure_zip <- function(code_muni,
-                              index,
-                              cache = TRUE,
-                              verbose = TRUE,
-                              base_timeout = 300L,
-                              timeouts = c(300L, 600L, 1800L)) {
-
+.cnefe_ensure_zip <- function(
+  code_muni,
+  index,
+  cache = TRUE,
+  verbose = TRUE,
+  base_timeout = 300L,
+  timeouts = c(300L, 600L, 1800L)
+) {
   info <- index[index$code_muni == code_muni, , drop = FALSE]
   if (nrow(info) == 0) {
     rlang::abort(
-      sprintf("Municipality code not found in internal CNEFE index: %s", code_muni)
+      sprintf(
+        "Municipality code not found in internal CNEFE index: %s",
+        code_muni
+      )
     )
   }
 
   url <- info$zip_url[1]
   if (is.na(url) || !nzchar(url)) {
     rlang::abort(
-      sprintf("Missing `zip_url` in internal index for municipality: %s", code_muni)
+      sprintf(
+        "Missing `zip_url` in internal index for municipality: %s",
+        code_muni
+      )
     )
   }
 
   ext <- tools::file_ext(url)
-  if (!nzchar(ext)) ext <- "zip"
+  if (!nzchar(ext)) {
+    ext <- "zip"
+  }
 
   if (isTRUE(cache)) {
-    cache_dir   <- .cnefe_cache_dir()
-    zip_path    <- file.path(cache_dir, basename(url))
+    cache_dir <- .cnefe_cache_dir()
+    zip_path <- file.path(cache_dir, basename(url))
     cleanup_zip <- FALSE
   } else {
-    zip_path    <- tempfile(fileext = paste0(".", ext))
+    zip_path <- tempfile(fileext = paste0(".", ext))
     cleanup_zip <- TRUE
   }
 
   # If cached file exists, validate it; if invalid, delete and re-download
   if (isTRUE(cache) && file.exists(zip_path)) {
-    valid <- tryCatch({
-      archive::archive(zip_path)
-      TRUE
-    }, error = function(e) FALSE)
+    valid <- tryCatch(
+      {
+        archive::archive(zip_path)
+        TRUE
+      },
+      error = function(e) FALSE
+    )
 
     if (!valid) {
-      if (verbose) message("Cached ZIP appears corrupted. Deleting it...")
+      if (verbose) {
+        message("Cached ZIP appears corrupted. Deleting it...")
+      }
       unlink(zip_path)
     }
   }
@@ -103,31 +116,32 @@
   # Download if needed
   if (!file.exists(zip_path)) {
     .cnefe_download_zip_with_retry(
-      url          = url,
-      destfile     = zip_path,
-      verbose      = verbose,
+      url = url,
+      destfile = zip_path,
+      verbose = verbose,
       base_timeout = base_timeout,
-      timeouts     = timeouts
+      timeouts = timeouts
     )
   } else if (verbose) {
     message("Using cached file: ", zip_path)
   }
 
   list(
-    zip_path    = zip_path,
+    zip_path = zip_path,
     cleanup_zip = cleanup_zip,
-    url         = url
+    url = url
   )
 }
 
 #' @keywords internal
 #' @noRd
-.cnefe_download_zip_with_retry <- function(url,
-                                           destfile,
-                                           verbose = TRUE,
-                                           base_timeout = 300L,
-                                           timeouts = c(300L, 600L, 1800L)) {
-
+.cnefe_download_zip_with_retry <- function(
+  url,
+  destfile,
+  verbose = TRUE,
+  base_timeout = 300L,
+  timeouts = c(300L, 600L, 1800L)
+) {
   old_timeout <- getOption("timeout")
   on.exit(options(timeout = old_timeout), add = TRUE)
 
@@ -141,39 +155,53 @@
     options(timeout = t)
 
     tmp <- tempfile(fileext = ".zip")
-    if (file.exists(tmp)) unlink(tmp)
+    if (file.exists(tmp)) {
+      unlink(tmp)
+    }
 
-    if (verbose) message(sprintf("Downloading (timeout = %ss): %s", t, url))
+    if (verbose) {
+      message(sprintf("Downloading (timeout = %ss): %s", t, url))
+    }
 
-    ok <- tryCatch({
-      utils::download.file(
-        url,
-        destfile = tmp,
-        mode     = "wb",
-        quiet    = !verbose
-      )
+    ok <- tryCatch(
+      {
+        utils::download.file(
+          url,
+          destfile = tmp,
+          mode = "wb",
+          quiet = !verbose
+        )
 
-      if (!file.exists(tmp) || is.na(file.size(tmp)) || file.size(tmp) == 0) {
-        stop("Download produced an empty file.")
+        if (!file.exists(tmp) || is.na(file.size(tmp)) || file.size(tmp) == 0) {
+          stop("Download produced an empty file.")
+        }
+
+        # Validate ZIP integrity by listing contents
+        archive::archive(tmp)
+
+        # Move into place only after validation
+        if (file.exists(destfile)) {
+          unlink(destfile)
+        }
+        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
+        if (!isTRUE(ok_copy)) {
+          stop("Failed to copy downloaded ZIP into destination.")
+        }
+
+        TRUE
+      },
+      error = function(e) {
+        last_err <<- e
+        FALSE
+      },
+      finally = {
+        if (file.exists(tmp)) unlink(tmp)
       }
+    )
 
-      # Validate ZIP integrity by listing contents
-      archive::archive(tmp)
-
-      # Move into place only after validation
-      if (file.exists(destfile)) unlink(destfile)
-      ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
-      if (!isTRUE(ok_copy)) stop("Failed to copy downloaded ZIP into destination.")
-
-      TRUE
-    }, error = function(e) {
-      last_err <<- e
-      FALSE
-    }, finally = {
-      if (file.exists(tmp)) unlink(tmp)
-    })
-
-    if (isTRUE(ok)) return(invisible(TRUE))
+    if (isTRUE(ok)) {
+      return(invisible(TRUE))
+    }
 
     if (verbose && !is.null(last_err)) {
       message("Download attempt failed: ", conditionMessage(last_err))
@@ -189,7 +217,11 @@
 #' @keywords internal
 #' @noRd
 .cnefe_first_csv_in_archive <- function(arch_info) {
-  csv_inside <- arch_info$path[grepl("\\.csv$", arch_info$path, ignore.case = TRUE)][1]
+  csv_inside <- arch_info$path[grepl(
+    "\\.csv$",
+    arch_info$path,
+    ignore.case = TRUE
+  )][1]
   if (is.na(csv_inside)) {
     rlang::abort("No .csv file found inside archive.")
   }
@@ -213,11 +245,11 @@
 
   # 3. Argument construction
   args <- list(
-    code_muni    = code_muni,
-    year         = 2024L,
-    simplified   = TRUE,
+    code_muni = code_muni,
+    year = 2024L,
+    simplified = TRUE,
     showProgress = FALSE,
-    cache        = TRUE
+    cache = TRUE
   )
 
   # Conditionally add arguments based on installed geobr version
@@ -275,8 +307,11 @@
   url <- getOption("cnefetools.github_url", NA_character_)
 
   if (is.na(url) || !nzchar(url)) {
-    desc <- tryCatch(utils::packageDescription("cnefetools"), error = function(e) NULL)
-    url  <- if (!is.null(desc) && !is.null(desc$URL)) desc$URL else ""
+    desc <- tryCatch(
+      utils::packageDescription("cnefetools"),
+      error = function(e) NULL
+    )
+    url <- if (!is.null(desc) && !is.null(desc$URL)) desc$URL else ""
   }
 
   # URL may have multiple entries separated by commas
@@ -300,7 +335,9 @@
 .sc_asset_filename <- function(uf) {
   uf <- as.character(uf)
   uf <- trimws(uf)
-  if (nchar(uf) == 1L) uf <- paste0("0", uf)
+  if (nchar(uf) == 1L) {
+    uf <- paste0("0", uf)
+  }
   if (!grepl("^[0-9]{2}$", uf)) {
     rlang::abort("`uf` must be a two-digit string like '29'.")
   }
@@ -334,8 +371,10 @@
 #' @noRd
 .sc_asset_url <- function(uf) {
   paste0(
-    .sc_assets_download_base_url(), "/",
-    .sc_assets_tag(), "/",
+    .sc_assets_download_base_url(),
+    "/",
+    .sc_assets_tag(),
+    "/",
     .sc_asset_filename(uf)
   )
 }
@@ -344,25 +383,29 @@
 #' @noRd
 .validate_sc_parquet <- function(path) {
   # Cheap validation: open Parquet metadata and check required fields
-  tryCatch({
-    reader <- arrow::ParquetFileReader$create(path)
-    schema <- reader$GetSchema()
-    fields <- schema$names
-    all(c("code_tract", "geom_wkb") %in% fields)
-  }, error = function(e) {
-    FALSE
-  })
+  tryCatch(
+    {
+      reader <- arrow::ParquetFileReader$create(path)
+      schema <- reader$GetSchema()
+      fields <- schema$names
+      all(c("code_tract", "geom_wkb") %in% fields)
+    },
+    error = function(e) {
+      FALSE
+    }
+  )
 }
 
 #' @keywords internal
 #' @noRd
-.download_file_with_retry <- function(url,
-                                      destfile,
-                                      validate_fun = NULL,
-                                      verbose = TRUE,
-                                      base_timeout = 300L,
-                                      timeouts = c(300L, 600L, 1800L)) {
-
+.download_file_with_retry <- function(
+  url,
+  destfile,
+  validate_fun = NULL,
+  verbose = TRUE,
+  base_timeout = 300L,
+  timeouts = c(300L, 600L, 1800L)
+) {
   old_timeout <- getOption("timeout")
   on.exit(options(timeout = old_timeout), add = TRUE)
 
@@ -379,60 +422,81 @@
 
     tmp <- tempfile(fileext = ".tmp")
 
-    ok <- tryCatch({
-      if (verbose) message("Downloading: ", url, " (timeout = ", t, "s)")
-
-      utils::download.file(
-        url      = url,
-        destfile = tmp,
-        mode     = "wb",
-        quiet    = !isTRUE(verbose)
-      )
-
-      if (!file.exists(tmp) || is.na(file.info(tmp)$size) || file.info(tmp)$size <= 0) {
-        stop("Downloaded file is missing or empty.")
-      }
-
-      if (!is.null(validate_fun)) {
-        if (!isTRUE(validate_fun(tmp))) {
-          stop("Downloaded file failed validation.")
+    ok <- tryCatch(
+      {
+        if (verbose) {
+          message("Downloading: ", url, " (timeout = ", t, "s)")
         }
+
+        utils::download.file(
+          url = url,
+          destfile = tmp,
+          mode = "wb",
+          quiet = !isTRUE(verbose)
+        )
+
+        if (
+          !file.exists(tmp) ||
+            is.na(file.info(tmp)$size) ||
+            file.info(tmp)$size <= 0
+        ) {
+          stop("Downloaded file is missing or empty.")
+        }
+
+        if (!is.null(validate_fun)) {
+          if (!isTRUE(validate_fun(tmp))) {
+            stop("Downloaded file failed validation.")
+          }
+        }
+
+        if (file.exists(destfile)) {
+          unlink(destfile)
+        }
+        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
+        if (!isTRUE(ok_copy)) {
+          stop("Failed to move downloaded file into destination.")
+        }
+
+        TRUE
+      },
+      error = function(e) {
+        last_err <<- e
+        FALSE
+      },
+      finally = {
+        if (file.exists(tmp)) unlink(tmp)
       }
+    )
 
-      if (file.exists(destfile)) unlink(destfile)
-      ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
-      if (!isTRUE(ok_copy)) stop("Failed to move downloaded file into destination.")
-
-      TRUE
-    }, error = function(e) {
-      last_err <<- e
-      FALSE
-    }, finally = {
-      if (file.exists(tmp)) unlink(tmp)
-    })
-
-    if (isTRUE(ok)) return(invisible(TRUE))
+    if (isTRUE(ok)) {
+      return(invisible(TRUE))
+    }
 
     if (verbose && !is.null(last_err)) {
       message("Download attempt failed: ", conditionMessage(last_err))
     }
   }
 
-  if (!is.null(last_err)) rlang::abort(conditionMessage(last_err))
+  if (!is.null(last_err)) {
+    rlang::abort(conditionMessage(last_err))
+  }
   rlang::abort("Download failed for unknown reasons.")
 }
 
 #' @keywords internal
 #' @noRd
-.sc_ensure_parquet_uf <- function(uf,
-                                  cache = TRUE,
-                                  verbose = TRUE,
-                                  base_timeout = 300L,
-                                  timeouts = c(300L, 600L, 1800L)) {
-
+.sc_ensure_parquet_uf <- function(
+  uf,
+  cache = TRUE,
+  verbose = TRUE,
+  base_timeout = 300L,
+  timeouts = c(300L, 600L, 1800L)
+) {
   uf <- as.character(uf)
   uf <- trimws(uf)
-  if (nchar(uf) == 1L) uf <- paste0("0", uf)
+  if (nchar(uf) == 1L) {
+    uf <- paste0("0", uf)
+  }
   if (!grepl("^[0-9]{2}$", uf)) {
     rlang::abort("`uf` must be a two-digit string like '29'.")
   }
@@ -444,19 +508,23 @@
 
     if (file.exists(destfile)) {
       valid <- .validate_sc_parquet(destfile)
-      if (isTRUE(valid)) return(destfile)
+      if (isTRUE(valid)) {
+        return(destfile)
+      }
 
-      if (verbose) message("Cached SC Parquet appears corrupted. Deleting it...")
+      if (verbose) {
+        message("Cached SC Parquet appears corrupted. Deleting it...")
+      }
       unlink(destfile)
     }
 
     .download_file_with_retry(
-      url          = url,
-      destfile     = destfile,
+      url = url,
+      destfile = destfile,
       validate_fun = .validate_sc_parquet,
-      verbose      = verbose,
+      verbose = verbose,
       base_timeout = base_timeout,
-      timeouts     = timeouts
+      timeouts = timeouts
     )
 
     return(destfile)
@@ -465,12 +533,12 @@
   # No-cache mode: download to a temp file and return its path
   tmp <- tempfile(fileext = ".parquet")
   .download_file_with_retry(
-    url          = url,
-    destfile     = tmp,
+    url = url,
+    destfile = tmp,
     validate_fun = .validate_sc_parquet,
-    verbose      = verbose,
+    verbose = verbose,
     base_timeout = base_timeout,
-    timeouts     = timeouts
+    timeouts = timeouts
   )
 
   tmp
@@ -478,10 +546,12 @@
 
 #' @keywords internal
 #' @noRd
-.sc_create_views_in_duckdb <- function(con,
-                                       code_muni,
-                                       cache = TRUE,
-                                       verbose = TRUE) {
+.sc_create_views_in_duckdb <- function(
+  con,
+  code_muni,
+  cache = TRUE,
+  verbose = TRUE
+) {
   code_muni <- .normalize_code_muni(code_muni)
   uf <- .uf_from_code_muni(code_muni)
 
@@ -493,38 +563,55 @@
   muni_prefix <- sprintf("%07d", code_muni)
 
   # View with tract attributes + geometry as DuckDB GEOMETRY
-  DBI::dbExecute(con, sprintf("
+  DBI::dbExecute(
+    con,
+    sprintf(
+      "
     CREATE OR REPLACE VIEW sc_uf_raw AS
     SELECT *
     FROM read_parquet('%s');
-  ", parquet_path))
+  ",
+      parquet_path
+    )
+  )
 
-  DBI::dbExecute(con, sprintf("
+  DBI::dbExecute(
+    con,
+    sprintf(
+      "
     CREATE OR REPLACE VIEW sc_muni AS
     SELECT
       *,
       ST_GeomFromWKB(geom_wkb) AS geom
     FROM sc_uf_raw
     WHERE substr(code_tract, 1, 7) = '%s';
-  ", muni_prefix))
+  ",
+      muni_prefix
+    )
+  )
 
   invisible(TRUE)
 }
 
 #' @keywords internal
 #' @noRd
-.cnefe_create_points_view_in_duckdb <- function(con,
-                                                code_muni,
-                                                index = cnefe_index_2022,
-                                                cache = TRUE,
-                                                verbose = TRUE) {
+.cnefe_create_points_view_in_duckdb <- function(
+  con,
+  code_muni,
+  index = cnefe_index_2022,
+  cache = TRUE,
+  verbose = TRUE
+) {
   code_muni <- .normalize_code_muni(code_muni)
 
   # Ensure zipfs is available
-  ok_zipfs <- tryCatch({
-    DBI::dbExecute(con, "LOAD zipfs;")
-    TRUE
-  }, error = function(e) FALSE)
+  ok_zipfs <- tryCatch(
+    {
+      DBI::dbExecute(con, "LOAD zipfs;")
+      TRUE
+    },
+    error = function(e) FALSE
+  )
 
   if (!ok_zipfs) {
     DBI::dbExecute(con, "INSTALL zipfs;")
@@ -534,22 +621,25 @@
   # Ensure the municipality ZIP exists locally (reuses your existing cache logic)
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
-    index     = index,
-    cache     = cache,
-    verbose   = verbose
+    index = index,
+    cache = cache,
+    verbose = verbose
   )
 
   zip_path <- zip_info$zip_path
   zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
 
-  arch_info  <- archive::archive(zip_norm)
+  arch_info <- archive::archive(zip_norm)
   csv_inside <- .cnefe_first_csv_in_archive(arch_info)
 
   # DuckDB zipfs URI: zip://<zipfile>/<file_inside_zip>
-  uri     <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+  uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
   uri_sql <- gsub("'", "''", uri)
 
-  DBI::dbExecute(con, sprintf("
+  DBI::dbExecute(
+    con,
+    sprintf(
+      "
     CREATE OR REPLACE VIEW cnefe_raw AS
     SELECT
       CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
@@ -558,9 +648,14 @@
       CAST(LONGITUDE         AS DOUBLE)  AS lon,
       CAST(LATITUDE          AS DOUBLE)  AS lat
     FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false);
-  ", uri_sql))
+  ",
+      uri_sql
+    )
+  )
 
-  DBI::dbExecute(con, "
+  DBI::dbExecute(
+    con,
+    "
     CREATE OR REPLACE VIEW cnefe_pts AS
     SELECT
       COD_UNICO_ENDERECO,
@@ -574,7 +669,8 @@
       COD_ESPECIE IN (1, 2)
       AND lon IS NOT NULL
       AND lat IS NOT NULL;
-  ")
+  "
+  )
 
   # Clean up temp ZIP if cache = FALSE
   if (isTRUE(zip_info$cleanup_zip)) {
@@ -583,5 +679,3 @@
 
   invisible(TRUE)
 }
-
-
