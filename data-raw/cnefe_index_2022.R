@@ -27,13 +27,13 @@ build_cnefe_index_2022 <- function(
   )
 
   # 2) Extract basic municipal metadata without geometry.
-  muni_meta <- muni_sf %>%
-    sf::st_drop_geometry() %>%
+  muni_meta <- muni_sf |>
+    sf::st_drop_geometry() |>
     dplyr::distinct(code_state, abbrev_state, code_muni, name_muni)
 
   # 3) Build one FTP URL per state-specific folder in the IBGE structure.
-  states <- muni_meta %>%
-    dplyr::distinct(code_state, abbrev_state) %>%
+  states <- muni_meta |>
+    dplyr::distinct(code_state, abbrev_state) |>
     dplyr::mutate(
       state_folder = sprintf("%02d_%s", code_state, abbrev_state),
       state_url    = paste0(base_url, state_folder, "/")
@@ -51,8 +51,8 @@ build_cnefe_index_2022 <- function(
       return(tibble::tibble(zip_name = character()))
     }
 
-    hrefs <- html %>%
-      rvest::html_elements("a") %>%
+    hrefs <- html |>
+      rvest::html_elements("a") |>
       rvest::html_attr("href")
 
     tibble::tibble(
@@ -61,16 +61,16 @@ build_cnefe_index_2022 <- function(
   }
 
   # 4) Iterate over all state URLs and extract municipality codes and zip URLs.
-  state_files <- states %>%
-    dplyr::mutate(zips = purrr::map(state_url, scrape_state_zips)) %>%
-    tidyr::unnest(zips) %>%
+  state_files <- states |>
+    dplyr::mutate(zips = purrr::map(state_url, scrape_state_zips)) |>
+    tidyr::unnest(zips) |>
     dplyr::mutate(
       code_muni = readr::parse_integer(
         stringr::str_extract(zip_name, "^[0-9]{7}")
       ),
       zip_url   = paste0(state_url, zip_name)
-    ) %>%
-    dplyr::filter(!is.na(code_muni)) %>%
+    ) |>
+    dplyr::filter(!is.na(code_muni)) |>
     dplyr::select(code_muni, zip_url)
 
   # Important: we do NOT reorder rows here.

@@ -29,12 +29,13 @@
 #' - `addr_type8`: Religious establishment (Estabelecimento religioso)
 #'
 #' @export
-hex_cnefe_counts <- function(code_muni,
-                             h3_resolution = 9,
-                             verbose       = TRUE,
-                             backend       = c("duckdb", "r")) {
-
-  backend   <- match.arg(backend)
+hex_cnefe_counts <- function(
+  code_muni,
+  h3_resolution = 9,
+  verbose = TRUE,
+  backend = c("duckdb", "r")
+) {
+  backend <- match.arg(backend)
   code_muni <- .normalize_code_muni(code_muni)
 
   timings <- list()
@@ -54,20 +55,22 @@ hex_cnefe_counts <- function(code_muni,
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure ZIP exists in cache and find CSV inside
   # ---------------------------------------------------------------------------
-  if (verbose) message("Step 1/3: ensuring ZIP and inspecting archive...")
+  if (verbose) {
+    message("Step 1/3: ensuring ZIP and inspecting archive...")
+  }
   t1 <- Sys.time()
 
   zip_info <- .cnefe_ensure_zip(
-    code_muni     = code_muni,
-    index         = cnefe_index_2022,
-    cache         = TRUE,
-    verbose       = verbose,
-    base_timeout  = 300L,
-    timeouts      = c(300L, 600L, 1800L)
+    code_muni = code_muni,
+    index = cnefe_index_2022,
+    cache = TRUE,
+    verbose = verbose,
+    base_timeout = 300L,
+    timeouts = c(300L, 600L, 1800L)
   )
   zip_path <- zip_info$zip_path
 
-  arch_info  <- archive::archive(zip_path)
+  arch_info <- archive::archive(zip_path)
   csv_inside <- .cnefe_first_csv_in_archive(arch_info)
 
   log_step_time("Step 1/3 (ZIP ready)", t1)
@@ -75,12 +78,14 @@ hex_cnefe_counts <- function(code_muni,
   # ---------------------------------------------------------------------------
   # Step 2/3: Build full H3 grid over municipality boundary
   # ---------------------------------------------------------------------------
-  if (verbose) message("Step 2/3: building full H3 grid over municipality boundary...")
+  if (verbose) {
+    message("Step 2/3: building full H3 grid over municipality boundary...")
+  }
   t2 <- Sys.time()
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    code_muni     = code_muni
+    code_muni = code_muni
   )
 
   log_step_time("Step 2/3 (H3 grid)", t2)
@@ -88,13 +93,20 @@ hex_cnefe_counts <- function(code_muni,
   # ---------------------------------------------------------------------------
   # Step 3/3: Count address species per hexagon
   # ---------------------------------------------------------------------------
-  if (verbose) message("Step 3/3: counting address species per hexagon...")
+  if (verbose) {
+    message("Step 3/3: counting address species per hexagon...")
+  }
   t3 <- Sys.time()
 
   counts_long <- NULL
 
   # Helper: ensure DuckDB extension without reinstalling every time
-  duckdb_ensure_extension <- function(con, ext, repo = "community", verbose = TRUE) {
+  duckdb_ensure_extension <- function(
+    con,
+    ext,
+    repo = "community",
+    verbose = TRUE
+  ) {
     info <- tryCatch(
       DBI::dbGetQuery(
         con,
@@ -108,51 +120,72 @@ hex_cnefe_counts <- function(code_muni,
 
     if (!is.null(info) && nrow(info) == 1) {
       if (isTRUE(info$loaded[[1]])) {
-        if (verbose) message("DuckDB: extension '", ext, "' already loaded.")
+        if (verbose) {
+          message("DuckDB: extension '", ext, "' already loaded.")
+        }
         return(invisible(TRUE))
       }
       if (isTRUE(info$installed[[1]])) {
-        if (verbose) message("DuckDB: loading extension '", ext, "'...")
+        if (verbose) {
+          message("DuckDB: loading extension '", ext, "'...")
+        }
         DBI::dbExecute(con, sprintf("LOAD %s;", ext))
         return(invisible(TRUE))
       }
     }
 
-    ok_load <- tryCatch({
-      if (verbose) message("DuckDB: trying to LOAD extension '", ext, "'...")
-      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-      TRUE
-    }, error = function(e) FALSE)
+    ok_load <- tryCatch(
+      {
+        if (verbose) {
+          message("DuckDB: trying to LOAD extension '", ext, "'...")
+        }
+        DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+        TRUE
+      },
+      error = function(e) FALSE
+    )
 
-    if (ok_load) return(invisible(TRUE))
+    if (ok_load) {
+      return(invisible(TRUE))
+    }
 
-    if (verbose) message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+    if (verbose) {
+      message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+    }
     DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-    if (verbose) message("DuckDB: loading extension '", ext, "'...")
+    if (verbose) {
+      message("DuckDB: loading extension '", ext, "'...")
+    }
     DBI::dbExecute(con, sprintf("LOAD %s;", ext))
 
     invisible(TRUE)
   }
 
   if (identical(backend, "duckdb")) {
-    # Agora que DBI/duckdb viram Imports, não fazemos fallback silencioso.
-    rlang::check_installed("DBI",    reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`.")
-    rlang::check_installed("duckdb", reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`.")
+    # DBI/duckdb are now Imports, so we no longer perform silent fallbacks.
+    rlang::check_installed(
+      "DBI",
+      reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`."
+    )
+    rlang::check_installed(
+      "duckdb",
+      reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`."
+    )
   }
 
   if (identical(backend, "duckdb")) {
-
     con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
     on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
     duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-    duckdb_ensure_extension(con, "h3",    verbose = verbose)
+    duckdb_ensure_extension(con, "h3", verbose = verbose)
 
     zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-    uri      <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-    uri_sql  <- gsub("'", "''", uri)
+    uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+    uri_sql <- gsub("'", "''", uri)
 
-    sql <- sprintf("
+    sql <- sprintf(
+      "
       WITH src AS (
         SELECT
           CAST(LONGITUDE AS DOUBLE) AS lon,
@@ -169,32 +202,33 @@ hex_cnefe_counts <- function(code_muni,
         lon IS NOT NULL AND lat IS NOT NULL
         AND cod BETWEEN 1 AND 8
       GROUP BY 1, 2;
-    ", uri_sql, as.integer(h3_resolution))
+    ",
+      uri_sql,
+      as.integer(h3_resolution)
+    )
 
-    counts_long <- DBI::dbGetQuery(con, sql) %>%
-      dplyr::as_tibble() %>%
+    counts_long <- DBI::dbGetQuery(con, sql) |>
+      dplyr::as_tibble() |>
       dplyr::mutate(
-        id_hex      = as.character(.data$id_hex),
+        id_hex = as.character(.data$id_hex),
         COD_ESPECIE = as.integer(.data$COD_ESPECIE),
-        n           = as.integer(.data$n)
+        n = as.integer(.data$n)
       )
-
   } else {
-
     # Backend "r" (slower): read Arrow, compute H3 in R
     tab <- read_cnefe(
       code_muni = code_muni,
-      output    = "arrow",
-      cache     = TRUE,
-      verbose   = verbose
+      output = "arrow",
+      cache = TRUE,
+      verbose = verbose
     )
 
-    df <- as.data.frame(tab) %>%
+    df <- as.data.frame(tab) |>
       dplyr::transmute(
-        LONGITUDE   = as.numeric(.data$LONGITUDE),
-        LATITUDE    = as.numeric(.data$LATITUDE),
+        LONGITUDE = as.numeric(.data$LONGITUDE),
+        LATITUDE = as.numeric(.data$LATITUDE),
         COD_ESPECIE = as.integer(.data$COD_ESPECIE)
-      ) %>%
+      ) |>
       dplyr::filter(
         !is.na(.data$LONGITUDE),
         !is.na(.data$LATITUDE),
@@ -203,20 +237,20 @@ hex_cnefe_counts <- function(code_muni,
       )
 
     if (nrow(df) > 0L) {
-      coords <- df %>%
+      coords <- df |>
         dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
 
       id_hex <- suppressMessages(
         h3jsr::point_to_cell(coords, res = h3_resolution, simple = TRUE)
       )
 
-      counts_long <- df %>%
-        dplyr::mutate(id_hex = as.character(id_hex)) %>%
-        dplyr::filter(!is.na(.data$id_hex)) %>%
-        dplyr::count(.data$id_hex, .data$COD_ESPECIE, name = "n") %>%
+      counts_long <- df |>
+        dplyr::mutate(id_hex = as.character(id_hex)) |>
+        dplyr::filter(!is.na(.data$id_hex)) |>
+        dplyr::count(.data$id_hex, .data$COD_ESPECIE, name = "n") |>
         dplyr::mutate(
           COD_ESPECIE = as.integer(.data$COD_ESPECIE),
-          n           = as.integer(.data$n)
+          n = as.integer(.data$n)
         )
     } else {
       counts_long <- dplyr::tibble(
@@ -229,19 +263,18 @@ hex_cnefe_counts <- function(code_muni,
 
   # Wide with addr_type1..addr_type8 and robust typing
   if (nrow(counts_long) == 0L) {
-
     out <- hex_grid
-    for (k in 1:8) out[[paste0("addr_type", k)]] <- 0L
-
+    for (k in 1:8) {
+      out[[paste0("addr_type", k)]] <- 0L
+    }
   } else {
-
-    counts_wide <- counts_long %>%
+    counts_wide <- counts_long |>
       tidyr::pivot_wider(
-        id_cols      = "id_hex",
-        names_from   = "COD_ESPECIE",
-        values_from  = "n",
+        id_cols = "id_hex",
+        names_from = "COD_ESPECIE",
+        values_from = "n",
         names_prefix = "addr_type",
-        values_fill  = list(n = 0L)
+        values_fill = list(n = 0L)
       )
 
     for (k in 1:8) {
@@ -249,14 +282,14 @@ hex_cnefe_counts <- function(code_muni,
       if (!nm %in% names(counts_wide)) counts_wide[[nm]] <- 0L
     }
 
-    counts_wide <- counts_wide %>%
-      dplyr::select("id_hex", dplyr::all_of(paste0("addr_type", 1:8))) %>%
+    counts_wide <- counts_wide |>
+      dplyr::select("id_hex", dplyr::all_of(paste0("addr_type", 1:8))) |>
       dplyr::mutate(
         dplyr::across(dplyr::starts_with("addr_type"), ~ as.integer(.x))
       )
 
-    out <- hex_grid %>%
-      dplyr::left_join(counts_wide, by = "id_hex") %>%
+    out <- hex_grid |>
+      dplyr::left_join(counts_wide, by = "id_hex") |>
       dplyr::mutate(
         dplyr::across(
           dplyr::starts_with("addr_type"),
@@ -266,7 +299,7 @@ hex_cnefe_counts <- function(code_muni,
   }
 
   # Final safety: force integer and non-negative
-  out <- out %>%
+  out <- out |>
     dplyr::mutate(
       dplyr::across(
         dplyr::starts_with("addr_type"),

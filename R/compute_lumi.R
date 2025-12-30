@@ -24,17 +24,24 @@
 #' *engrXiv*. https://engrxiv.org/preprint/view/5975
 #'
 #' @export
-compute_lumi <- function(code_muni,
-                         h3_resolution = 9,
-                         verbose       = TRUE,
-                         backend       = c("duckdb", "r")) {
-
-  backend   <- match.arg(backend)
+compute_lumi <- function(
+  code_muni,
+  h3_resolution = 9,
+  verbose = TRUE,
+  backend = c("duckdb", "r")
+) {
+  backend <- match.arg(backend)
   code_muni <- .normalize_code_muni(code_muni)
 
   # Name (optional)
-  info <- cnefe_index_2022[cnefe_index_2022$code_muni == code_muni, , drop = FALSE]
-  city_name <- if (nrow(info) > 0 && "name_muni" %in% names(info) && !is.na(info$name_muni[1])) {
+  info <- cnefe_index_2022[
+    cnefe_index_2022$code_muni == code_muni,
+    ,
+    drop = FALSE
+  ]
+  city_name <- if (
+    nrow(info) > 0 && "name_muni" %in% names(info) && !is.na(info$name_muni[1])
+  ) {
     info$name_muni[1]
   } else {
     as.character(code_muni)
@@ -48,29 +55,36 @@ compute_lumi <- function(code_muni,
   log_step_time <- function(step_name, t_start) {
     dt <- difftime(Sys.time(), t_start, units = "secs")
     timings[[step_name]] <<- dt
-    if (verbose) message(sprintf("%s completed in %.2f s.", step_name, as.numeric(dt)))
+    if (verbose) {
+      message(sprintf("%s completed in %.2f s.", step_name, as.numeric(dt)))
+    }
   }
 
   # We will return sf hexagons
-  rlang::check_installed("sf", reason = "to return an sf grid in `compute_lumi()`.")
+  rlang::check_installed(
+    "sf",
+    reason = "to return an sf grid in `compute_lumi()`."
+  )
 
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure ZIP and find CSV inside
   # ---------------------------------------------------------------------------
-  if (verbose) message("Step 1/3: ensuring ZIP and inspecting archive...")
+  if (verbose) {
+    message("Step 1/3: ensuring ZIP and inspecting archive...")
+  }
   t1 <- Sys.time()
 
   zip_info <- .cnefe_ensure_zip(
-    code_muni     = code_muni,
-    index         = cnefe_index_2022,
-    cache         = TRUE,
-    verbose       = verbose,
-    base_timeout  = 300L,
-    timeouts      = c(300L, 600L, 1800L)
+    code_muni = code_muni,
+    index = cnefe_index_2022,
+    cache = TRUE,
+    verbose = verbose,
+    base_timeout = 300L,
+    timeouts = c(300L, 600L, 1800L)
   )
-  zip_path  <- zip_info$zip_path
+  zip_path <- zip_info$zip_path
 
-  arch_info  <- archive::archive(zip_path)
+  arch_info <- archive::archive(zip_path)
   csv_inside <- .cnefe_first_csv_in_archive(arch_info)
 
   log_step_time("Step 1/3 (ZIP ready)", t1)
@@ -78,11 +92,18 @@ compute_lumi <- function(code_muni,
   # ---------------------------------------------------------------------------
   # Step 2/3: Aggregate counts per hex (n_res, n_tot)
   # ---------------------------------------------------------------------------
-  if (verbose) message("Step 2/3: aggregating CNEFE counts per H3 cell...")
+  if (verbose) {
+    message("Step 2/3: aggregating CNEFE counts per H3 cell...")
+  }
   t2 <- Sys.time()
 
   # local helper (same spirit as in hex_cnefe_counts)
-  duckdb_ensure_extension <- function(con, ext, repo = "community", verbose = TRUE) {
+  duckdb_ensure_extension <- function(
+    con,
+    ext,
+    repo = "community",
+    verbose = TRUE
+  ) {
     info <- tryCatch(
       DBI::dbGetQuery(
         con,
@@ -96,27 +117,42 @@ compute_lumi <- function(code_muni,
 
     if (!is.null(info) && nrow(info) == 1) {
       if (isTRUE(info$loaded[[1]])) {
-        if (verbose) message("DuckDB: extension '", ext, "' already loaded.")
+        if (verbose) {
+          message("DuckDB: extension '", ext, "' already loaded.")
+        }
         return(invisible(TRUE))
       }
       if (isTRUE(info$installed[[1]])) {
-        if (verbose) message("DuckDB: loading extension '", ext, "'...")
+        if (verbose) {
+          message("DuckDB: loading extension '", ext, "'...")
+        }
         DBI::dbExecute(con, sprintf("LOAD %s;", ext))
         return(invisible(TRUE))
       }
     }
 
-    ok_load <- tryCatch({
-      if (verbose) message("DuckDB: trying to LOAD extension '", ext, "'...")
-      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-      TRUE
-    }, error = function(e) FALSE)
+    ok_load <- tryCatch(
+      {
+        if (verbose) {
+          message("DuckDB: trying to LOAD extension '", ext, "'...")
+        }
+        DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+        TRUE
+      },
+      error = function(e) FALSE
+    )
 
-    if (ok_load) return(invisible(TRUE))
+    if (ok_load) {
+      return(invisible(TRUE))
+    }
 
-    if (verbose) message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+    if (verbose) {
+      message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+    }
     DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-    if (verbose) message("DuckDB: loading extension '", ext, "'...")
+    if (verbose) {
+      message("DuckDB: loading extension '", ext, "'...")
+    }
     DBI::dbExecute(con, sprintf("LOAD %s;", ext))
 
     invisible(TRUE)
@@ -125,9 +161,15 @@ compute_lumi <- function(code_muni,
   counts_hex <- NULL
 
   if (identical(backend, "duckdb")) {
-    # Agora que DBI/duckdb viram Imports, não fazemos fallback silencioso.
-    rlang::check_installed("DBI",    reason = "to use backend = 'duckdb' in `compute_lumi()`.")
-    rlang::check_installed("duckdb", reason = "to use backend = 'duckdb' in `compute_lumi()`.")
+    # DBI/duckdb are now Imports, so we no longer perform silent fallbacks.
+    rlang::check_installed(
+      "DBI",
+      reason = "to use backend = 'duckdb' in `compute_lumi()`."
+    )
+    rlang::check_installed(
+      "duckdb",
+      reason = "to use backend = 'duckdb' in `compute_lumi()`."
+    )
   }
 
   if (identical(backend, "duckdb")) {
@@ -135,14 +177,15 @@ compute_lumi <- function(code_muni,
     on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
     duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-    duckdb_ensure_extension(con, "h3",    verbose = verbose)
+    duckdb_ensure_extension(con, "h3", verbose = verbose)
 
     zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-    uri      <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-    uri_sql  <- gsub("'", "''", uri)
+    uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+    uri_sql <- gsub("'", "''", uri)
 
     # only keep the columns needed; exclude COD_ESPECIE == 7
-    sql <- sprintf("
+    sql <- sprintf(
+      "
       WITH src AS (
         SELECT
           CAST(LONGITUDE AS DOUBLE) AS lon,
@@ -166,31 +209,33 @@ compute_lumi <- function(code_muni,
         COUNT(*)::BIGINT AS n_tot
       FROM filtered
       GROUP BY 1;
-    ", uri_sql, as.integer(h3_resolution))
+    ",
+      uri_sql,
+      as.integer(h3_resolution)
+    )
 
-    counts_hex <- DBI::dbGetQuery(con, sql) %>%
-      dplyr::as_tibble() %>%
+    counts_hex <- DBI::dbGetQuery(con, sql) |>
+      dplyr::as_tibble() |>
       dplyr::mutate(
         id_hex = as.character(.data$id_hex),
-        n_res  = as.integer(.data$n_res),
-        n_tot  = as.integer(.data$n_tot)
+        n_res = as.integer(.data$n_res),
+        n_tot = as.integer(.data$n_tot)
       )
-
   } else {
     # backend "r"
     tab <- read_cnefe(
       code_muni = code_muni,
-      output    = "arrow",
-      cache     = TRUE,
-      verbose   = verbose
+      output = "arrow",
+      cache = TRUE,
+      verbose = verbose
     )
 
-    df <- as.data.frame(tab) %>%
+    df <- as.data.frame(tab) |>
       dplyr::transmute(
-        LONGITUDE   = as.numeric(.data$LONGITUDE),
-        LATITUDE    = as.numeric(.data$LATITUDE),
+        LONGITUDE = as.numeric(.data$LONGITUDE),
+        LATITUDE = as.numeric(.data$LATITUDE),
         COD_ESPECIE = as.integer(.data$COD_ESPECIE)
-      ) %>%
+      ) |>
       dplyr::filter(
         !is.na(.data$LONGITUDE),
         !is.na(.data$LATITUDE),
@@ -200,22 +245,32 @@ compute_lumi <- function(code_muni,
       )
 
     if (nrow(df) == 0L) {
-      if (verbose) message("No valid CNEFE points after filtering (COD_ESPECIE 1:8 excluding 7). Returning NULL.")
+      if (verbose) {
+        message(
+          "No valid CNEFE points after filtering (COD_ESPECIE 1:8 excluding 7). Returning NULL."
+        )
+      }
       return(NULL)
     }
 
-    coords <- df %>% dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
-    id_hex <- suppressMessages(h3jsr::point_to_cell(coords, res = h3_resolution, simple = TRUE))
+    coords <- df |>
+      dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
 
-    counts_hex <- df %>%
-      dplyr::mutate(id_hex = as.character(id_hex)) %>%
-      dplyr::filter(!is.na(.data$id_hex)) %>%
-      dplyr::group_by(.data$id_hex) %>%
+    id_hex <- suppressMessages(h3jsr::point_to_cell(
+      coords,
+      res = h3_resolution,
+      simple = TRUE
+    ))
+
+    counts_hex <- df |>
+      dplyr::mutate(id_hex = as.character(id_hex)) |>
+      dplyr::filter(!is.na(.data$id_hex)) |>
+      dplyr::group_by(.data$id_hex) |>
       dplyr::summarise(
         n_res = sum(.data$COD_ESPECIE == 1L, na.rm = TRUE),
         n_tot = dplyr::n(),
         .groups = "drop"
-      ) %>%
+      ) |>
       dplyr::mutate(
         n_res = as.integer(.data$n_res),
         n_tot = as.integer(.data$n_tot)
@@ -225,29 +280,33 @@ compute_lumi <- function(code_muni,
   log_step_time("Step 2/3 (counts per hex)", t2)
 
   if (is.null(counts_hex) || nrow(counts_hex) == 0L) {
-    if (verbose) message("No hexagons found after aggregation. Returning NULL.")
+    if (verbose) {
+      message("No hexagons found after aggregation. Returning NULL.")
+    }
     return(NULL)
   }
 
   # ---------------------------------------------------------------------------
   # Step 3/3: Build H3 grid from ids + compute indices
   # ---------------------------------------------------------------------------
-  if (verbose) message("Step 3/3: building grid and computing LUMI indices...")
+  if (verbose) {
+    message("Step 3/3: building grid and computing LUMI indices...")
+  }
   t3 <- Sys.time()
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    id_hex        = counts_hex$id_hex
+    id_hex = counts_hex$id_hex
   )
 
-    # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
+  # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
   P <- sum(counts_hex$n_res, na.rm = TRUE) / sum(counts_hex$n_tot, na.rm = TRUE)
 
   # Balance index (BAL)
-  bal_fun <- function(p, P){
-    num <- abs(p - (P/(1-P))*(1-p))
-    den <- p + (P/(1-P))*(1-p)
-    ifelse(is.na(num) | is.na(den), NA_real_, 1 - num/den)
+  bal_fun <- function(p, P) {
+    num <- abs(p - (P / (1 - P)) * (1 - p))
+    den <- p + (P / (1 - P)) * (1 - p)
+    ifelse(is.na(num) | is.na(den), NA_real_, 1 - num / den)
   }
 
   # BGBI function
@@ -255,7 +314,7 @@ compute_lumi <- function(code_muni,
     num <- (2 * p - 1) - (2 * P - 1)
     den <- 1 - (2 * p - 1) * (2 * P - 1)
     den[den == 0] <- NA_real_
-    ifelse(is.na(num) | is.na(den), NA_real_, num/den)
+    ifelse(is.na(num) | is.na(den), NA_real_, num / den)
   }
 
   # numerically safe entropy term: treat 0*log(0) as 0
@@ -263,13 +322,17 @@ compute_lumi <- function(code_muni,
     ifelse(is.na(x) | x <= 0, 0, x * log(x))
   }
 
-  out <- hex_grid %>%
-    dplyr::left_join(counts_hex, by = "id_hex") %>%
+  out <- hex_grid |>
+    dplyr::left_join(counts_hex, by = "id_hex") |>
     dplyr::mutate(
       n_res = dplyr::coalesce(as.integer(.data$n_res), 0L),
       n_tot = dplyr::coalesce(as.integer(.data$n_tot), 0L),
 
-      p_res  = dplyr::if_else(.data$n_tot > 0, .data$n_res / .data$n_tot, NA_real_),
+      p_res = dplyr::if_else(
+        .data$n_tot > 0,
+        .data$n_res / .data$n_tot,
+        NA_real_
+      ),
       q_rest = dplyr::if_else(!is.na(.data$p_res), 1 - .data$p_res, NA_real_),
 
       # EI (k=2)
@@ -306,8 +369,12 @@ compute_lumi <- function(code_muni,
         NA_real_
       ),
 
-      bgbi = dplyr::if_else(!is.na(.data$p_res), bgbi_fun(.data$p_res, P), NA_real_)
-    ) %>%
+      bgbi = dplyr::if_else(
+        !is.na(.data$p_res),
+        bgbi_fun(.data$p_res, P),
+        NA_real_
+      )
+    ) |>
     dplyr::select(
       id_hex,
       p_res,
