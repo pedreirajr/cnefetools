@@ -19,13 +19,13 @@
 #'
 #' @details
 #' The counts in the columns `addr_type1` to `addr_type8` correspond to:
-#' - `addr_type1`: Private household (Domicílio particular)
-#' - `addr_type2`: Collective household (Domicílio coletivo)
-#' - `addr_type3`: Agricultural establishment (Estabelecimento agropecuário)
+#' - `addr_type1`: Private household (Domic\\u00edlio particular)
+#' - `addr_type2`: Collective household (Domic\\u00edlio coletivo)
+#' - `addr_type3`: Agricultural establishment (Estabelecimento agropecu\\u00e1rio)
 #' - `addr_type4`: Educational establishment (Estabelecimento de ensino)
-#' - `addr_type5`: Health establishment (Estabelecimento de saúde)
+#' - `addr_type5`: Health establishment (Estabelecimento de sa\\u00fade)
 #' - `addr_type6`: Establishment for other purposes (Estabelecimento de outras finalidades)
-#' - `addr_type7`: Building under construction or renovation (Edificação em construção ou reforma)
+#' - `addr_type7`: Building under construction or renovation (Edifica\\u00e7\\u00e3o em constru\\u00e7\\u00e3o ou reforma)
 #' - `addr_type8`: Religious establishment (Estabelecimento religioso)
 #'
 #' @export
@@ -162,7 +162,7 @@ hex_cnefe_counts <- function(
   }
 
   if (identical(backend, "duckdb")) {
-    # Agora que DBI/duckdb viram Imports, não fazemos fallback silencioso.
+    # Agora que DBI/duckdb viram Imports, nao fazemos fallback silencioso.
     rlang::check_installed(
       "DBI",
       reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`."
