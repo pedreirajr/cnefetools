@@ -2,17 +2,17 @@ testthat::test_that(".normalize_code_muni validates inputs", {
 
   testthat::expect_error(
     cnefetools:::.normalize_code_muni(c(2927408, 2919207)),
-    "`code_muni` must be a single value"
+    "single value"
   )
 
   testthat::expect_error(
     cnefetools:::.normalize_code_muni("abcdefg"),
-    "valid integer IBGE code"
+    "valid 7-digit IBGE code"
   )
 
   testthat::expect_error(
     cnefetools:::.normalize_code_muni("123"),
-    "valid integer IBGE code"
+    "valid 7-digit IBGE code"
   )
 
   testthat::expect_equal(
