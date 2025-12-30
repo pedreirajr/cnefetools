@@ -162,7 +162,7 @@ hex_cnefe_counts <- function(
   }
 
   if (identical(backend, "duckdb")) {
-    # Agora que DBI/duckdb viram Imports, nao fazemos fallback silencioso.
+    # DBI/duckdb are now Imports, so we no longer perform silent fallbacks.
     rlang::check_installed(
       "DBI",
       reason = "to use backend = 'duckdb' in `hex_cnefe_counts()`."
