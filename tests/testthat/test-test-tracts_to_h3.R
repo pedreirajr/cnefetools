@@ -1,5 +1,4 @@
 testthat::test_that("tracts_to_h3 returns an sf object with requested variables", {
-
   testthat::skip_if_not_installed("duckdb")
   testthat::skip_if_not_installed("duckspatial")
   testthat::skip_if_not_installed("h3jsr")
@@ -8,28 +7,49 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
   con_check <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
   on.exit(DBI::dbDisconnect(con_check, shutdown = TRUE), add = TRUE)
 
-  ok_zipfs <- tryCatch({
-    DBI::dbExecute(con_check, "LOAD zipfs;")
-    TRUE
-  }, error = function(e) {
-    tryCatch({ DBI::dbExecute(con_check, "INSTALL zipfs; LOAD zipfs;"); TRUE }, error = function(e2) FALSE)
-  })
+  ok_zipfs <- tryCatch(
+    {
+      DBI::dbExecute(con_check, "LOAD zipfs;")
+      TRUE
+    },
+    error = function(e) {
+      tryCatch(
+        {
+          DBI::dbExecute(con_check, "INSTALL zipfs; LOAD zipfs;")
+          TRUE
+        },
+        error = function(e2) FALSE
+      )
+    }
+  )
 
-  ok_h3 <- tryCatch({
-    DBI::dbExecute(con_check, "LOAD h3;")
-    TRUE
-  }, error = function(e) {
-    tryCatch({ DBI::dbExecute(con_check, "INSTALL h3; LOAD h3;"); TRUE }, error = function(e2) FALSE)
-  })
+  ok_h3 <- tryCatch(
+    {
+      DBI::dbExecute(con_check, "LOAD h3;")
+      TRUE
+    },
+    error = function(e) {
+      tryCatch(
+        {
+          DBI::dbExecute(con_check, "INSTALL h3; LOAD h3;")
+          TRUE
+        },
+        error = function(e2) FALSE
+      )
+    }
+  )
 
-  if (!ok_zipfs) testthat::skip("DuckDB zipfs extension not available.")
-  if (!ok_h3) testthat::skip("DuckDB h3 extension not available.")
+  if (!ok_zipfs) {
+    testthat::skip("DuckDB zipfs extension not available.")
+  }
+  if (!ok_h3) {
+    testthat::skip("DuckDB h3 extension not available.")
+  }
 
   res <- NULL
 
   testthat::with_mocked_bindings(
     {
-
       testthat::expect_warning(
         res <- cnefetools::tracts_to_h3(
           code_muni = 2927408,
@@ -44,7 +64,14 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
 
       testthat::expect_s3_class(res, "sf")
 
-      needed <- c("id_hex", "n_inhab_p", "avg_inc_resp", "n_resp", "female", "age_70m")
+      needed <- c(
+        "id_hex",
+        "n_inhab_p",
+        "avg_inc_resp",
+        "n_resp",
+        "female",
+        "age_70m"
+      )
       testthat::expect_true(all(needed %in% names(res)))
 
       timing <- attr(res, "timing", exact = TRUE)
@@ -58,12 +85,15 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       testthat::expect_equal(round(sum(res$n_inhab_p, na.rm = TRUE)), 100)
 
       # avg_inc_resp should be present and numeric (mean over eligible points)
-      testthat::expect_true(is.numeric(res$avg_inc_resp) || all(is.na(res$avg_inc_resp)))
-
+      testthat::expect_true(
+        is.numeric(res$avg_inc_resp) || all(is.na(res$avg_inc_resp))
+      )
     },
     .sc_create_views_in_duckdb = function(con, code_muni, cache, verbose) {
       # Two tracts. Only the first has CNEFE points in the mocked CNEFE view.
-      DBI::dbExecute(con, "
+      DBI::dbExecute(
+        con,
+        "
         CREATE OR REPLACE VIEW sc_muni AS
         SELECT
           '292740800000001' AS code_tract,
@@ -82,11 +112,19 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
           10::INTEGER  AS n_resp,
           3000.0::DOUBLE AS avg_inc_resp,
           ST_GeomFromText('POLYGON((2 0, 3 0, 3 1, 2 1, 2 0))') AS geom
-      ")
+      "
+      )
     },
-    .cnefe_create_points_view_in_duckdb = function(con, code_muni, cache, verbose) {
+    .cnefe_create_points_view_in_duckdb = function(
+      con,
+      code_muni,
+      cache,
+      verbose
+    ) {
       # 4 private points inside tract 1; 1 point outside any tract (unmatched)
-      DBI::dbExecute(con, "
+      DBI::dbExecute(
+        con,
+        "
         CREATE OR REPLACE VIEW cnefe_pts AS
         SELECT
           1::BIGINT AS COD_UNICO_ENDERECO,
@@ -102,8 +140,8 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
         SELECT 4, 1, 0.8, 0.8, ST_Point(0.8, 0.8)
         UNION ALL
         SELECT 5, 1, 10.0, 10.0, ST_Point(10.0, 10.0)
-      ")
+      "
+      )
     }
   )
-
 })
