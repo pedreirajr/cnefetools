@@ -12,6 +12,8 @@ Useful links:
 
 - <https://github.com/pedreirajr/cnefetools>
 
+- <https://pedreirajr.github.io/cnefetools/>
+
 - Report bugs at <https://github.com/pedreirajr/cnefetools/issues>
 
 ## Author

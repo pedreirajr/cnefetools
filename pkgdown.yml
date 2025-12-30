@@ -2,7 +2,7 @@ pandoc: 3.1.11
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles: {}
-last_built: 2025-12-23T20:20Z
+last_built: 2025-12-30T18:06Z
 urls:
   reference: https://pedreirajr.github.io/cnefetools/reference
   article: https://pedreirajr.github.io/cnefetools/articles

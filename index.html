@@ -72,10 +72,27 @@
 <span><span class="va">tab_ssa</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_cnefe.html">read_cnefe</a></span><span class="op">(</span><span class="fl">2927408</span>, cache <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Convert to a data frame for inspection</span></span>
-<span><span class="va">df_ssa</span> <span class="op">&lt;-</span> <span class="va">tab_ssa</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">df_ssa</span> <span class="op">&lt;-</span> <span class="va">tab_ssa</span> <span class="op">|&gt;</span> </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">df_ssa</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">df_ssa</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 34</span></span>
+<span><span class="co">#&gt;   COD_UNICO_ENDERECO COD_UF COD_MUNICIPIO COD_DISTRITO COD_SUBDISTRITO COD_SETOR</span></span>
+<span><span class="co">#&gt;                &lt;int&gt;  &lt;int&gt;         &lt;int&gt;        &lt;int&gt;         &lt;int64&gt; &lt;chr&gt;    </span></span>
+<span><span class="co">#&gt; 1          222386741     29       2927408    292740805     29274080518 29274080…</span></span>
+<span><span class="co">#&gt; 2           27995350     29       2927408    292740805     29274080522 29274080…</span></span>
+<span><span class="co">#&gt; 3           28034841     29       2927408    292740805     29274080522 29274080…</span></span>
+<span><span class="co">#&gt; 4          217544957     29       2927408    292740805     29274080518 29274080…</span></span>
+<span><span class="co">#&gt; 5          217639781     29       2927408    292740805     29274080526 29274080…</span></span>
+<span><span class="co">#&gt; 6          217639701     29       2927408    292740805     29274080526 29274080…</span></span>
+<span><span class="co">#&gt; # ℹ 28 more variables: NUM_QUADRA &lt;int&gt;, NUM_FACE &lt;int&gt;, CEP &lt;int&gt;,</span></span>
+<span><span class="co">#&gt; #   DSC_LOCALIDADE &lt;chr&gt;, NOM_TIPO_SEGLOGR &lt;chr&gt;, NOM_TITULO_SEGLOGR &lt;chr&gt;,</span></span>
+<span><span class="co">#&gt; #   NOM_SEGLOGR &lt;chr&gt;, NUM_ENDERECO &lt;int&gt;, DSC_MODIFICADOR &lt;chr&gt;,</span></span>
+<span><span class="co">#&gt; #   NOM_COMP_ELEM1 &lt;chr&gt;, VAL_COMP_ELEM1 &lt;chr&gt;, NOM_COMP_ELEM2 &lt;chr&gt;,</span></span>
+<span><span class="co">#&gt; #   VAL_COMP_ELEM2 &lt;chr&gt;, NOM_COMP_ELEM3 &lt;chr&gt;, VAL_COMP_ELEM3 &lt;chr&gt;,</span></span>
+<span><span class="co">#&gt; #   NOM_COMP_ELEM4 &lt;chr&gt;, VAL_COMP_ELEM4 &lt;chr&gt;, NOM_COMP_ELEM5 &lt;chr&gt;,</span></span>
+<span><span class="co">#&gt; #   VAL_COMP_ELEM5 &lt;chr&gt;, LATITUDE &lt;dbl&gt;, LONGITUDE &lt;dbl&gt;, …</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="spatial-output-and-quick-map">Spatial output and quick map<a class="anchor" aria-label="anchor" href="#spatial-output-and-quick-map"></a>
@@ -91,17 +108,16 @@
 <span><span class="va">tab_ssa_sf</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_cnefe.html">read_cnefe</a></span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">2927408</span>, output <span class="op">=</span> <span class="st">"sf"</span>, cache <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Keep only religious facilities (COD_ESPECIE == 8)</span></span>
-<span><span class="va">temples_ssa</span> <span class="op">&lt;-</span> <span class="va">tab_ssa_sf</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span><span class="va">temples_ssa</span> <span class="op">&lt;-</span> <span class="va">tab_ssa_sf</span> <span class="op">|&gt;</span> </span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">COD_ESPECIE</span> <span class="op">==</span> <span class="fl">8</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">temples_ssa</span>, size <span class="op">=</span> <span class="fl">0.3</span>, alpha <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">coord_sf</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<blockquote>
+<p><img src="reference/figures/README-unnamed-chunk-4-1.png" width="100%"></p>
 <p><strong>Warning</strong></p>
 <p>For large municipalities, CNEFE may contain more than 1 million address points. Plotting all coordinates at once can be slow and memory intensive, so consider filtering by area of interest or sampling points before creating maps.</p>
-</blockquote>
 </div>
 <div class="section level2">
 <h2 id="caching-behavior">Caching behavior<a class="anchor" aria-label="anchor" href="#caching-behavior"></a>
@@ -171,6 +187,7 @@
 <span>    subtitle <span class="op">=</span> <span class="st">"São Paulo (IBGE 3550308), H3 resolution 9"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-unnamed-chunk-8-1.png" width="100%"></p>
 </div>
 </div>
 <div class="section level2">
@@ -216,6 +233,7 @@
 <span>    subtitle <span class="op">=</span> <span class="st">"Fortaleza (IBGE 2304400), H3 resolution 8"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-unnamed-chunk-10-1.png" width="100%"></p>
 </div>
 </div>
 <div class="section level2">
@@ -311,9 +329,9 @@
 <span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"n_inhab_p"</span>, <span class="st">"avg_inc_resp"</span><span class="op">)</span>,</span>
 <span>  cache <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Map private-household population</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Map private-household population</span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">rec_hex</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">n_inhab_p</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span>trans <span class="op">=</span> <span class="st">"sqrt"</span><span class="op">)</span> <span class="op">+</span></span>
@@ -323,9 +341,10 @@
 <span>    subtitle <span class="op">=</span> <span class="st">"Private-household population (n_inhab_p), H3 resolution 9"</span>,</span>
 <span>    fill <span class="op">=</span> <span class="st">"Population"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Map avg income of the household head</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-unnamed-chunk-12-1.png" width="100%"></p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Map avg income of the household head</span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">rec_hex</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">avg_inc_resp</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
@@ -336,6 +355,7 @@
 <span>    fill <span class="op">=</span> <span class="st">"Income"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-unnamed-chunk-13-1.png" width="100%"></p>
 </div>
 </div>
 <div class="section level2">
