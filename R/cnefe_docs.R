@@ -6,8 +6,11 @@
 #' @return Invisibly, the path to the Excel file inside the installed package.
 #' @export
 cnefe_dictionary <- function() {
-  path <- system.file("extdata", "cnefe_dictionary_2022.xls",
-                      package = "cnefetools")
+  path <- system.file(
+    "extdata",
+    "cnefe_dictionary_2022.xls",
+    package = "cnefetools"
+  )
 
   if (!nzchar(path)) {
     rlang::abort(
@@ -27,8 +30,11 @@ cnefe_dictionary <- function() {
 #' @return Invisibly, the path to the PDF file inside the installed package.
 #' @export
 cnefe_doc <- function() {
-  path <- system.file("extdata", "cnefe_metodologica_2024.pdf",
-                      package = "cnefetools")
+  path <- system.file(
+    "extdata",
+    "cnefe_metodologica_2024.pdf",
+    package = "cnefetools"
+  )
 
   if (!nzchar(path)) {
     rlang::abort(
