@@ -65,8 +65,7 @@ hex_cnefe_counts <- function(
     index = cnefe_index_2022,
     cache = TRUE,
     verbose = verbose,
-    base_timeout = 300L,
-    timeouts = c(300L, 600L, 1800L)
+    retry_timeouts = c(300L, 600L, 1800L)
   )
   zip_path <- zip_info$zip_path
 
