@@ -1,5 +1,4 @@
 testthat::test_that("compute_lumi computes expected p_res on offline fixture (backend r)", {
-  testthat::skip_if_not_installed("archive")
   testthat::skip_if_not_installed("arrow")
   testthat::skip_if_not_installed("dplyr")
   testthat::skip_if_not_installed("h3jsr")
