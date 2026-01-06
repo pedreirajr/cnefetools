@@ -49,7 +49,7 @@
 }
 
 
-# Theme: Download and archive handling
+# Theme: Download and file handling
 
 #' @keywords internal
 #' @noRd
@@ -98,8 +98,9 @@
   if (isTRUE(cache) && file.exists(zip_path)) {
     valid <- tryCatch(
       {
-        archive::archive(zip_path)
-        TRUE
+        info <- utils::unzip(zip_path, list = TRUE)
+
+        any(grepl("\\.csv$", info$Name, ignore.case = TRUE))
       },
       error = function(e) FALSE
     )
@@ -228,16 +229,27 @@
 
 #' @keywords internal
 #' @noRd
-.cnefe_first_csv_in_archive <- function(arch_info) {
-  csv_inside <- arch_info$path[grepl(
-    "\\.csv$",
-    arch_info$path,
-    ignore.case = TRUE
-  )][1]
-  if (is.na(csv_inside)) {
-    rlang::abort("No .csv file found inside archive.")
+.cnefe_first_csv_in_zip <- function(zip_path) {
+
+  checkmate::assert_file_exists(zip_path)
+
+  info <- utils::unzip(zip_path, list = TRUE)
+
+  csv <- info$Name[
+    grepl("\\.csv$", info$Name, ignore.case = TRUE)
+  ]
+
+  if (length(csv) == 0L) {
+    rlang::abort("No .csv file found inside CNEFE ZIP.")
   }
-  csv_inside
+
+  if (length(csv) > 1L) {
+    rlang::abort(
+      "Multiple CSV files found inside CNEFE ZIP. This is unexpected."
+    )
+  }
+
+  csv[[1L]]
 }
 
 
@@ -652,8 +664,7 @@
   zip_path <- zip_info$zip_path
   zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
 
-  arch_info <- archive::archive(zip_norm)
-  csv_inside <- .cnefe_first_csv_in_archive(arch_info)
+  csv_inside <- .cnefe_first_csv_in_zip(zip_norm)
 
   # DuckDB zipfs URI: zip://<zipfile>/<file_inside_zip>
   uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)

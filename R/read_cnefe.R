@@ -77,17 +77,21 @@ read_cnefe <- function(
     add = TRUE
   )
 
-  # List archive and find first CSV inside
+  # List files and find first CSV inside
   if (verbose) {
-    message("Listing archive contents...")
+    message("Listing file contents...")
   }
-  arch_info <- archive::archive(zip_path)
-  csv_inside <- .cnefe_first_csv_in_archive(arch_info)
+  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   if (verbose) {
     message("Extracting ", csv_inside, " ...")
   }
-  archive::archive_extract(zip_path, file = csv_inside, dir = tmp_dir)
+
+  utils::unzip(
+    zipfile = zip_path,
+    files   = csv_inside,
+    exdir   = tmp_dir
+  )
 
   csv_path <- file.path(tmp_dir, csv_inside)
   if (!file.exists(csv_path)) {

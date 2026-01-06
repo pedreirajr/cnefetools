@@ -69,8 +69,7 @@ hex_cnefe_counts <- function(
   )
   zip_path <- zip_info$zip_path
 
-  arch_info <- archive::archive(zip_path)
-  csv_inside <- .cnefe_first_csv_in_archive(arch_info)
+  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   log_step_time("Step 1/3 (ZIP ready)", t1)
 
