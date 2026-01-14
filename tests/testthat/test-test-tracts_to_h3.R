@@ -118,6 +118,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
     .cnefe_create_points_view_in_duckdb = function(
       con,
       code_muni,
+      index,
       cache,
       verbose
     ) {

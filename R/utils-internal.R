@@ -1,5 +1,63 @@
 # Internal helper functions for cnefetools (not exported)
 
+## Theme: Year and index selection
+
+#' Get the CNEFE index for a given year
+#'
+#' @param year Integer. The CNEFE data year.
+#' @return A data.frame with municipality codes and ZIP URLs.
+#' @keywords internal
+#' @noRd
+.get_cnefe_index <- function(year) {
+  year <- as.integer(year)
+
+  # TODO: When new CNEFE versions become available (2030+), add cases here:
+  # if (year == 2030L) return(cnefe_index_2030)
+  # if (year == 2040L) return(cnefe_index_2040)
+
+  if (year == 2022L) {
+    return(cnefe_index_2022)
+  }
+
+  cli::cli_abort(c(
+    "CNEFE data for year {.val {year}} is not available.",
+    "i" = "Currently supported years: {.val {2022}}."
+    # TODO: Update this message when new years are added
+  ))
+}
+
+#' Validate and normalize the year argument
+#'
+#' @param year Integer. The year to validate.
+#' @return Integer. The validated year.
+#' @keywords internal
+#' @noRd
+.validate_year <- function(year) {
+
+  if (length(year) != 1L) {
+    cli::cli_abort("{.arg year} must be a single value.")
+  }
+
+  year <- as.integer(year)
+
+  if (is.na(year)) {
+    cli::cli_abort("{.arg year} must be a valid integer.")
+  }
+
+  # TODO: Update valid_years when new CNEFE versions become available (e.g., 2030, 2040)
+  valid_years <- c(2022L)
+
+  if (!year %in% valid_years) {
+    cli::cli_abort(c(
+      "CNEFE data for year {.val {year}} is not available.",
+      "i" = "Currently supported years: {.val {valid_years}}."
+    ))
+  }
+
+  year
+}
+
+
 ## Theme: Input validation
 
 #' @keywords internal

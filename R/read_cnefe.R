@@ -1,7 +1,7 @@
-#' Read CNEFE 2022 data for a given municipality
+#' Read CNEFE data for a given municipality
 #'
 #' @description
-#' Downloads and reads the CNEFE 2022 CSV file for a given
+#' Downloads and reads the CNEFE CSV file for a given
 #' IBGE municipality code, using the official IBGE FTP structure. The function
 #' relies on an internal index linking municipality codes to the corresponding
 #' ZIP URLs. Data are returned either as an Arrow [Table][arrow::Table]
@@ -25,6 +25,8 @@
 #' removed when the function exits.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
+#'   Defaults to 2022.
 #' @param verbose Logical; if `TRUE`, print informative messages about
 #'   download, extraction, and reading steps.
 #' @param cache Logical; if `TRUE`, cache the downloaded ZIP file in a
@@ -44,17 +46,22 @@
 #' @export
 read_cnefe <- function(
   code_muni,
+  year = 2022L,
   verbose = TRUE,
   cache = TRUE,
   output = c("arrow", "sf")
 ) {
   output <- match.arg(output)
   code_muni <- .normalize_code_muni(code_muni)
+  year <- .validate_year(year)
+
+  # Get the appropriate index for the requested year
+  cnefe_index <- .get_cnefe_index(year)
 
   # Ensure ZIP exists (cached or temporary) and is valid
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
-    index = cnefe_index_2022,
+    index = cnefe_index,
     cache = cache,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)

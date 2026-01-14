@@ -1,12 +1,14 @@
 #' Compute land-use mix indicators on an H3 grid
 #'
 #' @description
-#' `compute_lumi()` reads CNEFE 2022 records for a given municipality,
+#' `compute_lumi()` reads CNEFE records for a given municipality,
 #' assigns each address point to an H3 cell, and computes land-use mix
 #' indices per hexagon (EI, HHI, adapted HHI, and BGBI), following the
 #' methodology proposed in Pedreira Jr. et al. (2025).
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
+#'   Defaults to 2022.
 #' @param h3_resolution Integer. H3 grid resolution (default: 9).
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB + H3 extension
@@ -26,16 +28,21 @@
 #' @export
 compute_lumi <- function(
   code_muni,
+  year = 2022L,
   h3_resolution = 9,
   verbose = TRUE,
   backend = c("duckdb", "r")
 ) {
   backend <- match.arg(backend)
   code_muni <- .normalize_code_muni(code_muni)
+  year <- .validate_year(year)
+
+  # Get the appropriate index for the requested year
+  cnefe_index <- .get_cnefe_index(year)
 
   # Name (optional)
-  info <- cnefe_index_2022[
-    cnefe_index_2022$code_muni == code_muni,
+  info <- cnefe_index[
+    cnefe_index$code_muni == code_muni,
     ,
     drop = FALSE
   ]
@@ -76,7 +83,7 @@ compute_lumi <- function(
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
-    index = cnefe_index_2022,
+    index = cnefe_index,
     cache = TRUE,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
@@ -223,6 +230,7 @@ compute_lumi <- function(
     # backend "r"
     tab <- read_cnefe(
       code_muni = code_muni,
+      year = year,
       output = "arrow",
       cache = TRUE,
       verbose = verbose
