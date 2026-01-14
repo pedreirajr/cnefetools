@@ -26,7 +26,6 @@ testthat::test_that(".normalize_code_muni validates inputs", {
 })
 
 testthat::test_that("read_cnefe reads from internal ZIP fixture (offline) as Arrow table", {
-  testthat::skip_if_not_installed("archive")
   testthat::skip_if_not_installed("arrow")
 
   code_muni <- 2927408L
@@ -49,7 +48,6 @@ testthat::test_that("read_cnefe reads from internal ZIP fixture (offline) as Arr
 })
 
 testthat::test_that("read_cnefe reads from internal ZIP fixture (offline) as sf", {
-  testthat::skip_if_not_installed("archive")
   testthat::skip_if_not_installed("arrow")
   testthat::skip_if_not_installed("sf")
 
