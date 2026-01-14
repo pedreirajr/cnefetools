@@ -8,6 +8,8 @@
 #' The function uses DuckDB with the spatial and H3 extensions for the heavy work.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
+#'   Defaults to 2022.
 #' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to 9.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
 #'   Supported variables:
@@ -37,6 +39,7 @@
 #' @export
 tracts_to_h3 <- function(
   code_muni,
+  year = 2022L,
   h3_resolution = 9L,
   vars = c("n_inhab_p", "n_inhab_c"),
   cache = TRUE,
@@ -48,6 +51,11 @@ tracts_to_h3 <- function(
   } else {
     code_muni <- as.integer(code_muni)
   }
+
+  year <- .validate_year(year)
+
+  # Get the appropriate index for the requested year
+  cnefe_index <- .get_cnefe_index(year)
 
   h3_resolution <- as.integer(h3_resolution)
   vars <- unique(as.character(vars))
@@ -187,6 +195,7 @@ tracts_to_h3 <- function(
   .cnefe_create_points_view_in_duckdb(
     con,
     code_muni = code_muni,
+    index = cnefe_index,
     cache = cache,
     verbose = verbose
   )

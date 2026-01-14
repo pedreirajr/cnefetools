@@ -7,6 +7,8 @@
 #' as `addr_type1` to `addr_type8`.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
+#'   Defaults to 2022.
 #' @param h3_resolution Integer. H3 grid resolution (default: 9).
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB H3 extension to
@@ -31,12 +33,17 @@
 #' @export
 hex_cnefe_counts <- function(
   code_muni,
+  year = 2022L,
   h3_resolution = 9,
   verbose = TRUE,
   backend = c("duckdb", "r")
 ) {
   backend <- match.arg(backend)
   code_muni <- .normalize_code_muni(code_muni)
+  year <- .validate_year(year)
+
+  # Get the appropriate index for the requested year
+  cnefe_index <- .get_cnefe_index(year)
 
   timings <- list()
 
@@ -62,7 +69,7 @@ hex_cnefe_counts <- function(
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
-    index = cnefe_index_2022,
+    index = cnefe_index,
     cache = TRUE,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
@@ -216,6 +223,7 @@ hex_cnefe_counts <- function(
     # Backend "r" (slower): read Arrow, compute H3 in R
     tab <- read_cnefe(
       code_muni = code_muni,
+      year = year,
       output = "arrow",
       cache = TRUE,
       verbose = verbose

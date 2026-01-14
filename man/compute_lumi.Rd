@@ -6,6 +6,7 @@
 \usage{
 compute_lumi(
   code_muni,
+  year = 2022L,
   h3_resolution = 9,
   verbose = TRUE,
   backend = c("duckdb", "r")
@@ -13,6 +14,9 @@ compute_lumi(
 }
 \arguments{
 \item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+
+\item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
+Defaults to 2022.}
 
 \item{h3_resolution}{Integer. H3 grid resolution (default: 9).}
 
@@ -31,7 +35,7 @@ An \code{\link[sf:sf]{sf::sf}} object with CRS 4326 containing:
 }
 }
 \description{
-\code{compute_lumi()} reads CNEFE 2022 records for a given municipality,
+\code{compute_lumi()} reads CNEFE records for a given municipality,
 assigns each address point to an H3 cell, and computes land-use mix
 indices per hexagon (EI, HHI, adapted HHI, and BGBI), following the
 methodology proposed in Pedreira Jr. et al. (2025).
