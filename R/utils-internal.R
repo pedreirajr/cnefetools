@@ -49,7 +49,7 @@
 }
 
 
-# Theme: Download and archive handling
+# Theme: Download and file handling
 
 #' @keywords internal
 #' @noRd
@@ -58,8 +58,7 @@
   index,
   cache = TRUE,
   verbose = TRUE,
-  base_timeout = 300L,
-  timeouts = c(300L, 600L, 1800L)
+  retry_timeouts = c(300L, 600L, 1800L)
 ) {
   info <- index[index$code_muni == code_muni, , drop = FALSE]
   if (nrow(info) == 0) {
@@ -99,8 +98,9 @@
   if (isTRUE(cache) && file.exists(zip_path)) {
     valid <- tryCatch(
       {
-        archive::archive(zip_path)
-        TRUE
+        info <- utils::unzip(zip_path, list = TRUE)
+
+        any(grepl("\\.csv$", info$Name, ignore.case = TRUE))
       },
       error = function(e) FALSE
     )
@@ -119,8 +119,7 @@
       url = url,
       destfile = zip_path,
       verbose = verbose,
-      base_timeout = base_timeout,
-      timeouts = timeouts
+      retry_timeouts = retry_timeouts
     )
   } else if (verbose) {
     message("Using cached file: ", zip_path)
@@ -136,96 +135,121 @@
 #' @keywords internal
 #' @noRd
 .cnefe_download_zip_with_retry <- function(
-  url,
-  destfile,
-  verbose = TRUE,
-  base_timeout = 300L,
-  timeouts = c(300L, 600L, 1800L)
+    url,
+    destfile,
+    retry_timeouts = c(300L, 600L, 1800L),
+    verbose = TRUE
 ) {
-  old_timeout <- getOption("timeout")
-  on.exit(options(timeout = old_timeout), add = TRUE)
+  # argument checks
+  checkmate::assert_string(url, min.chars = 1)
+  checkmate::assert_path_for_output(destfile, overwrite = TRUE)
+  checkmate::assert_logical(verbose, len = 1)
 
-  timeouts <- unique(as.integer(c(base_timeout, timeouts)))
-  timeouts <- timeouts[!is.na(timeouts) & timeouts > 0]
-  timeouts <- sort(timeouts)
+  if (!grepl("^https?://", url)) {
+    rlang::abort(
+      "`url` must be an HTTP or HTTPS URL."
+    )
+  }
+
+  retry_timeouts <- unique(as.integer(retry_timeouts))
+  retry_timeouts <- retry_timeouts[!is.na(retry_timeouts) & retry_timeouts > 0L]
+
+  if (length(retry_timeouts) == 0L) {
+    rlang::abort(
+      "`retry_timeouts` must contain at least one positive value."
+    )
+  }
+
+  fs::dir_create(fs::path_dir(destfile))
 
   last_err <- NULL
 
-  for (t in timeouts) {
-    options(timeout = t)
+  for (t in retry_timeouts) {
+    tmp <- fs::path_temp(ext = ".zip")
 
-    tmp <- tempfile(fileext = ".zip")
-    if (file.exists(tmp)) {
-      unlink(tmp)
+    if (isTRUE(verbose)) {
+      message(
+        "Downloading ZIP (timeout = ",
+        t,
+        "s): ",
+        url
+      )
     }
 
-    if (verbose) {
-      message(sprintf("Downloading (timeout = %ss): %s", t, url))
-    }
-
-    ok <- tryCatch(
+    res <- tryCatch(
       {
-        utils::download.file(
-          url,
-          destfile = tmp,
-          mode = "wb",
-          quiet = !verbose
-        )
+        req <- httr2::request(url) |>
+          httr2::req_timeout(t)
 
-        if (!file.exists(tmp) || is.na(file.size(tmp)) || file.size(tmp) == 0) {
-          stop("Download produced an empty file.")
+        httr2::req_perform(req, path = tmp)
+
+        if (!fs::file_exists(tmp) || fs::file_size(tmp) == 0) {
+          rlang::abort("Downloaded file is empty.")
         }
 
-        # Validate ZIP integrity by listing contents
-        archive::archive(tmp)
+        # ZIP integrity check
+        utils::unzip(tmp, list = TRUE)
 
-        # Move into place only after validation
-        if (file.exists(destfile)) {
-          unlink(destfile)
-        }
-        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
-        if (!isTRUE(ok_copy)) {
-          stop("Failed to copy downloaded ZIP into destination.")
+        if (fs::file_exists(destfile)) {
+          fs::file_delete(destfile)
         }
 
-        TRUE
+        fs::file_move(tmp, destfile)
+
+        list(ok = TRUE, err = NULL)
       },
       error = function(e) {
-        last_err <<- e
-        FALSE
+        if (inherits(e, "interrupt")) rlang::interrupt()
+        list(ok = FALSE, err = e)
       },
       finally = {
-        if (file.exists(tmp)) unlink(tmp)
+        if (fs::file_exists(tmp)) fs::file_delete(tmp)
       }
     )
 
-    if (isTRUE(ok)) {
-      return(invisible(TRUE))
+    if (isTRUE(res$ok)) {
+      return(invisible(destfile))
     }
 
-    if (verbose && !is.null(last_err)) {
-      message("Download attempt failed: ", conditionMessage(last_err))
+    last_err <- res$err
+
+    if (isTRUE(verbose) && !is.null(last_err)) {
+      message(
+        "Download attempt failed: ",
+        conditionMessage(last_err)
+      )
     }
   }
 
-  if (!is.null(last_err)) {
-    rlang::abort(conditionMessage(last_err))
-  }
-  rlang::abort("Download failed for unknown reasons.")
+  rlang::abort(
+    "Failed to download ZIP after multiple attempts.",
+    parent = last_err
+  )
 }
 
 #' @keywords internal
 #' @noRd
-.cnefe_first_csv_in_archive <- function(arch_info) {
-  csv_inside <- arch_info$path[grepl(
-    "\\.csv$",
-    arch_info$path,
-    ignore.case = TRUE
-  )][1]
-  if (is.na(csv_inside)) {
-    rlang::abort("No .csv file found inside archive.")
+.cnefe_first_csv_in_zip <- function(zip_path) {
+
+  checkmate::assert_file_exists(zip_path)
+
+  info <- utils::unzip(zip_path, list = TRUE)
+
+  csv <- info$Name[
+    grepl("\\.csv$", info$Name, ignore.case = TRUE)
+  ]
+
+  if (length(csv) == 0L) {
+    rlang::abort("No .csv file found inside CNEFE ZIP.")
   }
-  csv_inside
+
+  if (length(csv) > 1L) {
+    rlang::abort(
+      "Multiple CSV files found inside CNEFE ZIP. This is unexpected."
+    )
+  }
+
+  csv[[1L]]
 }
 
 
@@ -399,88 +423,102 @@
 #' @keywords internal
 #' @noRd
 .download_file_with_retry <- function(
-  url,
-  destfile,
-  validate_fun = NULL,
-  verbose = TRUE,
-  base_timeout = 300L,
-  timeouts = c(300L, 600L, 1800L)
+    url,
+    destfile,
+    retry_timeouts = c(300L, 600L, 1800L),
+    validate_fun = NULL,
+    verbose = TRUE
 ) {
-  old_timeout <- getOption("timeout")
-  on.exit(options(timeout = old_timeout), add = TRUE)
+  # argument checks
+  checkmate::assert_string(url, min.chars = 1)
+  checkmate::assert_path_for_output(destfile, overwrite = TRUE)
+  checkmate::assert_logical(verbose, len = 1)
 
-  timeouts <- unique(as.integer(c(base_timeout, timeouts)))
-  timeouts <- timeouts[!is.na(timeouts) & timeouts > 0]
-  timeouts <- sort(timeouts)
+  if (!is.null(validate_fun)) {
+    checkmate::assert_function(validate_fun)
+  }
+
+  if (!grepl("^https?://", url)) {
+    rlang::abort("`url` must be an HTTP or HTTPS URL.")
+  }
+
+  retry_timeouts <- unique(as.integer(retry_timeouts))
+  retry_timeouts <- retry_timeouts[!is.na(retry_timeouts) & retry_timeouts > 0L]
+
+  if (length(retry_timeouts) == 0L) {
+    rlang::abort(
+      "`retry_timeouts` must contain at least one positive value."
+    )
+  }
+
+  fs::dir_create(fs::path_dir(destfile))
 
   last_err <- NULL
 
-  dir.create(dirname(destfile), recursive = TRUE, showWarnings = FALSE)
+  for (t in retry_timeouts) {
+    tmp <- fs::path_temp()
 
-  for (t in timeouts) {
-    options(timeout = t)
+    if (isTRUE(verbose)) {
+      message(
+        "Downloading file (timeout = ",
+        t,
+        "s): ",
+        url
+      )
+    }
 
-    tmp <- tempfile(fileext = ".tmp")
-
-    ok <- tryCatch(
+    res <- tryCatch(
       {
-        if (verbose) {
-          message("Downloading: ", url, " (timeout = ", t, "s)")
-        }
+        req <- httr2::request(url) |>
+          httr2::req_timeout(t)
 
-        utils::download.file(
-          url = url,
-          destfile = tmp,
-          mode = "wb",
-          quiet = !isTRUE(verbose)
-        )
+        httr2::req_perform(req, path = tmp)
 
-        if (
-          !file.exists(tmp) ||
-            is.na(file.info(tmp)$size) ||
-            file.info(tmp)$size <= 0
-        ) {
-          stop("Downloaded file is missing or empty.")
+        if (!fs::file_exists(tmp) || fs::file_size(tmp) == 0) {
+          rlang::abort("Downloaded file is empty.")
         }
 
         if (!is.null(validate_fun)) {
           if (!isTRUE(validate_fun(tmp))) {
-            stop("Downloaded file failed validation.")
+            rlang::abort("Downloaded file failed validation.")
           }
         }
 
-        if (file.exists(destfile)) {
-          unlink(destfile)
-        }
-        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
-        if (!isTRUE(ok_copy)) {
-          stop("Failed to move downloaded file into destination.")
+        if (fs::file_exists(destfile)) {
+          fs::file_delete(destfile)
         }
 
-        TRUE
+        fs::file_move(tmp, destfile)
+
+        list(ok = TRUE, err = NULL)
       },
       error = function(e) {
-        last_err <<- e
-        FALSE
+        if (inherits(e, "interrupt")) rlang::interrupt()
+        list(ok = FALSE, err = e)
       },
       finally = {
-        if (file.exists(tmp)) unlink(tmp)
+        if (fs::file_exists(tmp)) fs::file_delete(tmp)
       }
     )
 
-    if (isTRUE(ok)) {
-      return(invisible(TRUE))
+    if (isTRUE(res$ok)) {
+      return(invisible(destfile))
     }
 
-    if (verbose && !is.null(last_err)) {
-      message("Download attempt failed: ", conditionMessage(last_err))
+    last_err <- res$err
+
+    if (isTRUE(verbose) && !is.null(last_err)) {
+      message(
+        "Download attempt failed: ",
+        conditionMessage(last_err)
+      )
     }
   }
 
-  if (!is.null(last_err)) {
-    rlang::abort(conditionMessage(last_err))
-  }
-  rlang::abort("Download failed for unknown reasons.")
+  rlang::abort(
+    "Failed to download file after multiple attempts.",
+    parent = last_err
+  )
 }
 
 #' @keywords internal
@@ -489,8 +527,7 @@
   uf,
   cache = TRUE,
   verbose = TRUE,
-  base_timeout = 300L,
-  timeouts = c(300L, 600L, 1800L)
+  retry_timeouts = c(300L, 600L, 1800L)
 ) {
   uf <- as.character(uf)
   uf <- trimws(uf)
@@ -523,8 +560,7 @@
       destfile = destfile,
       validate_fun = .validate_sc_parquet,
       verbose = verbose,
-      base_timeout = base_timeout,
-      timeouts = timeouts
+      retry_timeouts = retry_timeouts
     )
 
     return(destfile)
@@ -537,8 +573,7 @@
     destfile = tmp,
     validate_fun = .validate_sc_parquet,
     verbose = verbose,
-    base_timeout = base_timeout,
-    timeouts = timeouts
+    retry_timeouts = retry_timeouts
   )
 
   tmp
@@ -629,8 +664,7 @@
   zip_path <- zip_info$zip_path
   zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
 
-  arch_info <- archive::archive(zip_norm)
-  csv_inside <- .cnefe_first_csv_in_archive(arch_info)
+  csv_inside <- .cnefe_first_csv_in_zip(zip_norm)
 
   # DuckDB zipfs URI: zip://<zipfile>/<file_inside_zip>
   uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)

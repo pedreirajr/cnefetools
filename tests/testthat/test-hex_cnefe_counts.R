@@ -1,5 +1,4 @@
 testthat::test_that("hex_cnefe_counts works offline using ZIP fixture (backend r)", {
-  testthat::skip_if_not_installed("archive")
   testthat::skip_if_not_installed("arrow")
   testthat::skip_if_not_installed("dplyr")
   testthat::skip_if_not_installed("h3jsr")
