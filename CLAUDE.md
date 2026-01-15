@@ -27,7 +27,7 @@ R CMD BUILD . --no-manual --compact-vignettes=gs+qpdf
 ### Core Functions (R/)
 
 - **read_cnefe.R** - Downloads and reads CNEFE CSV files for a municipality; returns Arrow tables or sf spatial objects
-- **hex_cnefe_counts.R** - Aggregates address counts to H3 hexagonal grid cells (DuckDB or pure-R backend)
+- **cnefe_counts.R** - Aggregates address counts to H3 hexagonal grid cells or user-provided polygons (DuckDB or pure-R backend)
 - **compute_lumi.R** - Computes land-use mix indices (Entropy Index, HHI, BGBI, Balance Index)
 - **tracts_to_h3.R** - Dasymetric interpolation from census tracts to H3 via CNEFE dwelling points
 - **build_h3_grid.R** - Internal utility to create H3 grids from IDs or municipality boundary
