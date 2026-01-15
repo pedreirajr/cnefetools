@@ -6,6 +6,7 @@
 \usage{
 tracts_to_h3(
   code_muni,
+  year = 2022L,
   h3_resolution = 9L,
   vars = c("n_inhab_p", "n_inhab_c"),
   cache = TRUE,
@@ -14,6 +15,9 @@ tracts_to_h3(
 }
 \arguments{
 \item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+
+\item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
+Defaults to 2022.}
 
 \item{h3_resolution}{Integer. H3 resolution (0 to 15). Defaults to 9.}
 

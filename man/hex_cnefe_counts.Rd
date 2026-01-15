@@ -6,6 +6,7 @@
 \usage{
 hex_cnefe_counts(
   code_muni,
+  year = 2022L,
   h3_resolution = 9,
   verbose = TRUE,
   backend = c("duckdb", "r")
@@ -13,6 +14,9 @@ hex_cnefe_counts(
 }
 \arguments{
 \item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+
+\item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
+Defaults to 2022.}
 
 \item{h3_resolution}{Integer. H3 grid resolution (default: 9).}
 
