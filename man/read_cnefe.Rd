@@ -6,7 +6,7 @@
 \usage{
 read_cnefe(
   code_muni,
-  year = 2022L,
+  year = 2022,
   verbose = TRUE,
   cache = TRUE,
   output = c("arrow", "sf")

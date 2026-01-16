@@ -4,7 +4,10 @@
 \alias{cnefe_doc}
 \title{Open the official CNEFE methodological note}
 \usage{
-cnefe_doc()
+cnefe_doc(year = 2022)
+}
+\arguments{
+\item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.}
 }
 \value{
 Invisibly, the path to the PDF file inside the installed package.
