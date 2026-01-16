@@ -49,7 +49,7 @@
 #' @export
 cnefe_counts <- function(
   code_muni,
-  year = 2022L,
+  year = 2022,
   polygon_type = c("hex", "user"),
   polygon = NULL,
 

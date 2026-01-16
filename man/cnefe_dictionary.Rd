@@ -2,9 +2,12 @@
 % Please edit documentation in R/cnefe_docs.R
 \name{cnefe_dictionary}
 \alias{cnefe_dictionary}
-\title{Open the official CNEFE 2022 data dictionary}
+\title{Open the official CNEFE data dictionary}
 \usage{
-cnefe_dictionary()
+cnefe_dictionary(year = 2022)
+}
+\arguments{
+\item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.}
 }
 \value{
 Invisibly, the path to the Excel file inside the installed package.
