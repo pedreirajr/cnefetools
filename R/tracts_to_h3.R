@@ -116,7 +116,8 @@ tracts_to_h3 <- function(
     )
 
     if (!ok) {
-      .duckdb_quiet_execute(con, sprintf("INSTALL %s;", ext))
+      # zipfs and h3 are community extensions
+      .duckdb_quiet_execute(con, sprintf("INSTALL %s FROM community;", ext))
       .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
     }
     invisible(TRUE)
