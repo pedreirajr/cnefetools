@@ -15,7 +15,7 @@
   # if (year == 2030L) return(cnefe_index_2030)
   # if (year == 2040L) return(cnefe_index_2040)
 
-  if (year == 2022L) {
+  if (year == 2022) {
     return(cnefe_index_2022)
   }
 
@@ -45,7 +45,7 @@
   }
 
   # TODO: Update valid_years when new CNEFE versions become available (e.g., 2030, 2040)
-  valid_years <- c(2022L)
+  valid_years <- c(2022)
 
   if (!year %in% valid_years) {
     cli::cli_abort(c(

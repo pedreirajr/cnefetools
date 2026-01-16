@@ -6,7 +6,7 @@
 \usage{
 tracts_to_h3(
   code_muni,
-  year = 2022L,
+  year = 2022,
   h3_resolution = 9L,
   vars = c("n_inhab_p", "n_inhab_c"),
   cache = TRUE,

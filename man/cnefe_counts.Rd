@@ -6,7 +6,7 @@
 \usage{
 cnefe_counts(
   code_muni,
-  year = 2022L,
+  year = 2022,
   polygon_type = c("hex", "user"),
   polygon = NULL,
   crs_output = NULL,

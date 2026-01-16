@@ -28,7 +28,7 @@
 #' @export
 compute_lumi <- function(
   code_muni,
-  year = 2022L,
+  year = 2022,
   h3_resolution = 9,
   verbose = TRUE,
   backend = c("duckdb", "r")
