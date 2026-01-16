@@ -7,8 +7,8 @@
 cnefe_counts(
   code_muni,
   year = 2022L,
-  poly_type = c("hex", "user"),
-  poly = NULL,
+  polygon_type = c("hex", "user"),
+  polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
@@ -21,22 +21,22 @@ cnefe_counts(
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
 
-\item{poly_type}{Character. Type of polygon aggregation: \code{"hex"} (default)
-uses an H3 hexagonal grid; \code{"user"} uses polygons provided via the \code{poly}
+\item{polygon_type}{Character. Type of polygon aggregation: \code{"hex"} (default)
+uses an H3 hexagonal grid; \code{"user"} uses polygons provided via the \code{polygon}
 parameter.}
 
-\item{poly}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Required when
-\code{poly_type = "user"}. A warning is issued reporting the percentage of
+\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Required when
+\code{polygon_type = "user"}. A warning is issued reporting the percentage of
 CNEFE points covered by the polygon area. If no CNEFE points fall within
 the polygon, an error is raised.}
 
 \item{crs_output}{The CRS for the output object. Only used when
-\code{poly_type = "user"}. Default is \code{NULL}, which uses the original CRS of
-the \code{poly} argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
+\code{polygon_type = "user"}. Default is \code{NULL}, which uses the original CRS of
+the \code{polygon} argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
 \item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used when
-\code{poly_type = "hex"}.}
+\code{polygon_type = "hex"}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
@@ -46,13 +46,13 @@ extensions. \code{"r"} uses h3jsr and sf in R (slower but no DuckDB dependency).
 \value{
 An \code{\link[sf:sf]{sf::sf}} object containing:
 \itemize{
-\item \code{id_hex} (when \code{poly_type = "hex"}): H3 cell identifier
-\item Original columns from \code{poly} (when \code{poly_type = "user"})
+\item \code{id_hex} (when \code{polygon_type = "hex"}): H3 cell identifier
+\item Original columns from \code{polygon} (when \code{polygon_type = "user"})
 \item \code{addr_type1} ... \code{addr_type8}: counts per address type
 \item \code{geometry}: polygon geometry
 }
 
-When \code{poly_type = "user"}, the output CRS matches the original \code{poly} CRS
+When \code{polygon_type = "user"}, the output CRS matches the original \code{polygon} CRS
 (or \code{crs_output} if specified).
 }
 \description{
