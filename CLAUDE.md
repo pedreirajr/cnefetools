@@ -88,3 +88,4 @@ When working on an issue:
 - **Always read all relevant `.R` files** in `R/` and `tests/testthat/` directories before making changes
 - Understand the existing code structure and patterns before proposing modifications
 - Ensure consistency with the package's coding style and conventions
+- **Do NOT add `Co-Authored-By` lines for Claude in commits or PRs** (no AI co-authorship attribution)
