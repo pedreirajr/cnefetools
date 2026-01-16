@@ -9,30 +9,30 @@
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
-#' @param poly_type Character. Type of polygon aggregation: `"hex"` (default)
-#'   uses an H3 hexagonal grid; `"user"` uses polygons provided via the `poly`
+#' @param polygon_type Character. Type of polygon aggregation: `"hex"` (default)
+#'   uses an H3 hexagonal grid; `"user"` uses polygons provided via the `polygon`
 #'   parameter.
-#' @param poly An [`sf::sf`] object with polygon geometries. Required when
-#'   `poly_type = "user"`. A warning is issued reporting the percentage of
+#' @param polygon An [`sf::sf`] object with polygon geometries. Required when
+#'   `polygon_type = "user"`. A warning is issued reporting the percentage of
 #'   CNEFE points covered by the polygon area. If no CNEFE points fall within
 #'   the polygon, an error is raised.
 #' @param crs_output The CRS for the output object. Only used when
-#'   `poly_type = "user"`. Default is `NULL`, which uses the original CRS of
-#'   the `poly` argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
+#'   `polygon_type = "user"`. Default is `NULL`, which uses the original CRS of
+#'   the `polygon` argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 #'   object accepted by [sf::st_transform()].
 #' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used when
-#'   `poly_type = "hex"`.
+#'   `polygon_type = "hex"`.
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB with H3/spatial
 #'   extensions. `"r"` uses h3jsr and sf in R (slower but no DuckDB dependency).
 #'
 #' @return An [`sf::sf`] object containing:
-#' - `id_hex` (when `poly_type = "hex"`): H3 cell identifier
-#' - Original columns from `poly` (when `poly_type = "user"`)
+#' - `id_hex` (when `polygon_type = "hex"`): H3 cell identifier
+#' - Original columns from `polygon` (when `polygon_type = "user"`)
 #' - `addr_type1` ... `addr_type8`: counts per address type
 #' - `geometry`: polygon geometry
 #'
-#' When `poly_type = "user"`, the output CRS matches the original `poly` CRS
+#' When `polygon_type = "user"`, the output CRS matches the original `polygon` CRS
 #' (or `crs_output` if specified).
 #'
 #' @details
@@ -50,48 +50,48 @@
 cnefe_counts <- function(
   code_muni,
   year = 2022L,
-  poly_type = c("hex", "user"),
-  poly = NULL,
+  polygon_type = c("hex", "user"),
+  polygon = NULL,
 
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
   backend = c("duckdb", "r")
 ) {
-  poly_type <- match.arg(poly_type)
+  polygon_type <- match.arg(polygon_type)
   backend <- match.arg(backend)
   code_muni <- .normalize_code_muni(code_muni)
   year <- .validate_year(year)
 
-  # If poly is provided but poly_type is "hex" (default), switch to "user" with warning
-  if (!is.null(poly) && poly_type == "hex") {
+  # If polygon is provided but polygon_type is "hex" (default), switch to "user" with warning
+  if (!is.null(polygon) && polygon_type == "hex") {
     cli::cli_alert_warning(
-      "{.arg poly} was provided but {.arg poly_type} was not set to {.val user}."
+      "{.arg polygon} was provided but {.arg polygon_type} was not set to {.val user}."
     )
-    cli::cli_alert_info("Setting {.arg poly_type} to {.val user} automatically.")
-    cli::cli_alert_info("To use H3 hexagonal grid instead, set {.code poly = NULL}.")
-    poly_type <- "user"
+    cli::cli_alert_info("Setting {.arg polygon_type} to {.val user} automatically.")
+    cli::cli_alert_info("To use H3 hexagonal grid instead, set {.code polygon = NULL}.")
+    polygon_type <- "user"
   }
 
-  # Validate poly argument
-  if (poly_type == "user") {
-    if (is.null(poly)) {
+  # Validate polygon argument
+  if (polygon_type == "user") {
+    if (is.null(polygon)) {
       cli::cli_abort(c(
-        "{.arg poly} is required when {.arg poly_type} is {.val user}.",
+        "{.arg polygon} is required when {.arg polygon_type} is {.val user}.",
         "i" = "Provide an {.cls sf} object with polygon geometries."
       ))
     }
-    if (!inherits(poly, "sf")) {
+    if (!inherits(polygon, "sf")) {
       cli::cli_abort(c(
-        "{.arg poly} must be an {.cls sf} object.",
-        "i" = "Received: {.cls {class(poly)[1]}}"
+        "{.arg polygon} must be an {.cls sf} object.",
+        "i" = "Received: {.cls {class(polygon)[1]}}"
       ))
     }
-    geom_types <- unique(sf::st_geometry_type(poly))
+    geom_types <- unique(sf::st_geometry_type(polygon))
     valid_types <- c("POLYGON", "MULTIPOLYGON")
     if (!all(geom_types %in% valid_types)) {
       cli::cli_abort(c(
-        "{.arg poly} must contain only POLYGON or MULTIPOLYGON geometries.",
+        "{.arg polygon} must contain only POLYGON or MULTIPOLYGON geometries.",
         "i" = "Found: {.val {as.character(geom_types)}}"
       ))
     }
@@ -133,7 +133,7 @@ g., 4674, 31983) or a CRS object."
   # ---------------------------------------------------------------------------
   # Branch: H3 grid vs user-provided polygon
   # ---------------------------------------------------------------------------
-  if (poly_type == "hex") {
+  if (polygon_type == "hex") {
     out <- .cnefe_counts_h3(
       code_muni = code_muni,
       year = year,
@@ -148,7 +148,7 @@ g., 4674, 31983) or a CRS object."
     out <- .cnefe_counts_user_poly(
       code_muni = code_muni,
       year = year,
-      poly = poly,
+      polygon = polygon,
       crs_output = crs_output,
       backend = backend,
       cnefe_index = cnefe_index,
@@ -389,7 +389,7 @@ g., 4674, 31983) or a CRS object."
 .cnefe_counts_user_poly <- function(
   code_muni,
   year,
-  poly,
+  polygon,
   crs_output,
   backend,
   cnefe_index,
@@ -426,7 +426,7 @@ g., 4674, 31983) or a CRS object."
   t2 <- Sys.time()
 
   # Store original CRS for output transformation
-  original_crs <- sf::st_crs(poly)
+  original_crs <- sf::st_crs(polygon)
 
   # Determine output CRS: use crs_output if provided, otherwise use original
   if (is.null(crs_output)) {
@@ -454,11 +454,11 @@ g., 4674, 31983) or a CRS object."
   }
 
   # Transform polygon to WGS84 internally for spatial join with CNEFE points
-  poly_4326 <- sf::st_transform(poly, 4326)
-  poly_4326 <- sf::st_make_valid(poly_4326)
+  polygon_4326 <- sf::st_transform(polygon, 4326)
+  polygon_4326 <- sf::st_make_valid(polygon_4326)
 
   # Add row ID for joining
-  poly_4326 <- poly_4326 |>
+  polygon_4326 <- polygon_4326 |>
     dplyr::mutate(.poly_row_id = dplyr::row_number())
 
   log_step_time("Step 2/4 (CRS alignment)", t2)
@@ -484,7 +484,7 @@ g., 4674, 31983) or a CRS object."
     join_result <- .cnefe_counts_user_poly_duckdb(
       zip_path = zip_path,
       csv_inside = csv_inside,
-      poly = poly_4326,
+      polygon = polygon_4326,
       verbose = verbose
     )
   } else {
@@ -492,7 +492,7 @@ g., 4674, 31983) or a CRS object."
     join_result <- .cnefe_counts_user_poly_r(
       code_muni = code_muni,
       year = year,
-      poly = poly_4326,
+      polygon = polygon_4326,
       verbose = verbose
     )
   }
@@ -573,7 +573,7 @@ g., 4674, 31983) or a CRS object."
     )
 
   # Join back to polygon (using the 4326 version with row IDs)
-  out <- poly_4326 |>
+  out <- polygon_4326 |>
     dplyr::left_join(counts_wide, by = ".poly_row_id") |>
     dplyr::mutate(
       dplyr::across(
@@ -607,7 +607,7 @@ g., 4674, 31983) or a CRS object."
 .cnefe_counts_user_poly_duckdb <- function(
   zip_path,
   csv_inside,
-  poly,
+  polygon,
   verbose
 ) {
   con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
@@ -659,7 +659,7 @@ g., 4674, 31983) or a CRS object."
   )
 
   # Spatial join - use st_intersects to handle edge cases better
-  joined <- sf::st_join(cnefe_pts, poly[, ".poly_row_id"], join = sf::st_within)
+  joined <- sf::st_join(cnefe_pts, polygon[, ".poly_row_id"], join = sf::st_within)
 
   # Count unique points that matched at least one polygon
   points_matched <- sum(!is.na(joined$.poly_row_id))
@@ -677,7 +677,7 @@ g., 4674, 31983) or a CRS object."
 
   # Add point ID before join to track properly
   cnefe_pts$.pt_id <- seq_len(nrow(cnefe_pts))
-  joined_with_id <- sf::st_join(cnefe_pts, poly[, ".poly_row_id"], join = sf::st_within)
+  joined_with_id <- sf::st_join(cnefe_pts, polygon[, ".poly_row_id"], join = sf::st_within)
 
   unique_pts_matched <- length(unique(joined_with_id$.pt_id[!is.na(joined_with_id$.poly_row_id)]))
   points_outside <- total_points - unique_pts_matched
@@ -707,7 +707,7 @@ g., 4674, 31983) or a CRS object."
 .cnefe_counts_user_poly_r <- function(
   code_muni,
   year,
-  poly,
+  polygon,
   verbose
 ) {
   # Read CNEFE data via Arrow
@@ -756,7 +756,7 @@ g., 4674, 31983) or a CRS object."
   cnefe_pts$.pt_id <- seq_len(nrow(cnefe_pts))
 
   # Spatial join
-  joined <- sf::st_join(cnefe_pts, poly[, ".poly_row_id"], join = sf::st_within)
+  joined <- sf::st_join(cnefe_pts, polygon[, ".poly_row_id"], join = sf::st_within)
 
   # Count unique points that matched at least one polygon
   unique_pts_matched <- length(unique(joined$.pt_id[!is.na(joined$.poly_row_id)]))

@@ -1,11 +1,11 @@
-testthat::test_that("cnefe_counts works offline using ZIP fixture (backend r, poly_type hex)", {
+testthat::test_that("cnefe_counts works offline using ZIP fixture (backend r, polygon_type hex)", {
   testthat::skip_if_not_installed("arrow")
   testthat::skip_if_not_installed("dplyr")
   testthat::skip_if_not_installed("h3jsr")
   testthat::skip_if_not_installed("sf")
   testthat::skip_if_not_installed("tidyr")
 
-  code_muni <- 2927408L
+  code_muni <- 2929057L
   h3_res <- 9L
 
   tab <- testthat::with_mocked_bindings(
@@ -73,7 +73,7 @@ testthat::test_that("cnefe_counts works offline using ZIP fixture (backend r, po
   out <- testthat::with_mocked_bindings(
     cnefetools::cnefe_counts(
       code_muni,
-      poly_type = "hex",
+      polygon_type = "hex",
       h3_resolution = h3_res,
       backend = "r",
       verbose = FALSE
@@ -101,13 +101,13 @@ testthat::test_that("cnefe_counts works offline using ZIP fixture (backend r, po
 })
 
 
-testthat::test_that("cnefe_counts works with user polygon (backend r, poly_type user)", {
+testthat::test_that("cnefe_counts works with user polygon (backend r, polygon_type user)", {
   testthat::skip_if_not_installed("arrow")
   testthat::skip_if_not_installed("dplyr")
   testthat::skip_if_not_installed("sf")
   testthat::skip_if_not_installed("tidyr")
 
-  code_muni <- 2927408L
+  code_muni <- 2929057L
 
   # Read CNEFE data to create a test polygon
   tab <- testthat::with_mocked_bindings(
@@ -138,7 +138,7 @@ testthat::test_that("cnefe_counts works with user polygon (backend r, poly_type 
   bbox <- sf::st_bbox(
     sf::st_as_sf(df, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
   )
-  test_poly <- sf::st_as_sfc(bbox) |>
+  test_polygon <- sf::st_as_sfc(bbox) |>
     sf::st_sf(id = 1L, geometry = _)
 
   # Run cnefe_counts with user polygon
@@ -146,8 +146,8 @@ testthat::test_that("cnefe_counts works with user polygon (backend r, poly_type 
     suppressWarnings(
       cnefetools::cnefe_counts(
         code_muni,
-        poly_type = "user",
-        poly = test_poly,
+        polygon_type = "user",
+        polygon = test_polygon,
         backend = "r",
         verbose = FALSE
       )
@@ -183,30 +183,30 @@ testthat::test_that("cnefe_counts works with user polygon (backend r, poly_type 
 })
 
 
-testthat::test_that("cnefe_counts validates poly argument", {
+testthat::test_that("cnefe_counts validates polygon argument", {
   testthat::skip_if_not_installed("sf")
 
-  code_muni <- 2927408L
+  code_muni <- 2929057L
 
-  # Error when poly_type = "user" but poly is NULL
+  # Error when polygon_type = "user" but polygon is NULL
   testthat::expect_error(
     cnefetools::cnefe_counts(
       code_muni,
-      poly_type = "user",
-      poly = NULL,
+      polygon_type = "user",
+      polygon = NULL,
       verbose = FALSE
     ),
-    "poly.*required"
+    "polygon.*required"
   )
 
-  # Error when poly is not an sf object
+  # Error when polygon is not an sf object
   testthat::expect_error(
     cnefetools::cnefe_counts(
       code_muni,
-      poly_type = "user",
-      poly = data.frame(x = 1),
+      polygon_type = "user",
+      polygon = data.frame(x = 1),
       verbose = FALSE
     ),
-    "poly.*sf"
+    "polygon.*sf"
   )
 })
