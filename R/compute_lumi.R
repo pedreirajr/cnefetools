@@ -3,7 +3,7 @@
 #' @description
 #' `compute_lumi()` reads CNEFE records for a given municipality,
 #' assigns each address point to an H3 cell, and computes land-use mix
-#' indices per hexagon (EI, HHI, adapted HHI, and BGBI), following the
+#' indices per hexagon (EI, HHI, ICE, adapted HHI, and BGBI), following the
 #' methodology proposed in Pedreira Jr. et al. (2025).
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
@@ -17,13 +17,17 @@
 #' @return An [`sf::sf`] object with CRS 4326 containing:
 #'   - `id_hex`: H3 cell identifier
 #'   - `p_res`: share of residential addresses in the hexagon
-#'   - `ei`,`bal`, `hhi`, `hhi_adp`, `bgbi`: land-use mix indicators
+#'   - `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`: land-use mix indicators
 #'   - `geometry`: hexagon geometry
 #'
 #' @references
 #' Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 #' Measuring land use mix with address-level census data (2025).
 #' *engrXiv*. https://engrxiv.org/preprint/view/5975
+#'
+#' Booth, A.; Crouter, A. C. (Eds.). (2001).
+#' Does It Take a Village? Community Effects on Children, Adolescents, and
+#' Families. Lawrence Erlbaum Associates.
 #'
 #' @export
 compute_lumi <- function(
@@ -369,6 +373,13 @@ compute_lumi <- function(
         NA_real_
       ),
 
+      # ICE (Index of Concentration at Extremes)
+      ice = dplyr::if_else(
+        !is.na(.data$p_res),
+        .data$p_res - .data$q_rest,
+        NA_real_
+      ),
+
       hhi_adp = dplyr::if_else(
         !is.na(.data$p_res) & !is.na(.data$hhi_sc),
         sign(.data$p_res - .data$q_rest) * .data$hhi_sc,
@@ -387,6 +398,7 @@ compute_lumi <- function(
       ei,
       hhi,
       bal,
+      ice,
       hhi_adp,
       bgbi,
       geometry
