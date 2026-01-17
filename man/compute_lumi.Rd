@@ -30,18 +30,22 @@ An \code{\link[sf:sf]{sf::sf}} object with CRS 4326 containing:
 \itemize{
 \item \code{id_hex}: H3 cell identifier
 \item \code{p_res}: share of residential addresses in the hexagon
-\item \code{ei},\code{bal}, \code{hhi}, \code{hhi_adp}, \code{bgbi}: land-use mix indicators
+\item \code{ei}, \code{hhi}, \code{bal}, \code{ice}, \code{hhi_adp}, \code{bgbi}: land-use mix indicators
 \item \code{geometry}: hexagon geometry
 }
 }
 \description{
 \code{compute_lumi()} reads CNEFE records for a given municipality,
 assigns each address point to an H3 cell, and computes land-use mix
-indices per hexagon (EI, HHI, adapted HHI, and BGBI), following the
+indices per hexagon (EI, HHI, ICE, adapted HHI, and BGBI), following the
 methodology proposed in Pedreira Jr. et al. (2025).
 }
 \references{
 Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 Measuring land use mix with address-level census data (2025).
 \emph{engrXiv}. https://engrxiv.org/preprint/view/5975
+
+Booth, A.; Crouter, A. C. (Eds.). (2001).
+Does It Take a Village? Community Effects on Children, Adolescents, and
+Families. Lawrence Erlbaum Associates.
 }
