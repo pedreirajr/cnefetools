@@ -223,7 +223,7 @@
   last_err <- NULL
 
   for (t in retry_timeouts) {
-    tmp <- fs::path_temp(ext = ".zip")
+    tmp <- tempfile(fileext = ".zip")
 
     if (isTRUE(verbose)) {
       message(
@@ -514,7 +514,7 @@
   last_err <- NULL
 
   for (t in retry_timeouts) {
-    tmp <- fs::path_temp()
+    tmp <- tempfile(fileext = ".parquet")
 
     if (isTRUE(verbose)) {
       message(
@@ -697,7 +697,7 @@
 ) {
   code_muni <- .normalize_code_muni(code_muni)
 
-  # Ensure zipfs is available
+  # Ensure zipfs is available (community extension)
   ok_zipfs <- tryCatch(
     {
       DBI::dbExecute(con, "LOAD zipfs;")
@@ -707,7 +707,7 @@
   )
 
   if (!ok_zipfs) {
-    DBI::dbExecute(con, "INSTALL zipfs;")
+    DBI::dbExecute(con, "INSTALL zipfs FROM community;")
     DBI::dbExecute(con, "LOAD zipfs;")
   }
 
