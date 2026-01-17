@@ -116,19 +116,19 @@ g., 4674, 31983) or a CRS object."
   # Get the appropriate index for the requested year
   cnefe_index <- .get_cnefe_index(year)
 
-  timings <- list()
+  # timings <- list()
 
-  log_step_time <- function(step_name, t_start) {
-    dt <- difftime(Sys.time(), t_start, units = "secs")
-    timings[[step_name]] <<- dt
-    if (verbose) {
-      message(sprintf("%s completed in %.2f s.", step_name, as.numeric(dt)))
-    }
-  }
-
-  if (verbose) {
-    message(sprintf("Processing code %s...", code_muni))
-  }
+  # log_step_time <- function(step_name, t_start) {
+  #   dt <- difftime(Sys.time(), t_start, units = "secs")
+  #   timings[[step_name]] <<- dt
+  #   if (verbose) {
+  #     message(sprintf("%s completed in %.2f s.", step_name, as.numeric(dt)))
+  #   }
+  # }
+  #
+  # if (verbose) {
+  #   message(sprintf("Processing code %s...", code_muni))
+  # }
 
   # ---------------------------------------------------------------------------
   # Branch: H3 grid vs user-provided polygon
@@ -158,16 +158,16 @@ g., 4674, 31983) or a CRS object."
     )
   }
 
-  if (verbose) {
-    message("Timing summary (seconds):")
-    total_secs <- 0
-    for (nm in names(timings)) {
-      secs <- as.numeric(timings[[nm]], units = "secs")
-      total_secs <- total_secs + secs
-      message(sprintf(" - %s: %.2f", nm, secs))
-    }
-    message(sprintf("Total time: %.2f s.", total_secs))
-  }
+  # if (verbose) {
+  #   message("Timing summary (seconds):")
+  #   total_secs <- 0
+  #   for (nm in names(timings)) {
+  #     secs <- as.numeric(timings[[nm]], units = "secs")
+  #     total_secs <- total_secs + secs
+  #     message(sprintf(" - %s: %.2f", nm, secs))
+  #   }
+  #   message(sprintf("Total time: %.2f s.", total_secs))
+  # }
 
   out
 }
@@ -190,10 +190,12 @@ g., 4674, 31983) or a CRS object."
   # Step 1/3: Ensure ZIP exists in cache and find CSV inside
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 1/3: ensuring ZIP and inspecting archive...")
+    cli::cli_progress_step("Step 1/3: ensuring ZIP and inspecting archive...",
+                           msg_done = "Step 1/3 (ZIP ready)")
+
   }
 
-  t1 <- Sys.time()
+  # t1 <- Sys.time()
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
@@ -206,30 +208,40 @@ g., 4674, 31983) or a CRS object."
 
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
-  log_step_time("Step 1/3 (ZIP ready)", t1)
+  if (verbose) {
+  cli::cli_progress_done("Step 1/3: Ensure ZIP exists in cache and find CSV inside")
+  }
 
   # ---------------------------------------------------------------------------
   # Step 2/3: Build full H3 grid over municipality boundary
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 2/3: building full H3 grid over municipality boundary...")
+
+    cli::cli_progress_step("Step 2/3: building full H3 grid over municipality boundary...",
+                           msg_done = "Step 2/3 (H3 grid)")
   }
-  t2 <- Sys.time()
+
+  # t2 <- Sys.time()
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
     code_muni = code_muni
   )
 
-  log_step_time("Step 2/3 (H3 grid)", t2)
+  if (verbose) {
+    cli::cli_progress_done("Step 2/3: building full H3 grid over municipality boundary...")
+  }
+
 
   # ---------------------------------------------------------------------------
   # Step 3/3: Count address species per hexagon
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 3/3: counting address species per hexagon...")
+  cli::cli_progress_step("Step 3/3: counting address species per hexagon...",
+                         msg_done = "Step 3/3 (count computation)")
+
   }
-  t3 <- Sys.time()
+  # t3 <- Sys.time()
 
   counts_long <- NULL
 
@@ -377,7 +389,9 @@ g., 4674, 31983) or a CRS object."
       )
     )
 
-  log_step_time("Step 3/3 (count computation)", t3)
+  if (verbose) {
+    cli::cli_progress_done("Step 3/3: counting address species per hexagon...")
+  }
 
   out
 }
@@ -400,10 +414,10 @@ g., 4674, 31983) or a CRS object."
   # ---------------------------------------------------------------------------
   # Step 1/4: Ensure ZIP exists in cache
   # ---------------------------------------------------------------------------
-  if (verbose) {
-    message("Step 1/4: ensuring ZIP and inspecting archive...")
-  }
-  t1 <- Sys.time()
+  # if (verbose) {
+  #   message("Step 1/4: ensuring ZIP and inspecting archive...")
+  # }
+  # t1 <- Sys.time()
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
@@ -415,15 +429,15 @@ g., 4674, 31983) or a CRS object."
   zip_path <- zip_info$zip_path
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
-  log_step_time("Step 1/4 (ZIP ready)", t1)
+  # log_step_time("Step 1/4 (ZIP ready)", t1)
 
   # ---------------------------------------------------------------------------
   # Step 2/4: Store original CRS and prepare polygon for spatial join
   # ---------------------------------------------------------------------------
-  if (verbose) {
-    message("Step 2/4: preparing polygon for spatial join...")
-  }
-  t2 <- Sys.time()
+  # if (verbose) {
+  #   message("Step 2/4: preparing polygon for spatial join...")
+  # }
+  # t2 <- Sys.time()
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -461,15 +475,15 @@ g., 4674, 31983) or a CRS object."
   polygon_4326 <- polygon_4326 |>
     dplyr::mutate(.poly_row_id = dplyr::row_number())
 
-  log_step_time("Step 2/4 (CRS alignment)", t2)
+  # log_step_time("Step 2/4 (CRS alignment)", t2)
 
   # ---------------------------------------------------------------------------
   # Step 3/4: Read CNEFE points and perform spatial join
   # ---------------------------------------------------------------------------
-  if (verbose) {
-    message("Step 3/4: reading CNEFE points and performing spatial join...")
-  }
-  t3 <- Sys.time()
+  # if (verbose) {
+  #   message("Step 3/4: reading CNEFE points and performing spatial join...")
+  # }
+  # t3 <- Sys.time()
 
   if (identical(backend, "duckdb")) {
     rlang::check_installed(
@@ -497,15 +511,15 @@ g., 4674, 31983) or a CRS object."
     )
   }
 
-  log_step_time("Step 3/4 (spatial join)", t3)
+  # log_step_time("Step 3/4 (spatial join)", t3)
 
   # ---------------------------------------------------------------------------
   # Step 4/4: Report coverage, pivot to wide, and join back to polygon
   # ---------------------------------------------------------------------------
-  if (verbose) {
-    message("Step 4/4: aggregating counts per polygon...")
-  }
-  t4 <- Sys.time()
+  # if (verbose) {
+  #   message("Step 4/4: aggregating counts per polygon...")
+  # }
+  # t4 <- Sys.time()
 
   # Extract coverage statistics
   total_points <- join_result$total_points
@@ -595,7 +609,7 @@ g., 4674, 31983) or a CRS object."
   # Transform to output CRS
   out <- sf::st_transform(out, output_crs)
 
-  log_step_time("Step 4/4 (aggregation)", t4)
+  # log_step_time("Step 4/4 (aggregation)", t4)
 
   out
 }
@@ -803,15 +817,15 @@ g., 4674, 31983) or a CRS object."
 
   if (!is.null(info) && nrow(info) == 1) {
     if (isTRUE(info$loaded[[1]])) {
-      if (verbose) {
-        message("DuckDB: extension '", ext, "' already loaded.")
-      }
+      # if (verbose) {
+      #   message("DuckDB: extension '", ext, "' already loaded.")
+      # }
       return(invisible(TRUE))
     }
     if (isTRUE(info$installed[[1]])) {
-      if (verbose) {
-        message("DuckDB: loading extension '", ext, "'...")
-      }
+      # if (verbose) {
+      #   message("DuckDB: loading extension '", ext, "'...")
+      # }
       DBI::dbExecute(con, sprintf("LOAD %s;", ext))
       return(invisible(TRUE))
     }
@@ -819,9 +833,9 @@ g., 4674, 31983) or a CRS object."
 
   ok_load <- tryCatch(
     {
-      if (verbose) {
-        message("DuckDB: trying to LOAD extension '", ext, "'...")
-      }
+      # if (verbose) {
+      #   message("DuckDB: trying to LOAD extension '", ext, "'...")
+      # }
       DBI::dbExecute(con, sprintf("LOAD %s;", ext))
       TRUE
     },
@@ -832,13 +846,13 @@ g., 4674, 31983) or a CRS object."
     return(invisible(TRUE))
   }
 
-  if (verbose) {
-    message("DuckDB: installing extension '", ext, "' from ", repo, "...")
-  }
+  # if (verbose) {
+  #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+  # }
   DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-  if (verbose) {
-    message("DuckDB: loading extension '", ext, "'...")
-  }
+  # if (verbose) {
+  #   message("DuckDB: loading extension '", ext, "'...")
+  # }
   DBI::dbExecute(con, sprintf("LOAD %s;", ext))
 
   invisible(TRUE)
