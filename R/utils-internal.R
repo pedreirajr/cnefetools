@@ -180,7 +180,7 @@
       retry_timeouts = retry_timeouts
     )
   } else if (verbose) {
-    message("Using cached file: ", zip_path)
+    cli::cli_alert_info("Using cached file: {zip_path}")
   }
 
   list(
