@@ -61,7 +61,7 @@ tracts_to_h3 <- function(
   vars <- unique(as.character(vars))
 
   if (length(vars) == 0) {
-    stop("`vars` must contain at least one variable name.")
+    cli::cli_abort("`vars` must contain at least one variable name.")
   }
 
   allowed_vars <- c(
@@ -86,18 +86,12 @@ tracts_to_h3 <- function(
 
   bad_vars <- setdiff(vars, allowed_vars)
   if (length(bad_vars) > 0) {
-    stop(
-      "Unknown `vars`: ",
-      paste(bad_vars, collapse = ", "),
-      ". See `?tracts_to_h3` for available variables."
+    cli::cli_abort(
+      "Unknown `vars`: {bad_vars}. See `?tracts_to_h3` for available variables."
     )
   }
 
   # helpers -------------------------------------------------------------------
-  .t0 <- function() Sys.time()
-  .td <- function(t_start, t_end) {
-    as.numeric(difftime(t_end, t_start, units = "secs"))
-  }
 
   .duckdb_quiet_execute <- function(con, sql) {
     invisible(utils::capture.output(
@@ -125,17 +119,20 @@ tracts_to_h3 <- function(
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
 
   # timing container ----------------------------------------------------------
-  step_times <- numeric(0)
+  # step_times <- numeric(0)
 
   if (verbose) {
-    message(sprintf("Processing code %s...", code_muni))
+    cli::cli_alert_info("Processing code {code_muni}")
   }
+
 
   # Step 1/6 ------------------------------------------------------------------
+
   if (verbose) {
-    message("Step 1/6: connecting to DuckDB and loading extensions...")
+    cli::cli_progress_step("Step 1/6: connecting to DuckDB and loading extensions...",
+                           msg_done = "Step 1/6 (DuckDB ready)")
+
   }
-  t1 <- .t0()
 
   con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
@@ -146,20 +143,17 @@ tracts_to_h3 <- function(
   .duckdb_load_ext(con, "zipfs")
   .duckdb_load_ext(con, "h3")
 
-  t1e <- .t0()
-  step_times["DuckDB ready"] <- .td(t1, t1e)
   if (verbose) {
-    message(sprintf(
-      "Step 1/6 (DuckDB ready) completed in %.2f s.",
-      step_times["DuckDB ready"]
-    ))
+    cli::cli_progress_done("Step 1/6: connecting to DuckDB and loading extensions...")
   }
 
   # Step 2/6 ------------------------------------------------------------------
+
   if (verbose) {
-    message("Step 2/6: preparing census tracts in DuckDB...")
+    cli::cli_progress_step("Step 2/6: preparing census tracts in DuckDB...",
+                           msg_done = "Step 2/6 (tracts ready)")
+
   }
-  t2 <- .t0()
 
   .sc_create_views_in_duckdb(
     con,
@@ -177,20 +171,17 @@ tracts_to_h3 <- function(
     "CREATE INDEX IF NOT EXISTS sc_muni_geom_idx ON sc_muni_tbl USING RTREE (geom);"
   )
 
-  t2e <- .t0()
-  step_times["tracts ready"] <- .td(t2, t2e)
   if (verbose) {
-    message(sprintf(
-      "Step 2/6 (tracts ready) completed in %.2f s.",
-      step_times["tracts ready"]
-    ))
+    cli::cli_progress_done("Step 2/6: preparing census tracts in DuckDB...")
   }
 
   # Step 3/6 ------------------------------------------------------------------
+
   if (verbose) {
-    message("Step 3/6: preparing CNEFE points in DuckDB...")
+    cli::cli_progress_step("Step 3/6: preparing CNEFE points in DuckDB...",
+                           msg_done = "Step 3/6 (CNEFE points ready)")
+
   }
-  t3 <- .t0()
 
   .cnefe_create_points_view_in_duckdb(
     con,
@@ -218,20 +209,17 @@ tracts_to_h3 <- function(
     "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
   )$n[1]
 
-  t3e <- .t0()
-  step_times["CNEFE points ready"] <- .td(t3, t3e)
   if (verbose) {
-    message(sprintf(
-      "Step 3/6 (CNEFE points ready) completed in %.2f s.",
-      step_times["CNEFE points ready"]
-    ))
+    cli::cli_progress_done("Step 3/6: preparing CNEFE points in DuckDB...")
   }
 
   # Step 4/6 ------------------------------------------------------------------
+
   if (verbose) {
-    message("Step 4/6: spatial join (points to tracts) and allocation prep...")
+    cli::cli_progress_step("Step 4/6: spatial join (points to tracts) and allocation prep...",
+                           msg_done = "Step 4/6 (join and allocation prep)")
+
   }
-  t4 <- .t0()
 
   # Matched points only (spatial join without LEFT JOIN)
   # IMPORTANT: bring ONLY code_tract from tracts (fixes the `s.` parser bug
@@ -387,20 +375,17 @@ tracts_to_h3 <- function(
     )
   )
 
-  t4e <- .t0()
-  step_times["join and allocation prep"] <- .td(t4, t4e)
   if (verbose) {
-    message(sprintf(
-      "Step 4/6 (join and allocation prep) completed in %.2f s.",
-      step_times["join and allocation prep"]
-    ))
+    cli::cli_progress_done("Step 4/6: spatial join (points to tracts) and allocation prep...")
   }
 
   # Step 5/6 ------------------------------------------------------------------
+
   if (verbose) {
-    message("Step 5/6: aggregating allocated values to H3 cells...")
+    cli::cli_progress_step("Step 5/6: aggregating allocated values to H3 cells...",
+                           msg_done = "Step 5/6 (hex aggregation)")
+
   }
-  t5 <- .t0()
 
   agg_exprs <- character(0)
   for (v in vars) {
@@ -427,20 +412,17 @@ tracts_to_h3 <- function(
     )
   )
 
-  t5e <- .t0()
-  step_times["hex aggregation"] <- .td(t5, t5e)
   if (verbose) {
-    message(sprintf(
-      "Step 5/6 (hex aggregation) completed in %.2f s.",
-      step_times["hex aggregation"]
-    ))
+    cli::cli_progress_done("Step 5/6: aggregating allocated values to H3 cells...")
   }
 
   # Step 6/6 ------------------------------------------------------------------
+
   if (verbose) {
-    message("Step 6/6: building H3 grid and joining results...")
+    cli::cli_progress_step("Step 6/6: building H3 grid and joining results...",
+                           msg_done = "Step 6/6 (sf output)")
+
   }
-  t6 <- .t0()
 
   hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
@@ -454,25 +436,8 @@ tracts_to_h3 <- function(
 
   sf::st_crs(out) <- 4326
 
-  t6e <- .t0()
-  step_times["sf output"] <- .td(t6, t6e)
   if (verbose) {
-    message(sprintf(
-      "Step 6/6 (sf output) completed in %.2f s.",
-      step_times["sf output"]
-    ))
-  }
-
-  # attributes ----------------------------------------------------------------
-  attr(out, "timing") <- as.list(step_times)
-
-  if (verbose) {
-    total_time <- sum(step_times)
-    message("Timing summary (seconds):")
-    for (nm in names(step_times)) {
-      message(sprintf(" - %s: %.2f", nm, step_times[[nm]]))
-    }
-    message(sprintf("Total time: %.2f s.", total_time))
+    cli::cli_progress_done("Step 6/6: building H3 grid and joining results...")
   }
 
   # diagnostics and warning ----------------------------------------------------
