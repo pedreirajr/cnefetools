@@ -248,9 +248,9 @@
         # ZIP integrity check
         utils::unzip(tmp, list = TRUE)
 
-        if (fs::file_exists(destfile)) {
-          fs::file_delete(destfile)
-        }
+        # if (fs::file_exists(destfile)) {
+        #   fs::file_delete(destfile)
+        # }
 
         fs::file_move(tmp, destfile)
 
@@ -514,7 +514,7 @@
   last_err <- NULL
 
   for (t in retry_timeouts) {
-    tmp <- fs::path_temp()
+    tmp <- tempfile(fileext = ".parquet")
 
     if (isTRUE(verbose)) {
       message(
@@ -546,7 +546,11 @@
           fs::file_delete(destfile)
         }
 
-        fs::file_move(tmp, destfile)
+        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
+
+        if (!isTRUE(ok_copy)) {
+          rlang::abort("Failed to copy downloaded file to destination.")
+        }
 
         list(ok = TRUE, err = NULL)
       },
