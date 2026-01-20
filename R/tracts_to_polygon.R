@@ -839,7 +839,7 @@ cnefe_index <- .get_cnefe_index(year)
   if (length(warn_lines) > 0) {
     cli::cli_h2("Dasymetric interpolation diagnostics")
     cli::cli_bullets(
-      setNames(warn_lines, rep("!", length(warn_lines)))
+      stats::setNames(warn_lines, rep("!", length(warn_lines)))
     )
     # warning(
     #   paste(
