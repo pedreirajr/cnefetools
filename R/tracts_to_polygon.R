@@ -176,7 +176,6 @@ cnefe_index <- .get_cnefe_index(year)
                            msg_done = "Step 1/6 (CRS alignment)")
 
   }
-  # t1 <- .t0()
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
