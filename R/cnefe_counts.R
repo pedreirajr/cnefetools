@@ -126,9 +126,7 @@ g., 4674, 31983) or a CRS object."
       h3_resolution = h3_resolution,
       backend = backend,
       cnefe_index = cnefe_index,
-      verbose = verbose,
-      timings = timings,
-      log_step_time = log_step_time
+      verbose = verbose
     )
   } else {
     out <- .cnefe_counts_user_poly(
@@ -138,9 +136,7 @@ g., 4674, 31983) or a CRS object."
       crs_output = crs_output,
       backend = backend,
       cnefe_index = cnefe_index,
-      verbose = verbose,
-      timings = timings,
-      log_step_time = log_step_time
+      verbose = verbose
     )
   }
 
@@ -157,9 +153,7 @@ g., 4674, 31983) or a CRS object."
   h3_resolution,
   backend,
   cnefe_index,
-  verbose,
-  timings,
-  log_step_time
+  verbose
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure ZIP exists in cache and find CSV inside
@@ -379,9 +373,7 @@ g., 4674, 31983) or a CRS object."
   crs_output,
   backend,
   cnefe_index,
-  verbose,
-  timings,
-  log_step_time
+  verbose
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/4: Ensure ZIP exists in cache
@@ -498,10 +490,7 @@ g., 4674, 31983) or a CRS object."
   # ---------------------------------------------------------------------------
   # Step 4/4: Report coverage, pivot to wide, and join back to polygon
   # ---------------------------------------------------------------------------
-  # if (verbose) {
-  #   message("Step 4/4: aggregating counts per polygon...")
-  # }
-  # t4 <- Sys.time()
+
   if (verbose) {
     cli::cli_progress_step("Step 4/4: aggregating counts per polygon...",
                            msg_done = "Step 4/4 (aggregation)")
