@@ -55,16 +55,7 @@ compute_lumi <- function(
   }
 
   if (verbose) {
-    message(sprintf("Processing %s (code %s)...", city_name, code_muni))
-  }
-
-  timings <- list()
-  log_step_time <- function(step_name, t_start) {
-    dt <- difftime(Sys.time(), t_start, units = "secs")
-    timings[[step_name]] <<- dt
-    if (verbose) {
-      message(sprintf("%s completed in %.2f s.", step_name, as.numeric(dt)))
-    }
+    cli::cli_alert_info("Processing municipality code {.val {code_muni}}...")
   }
 
   # We will return sf hexagons
@@ -77,9 +68,9 @@ compute_lumi <- function(
   # Step 1/3: Ensure ZIP and find CSV inside
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 1/3: ensuring ZIP and inspecting archive...")
+    cli::cli_progress_step("Step 1/3: ensuring ZIP and inspecting archive...",
+                           msg_done = "Step 1/3 (ZIP ready)")
   }
-  t1 <- Sys.time()
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
@@ -92,15 +83,17 @@ compute_lumi <- function(
 
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
-  log_step_time("Step 1/3 (ZIP ready)", t1)
+  if (verbose) {
+    cli::cli_progress_done("Step 1/3: ensuring ZIP and inspecting archive...")
+  }
 
   # ---------------------------------------------------------------------------
   # Step 2/3: Aggregate counts per hex (n_res, n_tot)
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 2/3: aggregating CNEFE counts per H3 cell...")
+    cli::cli_progress_step("Step 2/3: aggregating CNEFE counts per H3 cell...",
+                           msg_done = "Step 2/3 (counts per hex)")
   }
-  t2 <- Sys.time()
 
   # local helper (same spirit as in hex_cnefe_counts)
   duckdb_ensure_extension <- function(
@@ -122,15 +115,15 @@ compute_lumi <- function(
 
     if (!is.null(info) && nrow(info) == 1) {
       if (isTRUE(info$loaded[[1]])) {
-        if (verbose) {
-          message("DuckDB: extension '", ext, "' already loaded.")
-        }
+        # if (verbose) {
+        #   message("DuckDB: extension '", ext, "' already loaded.")
+        # }
         return(invisible(TRUE))
       }
       if (isTRUE(info$installed[[1]])) {
-        if (verbose) {
-          message("DuckDB: loading extension '", ext, "'...")
-        }
+        # if (verbose) {
+          # message("DuckDB: loading extension '", ext, "'...")
+        # }
         DBI::dbExecute(con, sprintf("LOAD %s;", ext))
         return(invisible(TRUE))
       }
@@ -138,9 +131,9 @@ compute_lumi <- function(
 
     ok_load <- tryCatch(
       {
-        if (verbose) {
-          message("DuckDB: trying to LOAD extension '", ext, "'...")
-        }
+        # if (verbose) {
+        #   message("DuckDB: trying to LOAD extension '", ext, "'...")
+        # }
         DBI::dbExecute(con, sprintf("LOAD %s;", ext))
         TRUE
       },
@@ -151,13 +144,13 @@ compute_lumi <- function(
       return(invisible(TRUE))
     }
 
-    if (verbose) {
-      message("DuckDB: installing extension '", ext, "' from ", repo, "...")
-    }
+    # if (verbose) {
+    #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+    # }
     DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-    if (verbose) {
-      message("DuckDB: loading extension '", ext, "'...")
-    }
+    # if (verbose) {
+    #   message("DuckDB: loading extension '", ext, "'...")
+    # }
     DBI::dbExecute(con, sprintf("LOAD %s;", ext))
 
     invisible(TRUE)
@@ -283,7 +276,9 @@ compute_lumi <- function(
       )
   }
 
-  log_step_time("Step 2/3 (counts per hex)", t2)
+  if (verbose) {
+    cli::cli_progress_done("Step 2/3: aggregating CNEFE counts per H3 cell...")
+  }
 
   if (is.null(counts_hex) || nrow(counts_hex) == 0L) {
     if (verbose) {
@@ -296,9 +291,9 @@ compute_lumi <- function(
   # Step 3/3: Build H3 grid from ids + compute indices
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 3/3: building grid and computing LUMI indices...")
+    cli::cli_progress_step("Step 3/3: building grid and computing LUMI indices...",
+                           msg_done = "Step 3/3 (indices)")
   }
-  t3 <- Sys.time()
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
@@ -392,17 +387,8 @@ compute_lumi <- function(
       geometry
     )
 
-  log_step_time("Step 3/3 (indices)", t3)
-
   if (verbose) {
-    message("Timing summary (seconds):")
-    total_secs <- 0
-    for (nm in names(timings)) {
-      secs <- as.numeric(timings[[nm]], units = "secs")
-      total_secs <- total_secs + secs
-      message(sprintf(" - %s: %.2f", nm, secs))
-    }
-    message(sprintf("Total time: %.2f s.", total_secs))
+    cli::cli_progress_done("Step 3/3: building grid and computing LUMI indices...")
   }
 
   out
