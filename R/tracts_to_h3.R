@@ -95,24 +95,33 @@ tracts_to_h3 <- function(
 
   .duckdb_quiet_execute <- function(con, sql) {
     invisible(utils::capture.output(
-      suppressMessages(DBI::dbExecute(con, sql)),
+      utils::capture.output(
+        DBI::dbExecute(con, sql),
+        type = "message"
+      ),
       type = "output"
     ))
   }
 
   .duckdb_load_ext <- function(con, ext) {
-    ok <- tryCatch(
-      {
-        .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-        TRUE
-      },
-      error = function(e) FALSE
+    utils::capture.output(
+      utils::capture.output({
+        ok <- tryCatch(
+          {
+            .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
+            TRUE
+          },
+          error = function(e) FALSE
+        )
+
+        if (!ok) {
+          .duckdb_quiet_execute(con, sprintf("INSTALL %s;", ext))
+          .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
+        }
+      }, type = "message"),
+      type = "output"
     )
 
-    if (!ok) {
-      .duckdb_quiet_execute(con, sprintf("INSTALL %s;", ext))
-      .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-    }
     invisible(TRUE)
   }
 
@@ -134,14 +143,24 @@ tracts_to_h3 <- function(
 
   }
 
-  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
+  con <- NULL
+  utils::capture.output(
+    utils::capture.output({
+      con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
+                            config = list(
+                              'enable_progress_bar' = FALSE,
+                              'enable_print_progress' = FALSE,
+                              'print_progress_bar' = FALSE
+                            ))
+
+      duckspatial::ddbs_load(con)
+      .duckdb_load_ext(con, "zipfs")
+      .duckdb_load_ext(con, "h3")
+    }, type = "message"),
+    type = "output"
+  )
+
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
-
-  duckspatial::ddbs_load(con)
-
-  # always keep DuckDB extension load messages silent
-  .duckdb_load_ext(con, "zipfs")
-  .duckdb_load_ext(con, "h3")
 
   if (verbose) {
     cli::cli_progress_done("Step 1/6: connecting to DuckDB and loading extensions...")
@@ -183,31 +202,35 @@ tracts_to_h3 <- function(
 
   }
 
-  .cnefe_create_points_view_in_duckdb(
-    con,
-    code_muni = code_muni,
-    index = cnefe_index,
-    cache = cache,
-    verbose = verbose
-  )
+  invisible(utils::capture.output({
+    invisible(utils::capture.output({
+      .cnefe_create_points_view_in_duckdb(
+        con,
+        code_muni = code_muni,
+        index = cnefe_index,
+        cache = cache,
+        verbose = verbose
+      )
 
-  .duckdb_quiet_execute(
-    con,
+      .duckdb_quiet_execute(
+        con,
+        "
+      CREATE OR REPLACE TABLE cnefe_pts_tbl AS
+      SELECT *
+      FROM cnefe_pts
+      WHERE COD_ESPECIE IN (1, 2)
+        AND lon IS NOT NULL
+        AND lat IS NOT NULL
+        AND geom IS NOT NULL;
     "
-    CREATE OR REPLACE TABLE cnefe_pts_tbl AS
-    SELECT *
-    FROM cnefe_pts
-    WHERE COD_ESPECIE IN (1, 2)
-      AND lon IS NOT NULL
-      AND lat IS NOT NULL
-      AND geom IS NOT NULL;
-  "
-  )
+      )
 
-  total_pts <- DBI::dbGetQuery(
-    con,
-    "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
-  )$n[1]
+      total_pts <- DBI::dbGetQuery(
+        con,
+        "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
+      )$n[1]
+    }, type = "message"))
+  }, type = "output"))
 
   if (verbose) {
     cli::cli_progress_done("Step 3/6: preparing CNEFE points in DuckDB...")
@@ -237,9 +260,9 @@ tracts_to_h3 <- function(
   "
   )
 
-  matched_pts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[
-    1
-  ]
+  matched_pts <- suppressMessages(
+    DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
+  )
   unmatched_pts <- max(total_pts - matched_pts, 0)
 
   # Denominators by tract (counts of dwellings of each type)
@@ -424,29 +447,35 @@ tracts_to_h3 <- function(
 
   }
 
-  hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
+  # capture.output para capturar TUDO (output E messages)
+  invisible(utils::capture.output({
+    invisible(utils::capture.output({
+      hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
-  hex_sf <- h3jsr::cell_to_polygon(hex_df$id_hex, simple = FALSE) |>
-    dplyr::rename(id_hex = "h3_address")
+      hex_sf <- h3jsr::cell_to_polygon(hex_df$id_hex, simple = FALSE) |>
+        dplyr::rename(id_hex = "h3_address")
 
-  out <- hex_sf |>
-    dplyr::left_join(hex_df, by = "id_hex") |>
-    sf::st_as_sf() |>
-    dplyr::select(id_hex, dplyr::all_of(vars), geometry)
+      out <- hex_sf |>
+        dplyr::left_join(hex_df, by = "id_hex") |>
+        sf::st_as_sf() |>
+        dplyr::select(id_hex, dplyr::all_of(vars), geometry)
+    }, type = "message"))
+  }, type = "output"))
 
   sf::st_crs(out) <- 4326
 
   if (verbose) {
     cli::cli_progress_done("Step 6/6: building H3 grid and joining results...")
+    cli::cli_progress_done()
   }
-
   # diagnostics and warning ----------------------------------------------------
   warn_lines <- character(0)
 
   totals_vars <- setdiff(vars, "avg_inc_resp")
 
   for (v in totals_vars) {
-    total_v <- DBI::dbGetQuery(
+    total_v <- suppressMessages(
+      DBI::dbGetQuery(
       con,
       sprintf(
         "SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;",
@@ -454,7 +483,10 @@ tracts_to_h3 <- function(
         v
       )
     )$total[1]
-    alloc_v <- DBI::dbGetQuery(
+    )
+
+    alloc_v <- suppressMessages(
+      DBI::dbGetQuery(
       con,
       sprintf(
         "SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;",
@@ -462,6 +494,7 @@ tracts_to_h3 <- function(
         v
       )
     )$alloc[1]
+    )
 
     total_v <- if (is.null(total_v) || is.na(total_v)) {
       0
@@ -478,73 +511,74 @@ tracts_to_h3 <- function(
     if (total_v > 0 && unalloc > 0) {
       pct <- 100 * unalloc / total_v
 
-      label <- v
-      if (v == "n_inhab_p") {
-        label <- "population from private households (n_inhab_p)"
-      }
-      if (v == "n_inhab_c") {
-        label <- "population from collective households (n_inhab_c)"
-      }
+      label <- switch(v,
+                      "n_inhab_p" = "population from private households",
+                      "n_inhab_c" = "population from collective households",
+                      v  # default: usa o nome da variável
+      )
 
       warn_lines <- c(
         warn_lines,
-        sprintf(
-          "- Unallocated total for %s = %.0f (%s of total).",
-          label,
-          unalloc,
-          .fmt_pct(pct)
+        cli::format_inline(
+          "Unallocated total for {label} ({.field {v}}): {.val {sprintf('%.0f', unalloc)}} ({.val {sprintf('%.2f%%', pct)}} of total)"
         )
       )
     }
   }
 
   if ("avg_inc_resp" %in% vars) {
-    eligible_avg <- DBI::dbGetQuery(
+    eligible_avg <- suppressMessages(
+      DBI::dbGetQuery(
       con,
       "
-      SELECT COUNT(*) AS n
-      FROM cnefe_sc p
-      JOIN sc_muni_w_dom s USING (code_tract)
-      WHERE
-        (CASE
-           WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
-           WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
-           ELSE FALSE
-         END);
-    "
+    SELECT COUNT(*) AS n
+    FROM cnefe_sc p
+    JOIN sc_muni_w_dom s USING (code_tract)
+    WHERE
+      (CASE
+         WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
+         WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
+         ELSE FALSE
+       END);
+  "
     )$n[1]
+    )
 
-    assigned_avg <- DBI::dbGetQuery(
+    assigned_avg <- suppressMessages(
+      DBI::dbGetQuery(
       con,
       "
-      SELECT COUNT(*) AS n
-      FROM cnefe_alloc
-      WHERE avg_inc_resp_pt IS NOT NULL;
-    "
+    SELECT COUNT(*) AS n
+    FROM cnefe_alloc
+    WHERE avg_inc_resp_pt IS NOT NULL;
+  "
     )$n[1]
+    )
 
     warn_lines <- c(
       warn_lines,
-      sprintf(
-        "- avg_inc_resp assigned to %d of %d eligible points.",
-        assigned_avg,
-        eligible_avg
+      cli::format_inline(
+        "{.field avg_inc_resp} assigned to {.val {assigned_avg}} of {.val {eligible_avg}} eligible points"
       )
     )
 
-    na_avg_tracts <- DBI::dbGetQuery(
+    na_avg_tracts <- suppressMessages(
+      DBI::dbGetQuery(
       con,
       "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_tbl
-      WHERE avg_inc_resp IS NULL;
-    "
+    SELECT COUNT(*) AS n
+    FROM sc_muni_tbl
+    WHERE avg_inc_resp IS NULL;
+  "
     )$n[1]
+    )
 
     if (na_avg_tracts > 0) {
       warn_lines <- c(
         warn_lines,
-        sprintf("- avg_inc_resp NA in %d tracts.", na_avg_tracts)
+        cli::format_inline(
+          "{.field avg_inc_resp} is {.val NA} in {.val {na_avg_tracts}} tracts"
+        )
       )
     }
   }
@@ -552,30 +586,37 @@ tracts_to_h3 <- function(
   if (unmatched_pts > 0) {
     warn_lines <- c(
       warn_lines,
-      sprintf("- Unmatched CNEFE points (no tract) = %d.", unmatched_pts)
+      cli::format_inline(
+        "Unmatched CNEFE points (no tract): {.val {unmatched_pts}}"
+      )
     )
   }
 
   na_totals <- character(0)
   for (v in totals_vars) {
-    n_na <- DBI::dbGetQuery(
+    n_na <- suppressMessages(
+      DBI::dbGetQuery(
       con,
       sprintf(
         "SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;",
         v
       )
     )$n[1]
+    )
+
     if (n_na > 0) {
-      na_totals <- c(na_totals, sprintf("%s NA in %d", v, n_na))
+      na_totals <- c(
+        na_totals,
+        cli::format_inline("{.field {v}} {.val NA} in {.val {n_na}}")
+      )
     }
   }
+
   if (length(na_totals) > 0) {
     warn_lines <- c(
       warn_lines,
-      paste0(
-        "- Tracts with NA totals: ",
-        paste(na_totals, collapse = "; "),
-        "."
+      cli::format_inline(
+        "Tracts with {.val NA} totals: {paste(na_totals, collapse = '; ')}"
       )
     )
   }
@@ -583,67 +624,75 @@ tracts_to_h3 <- function(
   no_elig <- character(0)
   for (v in totals_vars) {
     if (v == "n_inhab_p") {
-      n0 <- DBI::dbGetQuery(
+      n0 <- suppressMessages(
+        DBI::dbGetQuery(
         con,
         "
-        SELECT COUNT(*) AS n
-        FROM sc_muni_w_dom
-        WHERE n_inhab_p IS NOT NULL AND n_inhab_p > 0 AND n_dom_p = 0;
-      "
+      SELECT COUNT(*) AS n
+      FROM sc_muni_w_dom
+      WHERE n_inhab_p IS NOT NULL AND n_inhab_p > 0 AND n_dom_p = 0;
+    "
       )$n[1]
+      )
+
     } else if (v == "n_inhab_c") {
-      n0 <- DBI::dbGetQuery(
+      n0 <- suppressMessages(
+        DBI::dbGetQuery(
         con,
         "
-        SELECT COUNT(*) AS n
-        FROM sc_muni_w_dom
-        WHERE n_inhab_c IS NOT NULL AND n_inhab_c > 0 AND n_dom_c = 0;
-      "
+      SELECT COUNT(*) AS n
+      FROM sc_muni_w_dom
+      WHERE n_inhab_c IS NOT NULL AND n_inhab_c > 0 AND n_dom_c = 0;
+    "
       )$n[1]
+      )
+
     } else {
-      n0 <- DBI::dbGetQuery(
+      n0 <- suppressMessages(
+        DBI::dbGetQuery(
         con,
         sprintf(
           "
-        SELECT COUNT(*) AS n
-        FROM sc_muni_w_dom
-        WHERE %s IS NOT NULL AND %s > 0
-          AND (CASE
-                 WHEN n_dom_p > 0 THEN n_dom_p
-                 WHEN n_dom_c > 0 THEN n_dom_c
-                 ELSE 0
-               END) = 0;
-      ",
+      SELECT COUNT(*) AS n
+      FROM sc_muni_w_dom
+      WHERE %s IS NOT NULL AND %s > 0
+        AND (CASE
+               WHEN n_dom_p > 0 THEN n_dom_p
+               WHEN n_dom_c > 0 THEN n_dom_c
+               ELSE 0
+             END) = 0;
+    ",
           v,
           v
         )
       )$n[1]
+      )
     }
 
     if (n0 > 0) {
-      no_elig <- c(no_elig, sprintf("%s in %d tracts", v, n0))
+      no_elig <- c(
+        no_elig,
+        cli::format_inline("{.field {v}} in {.val {n0}} tracts")
+      )
     }
   }
+
   if (length(no_elig) > 0) {
     warn_lines <- c(
       warn_lines,
-      paste0(
-        "- Tracts with no eligible dwellings: ",
-        paste(no_elig, collapse = "; "),
-        "."
+      cli::format_inline(
+        "Tracts with no eligible dwellings: {paste(no_elig, collapse = '; ')}"
       )
     )
   }
 
   if (length(warn_lines) > 0) {
-    warning(
-      paste(
-        c("Dasymetric interpolation diagnostics:", warn_lines),
-        collapse = "\n"
-      ),
-      call. = FALSE
+    cli::cli_h2("Dasymetric interpolation diagnostics")
+    cli::cli_bullets(
+      stats::setNames(warn_lines, rep("!", length(warn_lines)))
     )
   }
 
-  out
+  return(out)
+
 }

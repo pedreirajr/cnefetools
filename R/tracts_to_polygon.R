@@ -224,13 +224,27 @@ cnefe_index <- .get_cnefe_index(year)
 
   }
 
-  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
+  #silent please
+  con <- NULL
+  utils::capture.output(
+    utils::capture.output({
+      con <- DBI::dbConnect(
+        duckdb::duckdb(),
+        dbdir = ":memory:",
+        config = list(
+          'enable_progress_bar' = FALSE,
+          'enable_print_progress' = FALSE,
+          'print_progress_bar' = FALSE
+        )
+      )
+
+      duckspatial::ddbs_load(con)
+      .duckdb_load_ext(con, "zipfs")
+    }, type = "message"),
+    type = "output"
+  )
+
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
-
-  duckspatial::ddbs_load(con)
-
-  # always keep DuckDB extension load messages silent
-  .duckdb_load_ext(con, "zipfs")
 
   if (verbose) {
     cli::cli_progress_done("Step 2/6: connecting to DuckDB and loading extensions...")
@@ -516,12 +530,19 @@ cnefe_index <- .get_cnefe_index(year)
     ))
   }
 
-  # Register user polygons in DuckDB using duckspatial
-  duckspatial::ddbs_write_vector(
-    conn = con,
-    data = polygon_4326[, ".poly_row_id"],
-    name = "user_polygons",
-    overwrite = TRUE
+  # Register user polygons in DuckDB using duckspatial (quiet)
+  invisible(
+    utils::capture.output(
+      suppressMessages(
+        duckspatial::ddbs_write_vector(
+          conn = con,
+          data = polygon_4326[, ".poly_row_id"],
+          name = "user_polygons",
+          overwrite = TRUE
+        )
+      ),
+      type = "output"
+    )
   )
 
   # Create spatial index on user polygons
@@ -617,7 +638,14 @@ cnefe_index <- .get_cnefe_index(year)
     paste(agg_sql_exprs, collapse = ",\n      ")
   )
 
-  poly_vals <- DBI::dbGetQuery(con, agg_sql)
+  poly_vals <- NULL
+  utils::capture.output(
+    utils::capture.output(
+      poly_vals <- DBI::dbGetQuery(con, agg_sql),
+      type = "message"
+    ),
+    type = "output"
+  )
 
   # Join back to polygon
   out <- polygon_4326 |>

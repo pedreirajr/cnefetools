@@ -221,46 +221,59 @@ g., 4674, 31983) or a CRS object."
       reason = "to use backend = 'duckdb' in `cnefe_counts()`."
     )
 
-    con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
-    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+    con <- NULL
+    utils::capture.output(
+      utils::capture.output({
+        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
+                              config = list(
+                                'enable_progress_bar' = FALSE,
+                                'enable_print_progress' = FALSE,
+                                'print_progress_bar' = FALSE
+                              ))
 
-    .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-    .duckdb_ensure_extension(con, "h3", verbose = verbose)
+        .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
+        .duckdb_ensure_extension(con, "h3", verbose = verbose)
 
-    zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-    uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-    uri_sql <- gsub("'", "''", uri)
+        zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
+        uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+        uri_sql <- gsub("'", "''", uri)
 
-    sql <- sprintf(
-      "
-      WITH src AS (
+        sql <- sprintf(
+          "
+        WITH src AS (
+          SELECT
+            CAST(LONGITUDE AS DOUBLE) AS lon,
+            CAST(LATITUDE  AS DOUBLE) AS lat,
+            try_cast(COD_ESPECIE AS INTEGER) AS cod
+          FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+        )
         SELECT
-          CAST(LONGITUDE AS DOUBLE) AS lon,
-          CAST(LATITUDE  AS DOUBLE) AS lat,
-          try_cast(COD_ESPECIE AS INTEGER) AS cod
-        FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
-      )
-      SELECT
-        lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
-        cod AS COD_ESPECIE,
-        COUNT(*)::BIGINT AS n
-      FROM src
-      WHERE
-        lon IS NOT NULL AND lat IS NOT NULL
-        AND cod BETWEEN 1 AND 8
-      GROUP BY 1, 2;
-    ",
-      uri_sql,
-      as.integer(h3_resolution)
+          lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
+          cod AS COD_ESPECIE,
+          COUNT(*)::BIGINT AS n
+        FROM src
+        WHERE
+          lon IS NOT NULL AND lat IS NOT NULL
+          AND cod BETWEEN 1 AND 8
+        GROUP BY 1, 2;
+      ",
+          uri_sql,
+          as.integer(h3_resolution)
+        )
+
+        counts_long <- DBI::dbGetQuery(con, sql) |>
+          dplyr::as_tibble() |>
+          dplyr::mutate(
+            id_hex = as.character(.data$id_hex),
+            COD_ESPECIE = as.integer(.data$COD_ESPECIE),
+            n = as.integer(.data$n)
+          )
+      }, type = "message"),
+      type = "output"
     )
 
-    counts_long <- DBI::dbGetQuery(con, sql) |>
-      dplyr::as_tibble() |>
-      dplyr::mutate(
-        id_hex = as.character(.data$id_hex),
-        COD_ESPECIE = as.integer(.data$COD_ESPECIE),
-        n = as.integer(.data$n)
-      )
+    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+
   } else {
     # Backend "r" (slower): read Arrow, compute H3 in R
     tab <- read_cnefe(
@@ -601,7 +614,12 @@ g., 4674, 31983) or a CRS object."
   polygon,
   verbose
 ) {
-  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
+  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
+                        config = list(
+                          'enable_progress_bar' = FALSE,
+                          'enable_print_progress' = FALSE,
+                          'print_progress_bar' = FALSE
+                        ))
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
   .duckdb_ensure_extension(con, "zipfs", verbose = verbose)

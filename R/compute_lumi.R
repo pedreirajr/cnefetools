@@ -102,59 +102,50 @@ compute_lumi <- function(
     repo = "community",
     verbose = TRUE
   ) {
-    info <- tryCatch(
-      DBI::dbGetQuery(
-        con,
-        sprintf(
-          "SELECT installed, loaded FROM duckdb_extensions() WHERE extension_name = '%s';",
-          ext
+    utils::capture.output(
+      utils::capture.output({
+        info <- tryCatch(
+          DBI::dbGetQuery(
+            con,
+            sprintf(
+              "SELECT installed, loaded FROM duckdb_extensions() WHERE extension_name = '%s';",
+              ext
+            )
+          ),
+          error = function(e) NULL
         )
-      ),
-      error = function(e) NULL
-    )
 
-    if (!is.null(info) && nrow(info) == 1) {
-      if (isTRUE(info$loaded[[1]])) {
-        # if (verbose) {
-        #   message("DuckDB: extension '", ext, "' already loaded.")
-        # }
-        return(invisible(TRUE))
-      }
-      if (isTRUE(info$installed[[1]])) {
-        # if (verbose) {
-          # message("DuckDB: loading extension '", ext, "'...")
-        # }
+        if (!is.null(info) && nrow(info) == 1) {
+          if (isTRUE(info$loaded[[1]])) {
+            return(invisible(TRUE))
+          }
+          if (isTRUE(info$installed[[1]])) {
+            DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+            return(invisible(TRUE))
+          }
+        }
+
+        ok_load <- tryCatch(
+          {
+            DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+            TRUE
+          },
+          error = function(e) FALSE
+        )
+
+        if (ok_load) {
+          return(invisible(TRUE))
+        }
+
+        DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
         DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-        return(invisible(TRUE))
-      }
-    }
-
-    ok_load <- tryCatch(
-      {
-        # if (verbose) {
-        #   message("DuckDB: trying to LOAD extension '", ext, "'...")
-        # }
-        DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-        TRUE
-      },
-      error = function(e) FALSE
+      }, type = "message"),
+      type = "output"
     )
-
-    if (ok_load) {
-      return(invisible(TRUE))
-    }
-
-    # if (verbose) {
-    #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
-    # }
-    DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-    # if (verbose) {
-    #   message("DuckDB: loading extension '", ext, "'...")
-    # }
-    DBI::dbExecute(con, sprintf("LOAD %s;", ext))
 
     invisible(TRUE)
   }
+
 
   counts_hex <- NULL
 
@@ -171,54 +162,67 @@ compute_lumi <- function(
   }
 
   if (identical(backend, "duckdb")) {
-    con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
-    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+    con <- NULL
+    utils::capture.output(
+      utils::capture.output({
+        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
+                              config = list(
+                                'enable_progress_bar' = FALSE,
+                                'enable_print_progress' = FALSE,
+                                'print_progress_bar' = FALSE
+                              ))
 
-    duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-    duckdb_ensure_extension(con, "h3", verbose = verbose)
+        duckdb_ensure_extension(con, "zipfs", verbose = verbose)
+        duckdb_ensure_extension(con, "h3", verbose = verbose)
 
-    zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-    uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-    uri_sql <- gsub("'", "''", uri)
+        zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
+        uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+        uri_sql <- gsub("'", "''", uri)
 
-    # only keep the columns needed; exclude COD_ESPECIE == 7
-    sql <- sprintf(
-      "
-      WITH src AS (
+        # only keep the columns needed; exclude COD_ESPECIE == 7
+        sql <- sprintf(
+          "
+        WITH src AS (
+          SELECT
+            CAST(LONGITUDE AS DOUBLE) AS lon,
+            CAST(LATITUDE  AS DOUBLE) AS lat,
+            try_cast(COD_ESPECIE AS INTEGER) AS cod
+          FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+        ),
+        filtered AS (
+          SELECT
+            lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
+            cod
+          FROM src
+          WHERE
+            lon IS NOT NULL AND lat IS NOT NULL
+            AND cod BETWEEN 1 AND 8
+            AND cod != 7
+        )
         SELECT
-          CAST(LONGITUDE AS DOUBLE) AS lon,
-          CAST(LATITUDE  AS DOUBLE) AS lat,
-          try_cast(COD_ESPECIE AS INTEGER) AS cod
-        FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
-      ),
-      filtered AS (
-        SELECT
-          lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
-          cod
-        FROM src
-        WHERE
-          lon IS NOT NULL AND lat IS NOT NULL
-          AND cod BETWEEN 1 AND 8
-          AND cod != 7
-      )
-      SELECT
-        id_hex,
-        SUM(CASE WHEN cod = 1 THEN 1 ELSE 0 END)::BIGINT AS n_res,
-        COUNT(*)::BIGINT AS n_tot
-      FROM filtered
-      GROUP BY 1;
-    ",
-      uri_sql,
-      as.integer(h3_resolution)
+          id_hex,
+          SUM(CASE WHEN cod = 1 THEN 1 ELSE 0 END)::BIGINT AS n_res,
+          COUNT(*)::BIGINT AS n_tot
+        FROM filtered
+        GROUP BY 1;
+      ",
+          uri_sql,
+          as.integer(h3_resolution)
+        )
+
+        counts_hex <- DBI::dbGetQuery(con, sql) |>
+          dplyr::as_tibble() |>
+          dplyr::mutate(
+            id_hex = as.character(.data$id_hex),
+            n_res = as.integer(.data$n_res),
+            n_tot = as.integer(.data$n_tot)
+          )
+      }, type = "message"),
+      type = "output"
     )
 
-    counts_hex <- DBI::dbGetQuery(con, sql) |>
-      dplyr::as_tibble() |>
-      dplyr::mutate(
-        id_hex = as.character(.data$id_hex),
-        n_res = as.integer(.data$n_res),
-        n_tot = as.integer(.data$n_tot)
-      )
+    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+
   } else {
     # backend "r"
     tab <- read_cnefe(
