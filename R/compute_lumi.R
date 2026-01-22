@@ -59,16 +59,7 @@ compute_lumi <- function(
   }
 
   if (verbose) {
-    message(sprintf("Processing %s (code %s)...", city_name, code_muni))
-  }
-
-  timings <- list()
-  log_step_time <- function(step_name, t_start) {
-    dt <- difftime(Sys.time(), t_start, units = "secs")
-    timings[[step_name]] <<- dt
-    if (verbose) {
-      message(sprintf("%s completed in %.2f s.", step_name, as.numeric(dt)))
-    }
+    cli::cli_alert_info("Processing municipality code {.val {code_muni}}...")
   }
 
   # We will return sf hexagons
@@ -81,9 +72,9 @@ compute_lumi <- function(
   # Step 1/3: Ensure ZIP and find CSV inside
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 1/3: ensuring ZIP and inspecting archive...")
+    cli::cli_progress_step("Step 1/3: ensuring ZIP and inspecting archive...",
+                           msg_done = "Step 1/3 (ZIP ready)")
   }
-  t1 <- Sys.time()
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
@@ -96,15 +87,17 @@ compute_lumi <- function(
 
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
-  log_step_time("Step 1/3 (ZIP ready)", t1)
+  if (verbose) {
+    cli::cli_progress_done("Step 1/3: ensuring ZIP and inspecting archive...")
+  }
 
   # ---------------------------------------------------------------------------
   # Step 2/3: Aggregate counts per hex (n_res, n_tot)
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 2/3: aggregating CNEFE counts per H3 cell...")
+    cli::cli_progress_step("Step 2/3: aggregating CNEFE counts per H3 cell...",
+                           msg_done = "Step 2/3 (counts per hex)")
   }
-  t2 <- Sys.time()
 
   # local helper (same spirit as in hex_cnefe_counts)
   duckdb_ensure_extension <- function(
@@ -113,59 +106,50 @@ compute_lumi <- function(
     repo = "community",
     verbose = TRUE
   ) {
-    info <- tryCatch(
-      DBI::dbGetQuery(
-        con,
-        sprintf(
-          "SELECT installed, loaded FROM duckdb_extensions() WHERE extension_name = '%s';",
-          ext
+    utils::capture.output(
+      utils::capture.output({
+        info <- tryCatch(
+          DBI::dbGetQuery(
+            con,
+            sprintf(
+              "SELECT installed, loaded FROM duckdb_extensions() WHERE extension_name = '%s';",
+              ext
+            )
+          ),
+          error = function(e) NULL
         )
-      ),
-      error = function(e) NULL
-    )
 
-    if (!is.null(info) && nrow(info) == 1) {
-      if (isTRUE(info$loaded[[1]])) {
-        if (verbose) {
-          message("DuckDB: extension '", ext, "' already loaded.")
+        if (!is.null(info) && nrow(info) == 1) {
+          if (isTRUE(info$loaded[[1]])) {
+            return(invisible(TRUE))
+          }
+          if (isTRUE(info$installed[[1]])) {
+            DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+            return(invisible(TRUE))
+          }
         }
-        return(invisible(TRUE))
-      }
-      if (isTRUE(info$installed[[1]])) {
-        if (verbose) {
-          message("DuckDB: loading extension '", ext, "'...")
+
+        ok_load <- tryCatch(
+          {
+            DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+            TRUE
+          },
+          error = function(e) FALSE
+        )
+
+        if (ok_load) {
+          return(invisible(TRUE))
         }
+
+        DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
         DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-        return(invisible(TRUE))
-      }
-    }
-
-    ok_load <- tryCatch(
-      {
-        if (verbose) {
-          message("DuckDB: trying to LOAD extension '", ext, "'...")
-        }
-        DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-        TRUE
-      },
-      error = function(e) FALSE
+      }, type = "message"),
+      type = "output"
     )
-
-    if (ok_load) {
-      return(invisible(TRUE))
-    }
-
-    if (verbose) {
-      message("DuckDB: installing extension '", ext, "' from ", repo, "...")
-    }
-    DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-    if (verbose) {
-      message("DuckDB: loading extension '", ext, "'...")
-    }
-    DBI::dbExecute(con, sprintf("LOAD %s;", ext))
 
     invisible(TRUE)
   }
+
 
   counts_hex <- NULL
 
@@ -182,54 +166,67 @@ compute_lumi <- function(
   }
 
   if (identical(backend, "duckdb")) {
-    con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
-    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+    con <- NULL
+    utils::capture.output(
+      utils::capture.output({
+        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
+                              config = list(
+                                'enable_progress_bar' = FALSE,
+                                'enable_print_progress' = FALSE,
+                                'print_progress_bar' = FALSE
+                              ))
 
-    duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-    duckdb_ensure_extension(con, "h3", verbose = verbose)
+        duckdb_ensure_extension(con, "zipfs", verbose = verbose)
+        duckdb_ensure_extension(con, "h3", verbose = verbose)
 
-    zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-    uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-    uri_sql <- gsub("'", "''", uri)
+        zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
+        uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+        uri_sql <- gsub("'", "''", uri)
 
-    # only keep the columns needed; exclude COD_ESPECIE == 7
-    sql <- sprintf(
-      "
-      WITH src AS (
+        # only keep the columns needed; exclude COD_ESPECIE == 7
+        sql <- sprintf(
+          "
+        WITH src AS (
+          SELECT
+            CAST(LONGITUDE AS DOUBLE) AS lon,
+            CAST(LATITUDE  AS DOUBLE) AS lat,
+            try_cast(COD_ESPECIE AS INTEGER) AS cod
+          FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+        ),
+        filtered AS (
+          SELECT
+            lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
+            cod
+          FROM src
+          WHERE
+            lon IS NOT NULL AND lat IS NOT NULL
+            AND cod BETWEEN 1 AND 8
+            AND cod != 7
+        )
         SELECT
-          CAST(LONGITUDE AS DOUBLE) AS lon,
-          CAST(LATITUDE  AS DOUBLE) AS lat,
-          try_cast(COD_ESPECIE AS INTEGER) AS cod
-        FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
-      ),
-      filtered AS (
-        SELECT
-          lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
-          cod
-        FROM src
-        WHERE
-          lon IS NOT NULL AND lat IS NOT NULL
-          AND cod BETWEEN 1 AND 8
-          AND cod != 7
-      )
-      SELECT
-        id_hex,
-        SUM(CASE WHEN cod = 1 THEN 1 ELSE 0 END)::BIGINT AS n_res,
-        COUNT(*)::BIGINT AS n_tot
-      FROM filtered
-      GROUP BY 1;
-    ",
-      uri_sql,
-      as.integer(h3_resolution)
+          id_hex,
+          SUM(CASE WHEN cod = 1 THEN 1 ELSE 0 END)::BIGINT AS n_res,
+          COUNT(*)::BIGINT AS n_tot
+        FROM filtered
+        GROUP BY 1;
+      ",
+          uri_sql,
+          as.integer(h3_resolution)
+        )
+
+        counts_hex <- DBI::dbGetQuery(con, sql) |>
+          dplyr::as_tibble() |>
+          dplyr::mutate(
+            id_hex = as.character(.data$id_hex),
+            n_res = as.integer(.data$n_res),
+            n_tot = as.integer(.data$n_tot)
+          )
+      }, type = "message"),
+      type = "output"
     )
 
-    counts_hex <- DBI::dbGetQuery(con, sql) |>
-      dplyr::as_tibble() |>
-      dplyr::mutate(
-        id_hex = as.character(.data$id_hex),
-        n_res = as.integer(.data$n_res),
-        n_tot = as.integer(.data$n_tot)
-      )
+    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+
   } else {
     # backend "r"
     tab <- read_cnefe(
@@ -287,7 +284,9 @@ compute_lumi <- function(
       )
   }
 
-  log_step_time("Step 2/3 (counts per hex)", t2)
+  if (verbose) {
+    cli::cli_progress_done("Step 2/3: aggregating CNEFE counts per H3 cell...")
+  }
 
   if (is.null(counts_hex) || nrow(counts_hex) == 0L) {
     if (verbose) {
@@ -300,9 +299,9 @@ compute_lumi <- function(
   # Step 3/3: Build H3 grid from ids + compute indices
   # ---------------------------------------------------------------------------
   if (verbose) {
-    message("Step 3/3: building grid and computing LUMI indices...")
+    cli::cli_progress_step("Step 3/3: building grid and computing LUMI indices...",
+                           msg_done = "Step 3/3 (indices)")
   }
-  t3 <- Sys.time()
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
@@ -404,17 +403,8 @@ compute_lumi <- function(
       geometry
     )
 
-  log_step_time("Step 3/3 (indices)", t3)
-
   if (verbose) {
-    message("Timing summary (seconds):")
-    total_secs <- 0
-    for (nm in names(timings)) {
-      secs <- as.numeric(timings[[nm]], units = "secs")
-      total_secs <- total_secs + secs
-      message(sprintf(" - %s: %.2f", nm, secs))
-    }
-    message(sprintf("Total time: %.2f s.", total_secs))
+    cli::cli_progress_done("Step 3/3: building grid and computing LUMI indices...")
   }
 
   out

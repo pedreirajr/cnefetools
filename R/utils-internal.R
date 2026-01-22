@@ -180,7 +180,7 @@
       retry_timeouts = retry_timeouts
     )
   } else if (verbose) {
-    message("Using cached file: ", zip_path)
+    cli::cli_alert_info("Using cached file: {zip_path}")
   }
 
   list(
@@ -252,7 +252,11 @@
           fs::file_delete(destfile)
         }
 
-        fs::file_move(tmp, destfile)
+        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
+
+        if (!isTRUE(ok_copy)) {
+          rlang::abort("Failed to copy downloaded ZIP to destination.")
+        }
 
         list(ok = TRUE, err = NULL)
       },
@@ -546,7 +550,11 @@
           fs::file_delete(destfile)
         }
 
-        fs::file_move(tmp, destfile)
+        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
+
+        if (!isTRUE(ok_copy)) {
+          rlang::abort("Failed to copy downloaded file to destination.")
+        }
 
         list(ok = TRUE, err = NULL)
       },
@@ -645,6 +653,7 @@
   cache = TRUE,
   verbose = TRUE
 ) {
+
   code_muni <- .normalize_code_muni(code_muni)
   uf <- .uf_from_code_muni(code_muni)
 
@@ -655,33 +664,35 @@
   # 7-digit municipality prefix inside 15-digit tract code
   muni_prefix <- sprintf("%07d", code_muni)
 
+  suppressMessages({
   # View with tract attributes + geometry as DuckDB GEOMETRY
-  DBI::dbExecute(
-    con,
-    sprintf(
-      "
-    CREATE OR REPLACE VIEW sc_uf_raw AS
-    SELECT *
-    FROM read_parquet('%s');
-  ",
-      parquet_path
+    DBI::dbExecute(
+      con,
+      sprintf(
+        "
+      CREATE OR REPLACE VIEW sc_uf_raw AS
+      SELECT *
+      FROM read_parquet('%s');
+    ",
+        parquet_path
+      )
     )
-  )
 
-  DBI::dbExecute(
-    con,
-    sprintf(
-      "
-    CREATE OR REPLACE VIEW sc_muni AS
-    SELECT
-      *,
-      ST_GeomFromWKB(geom_wkb) AS geom
-    FROM sc_uf_raw
-    WHERE substr(code_tract, 1, 7) = '%s';
-  ",
-      muni_prefix
+    DBI::dbExecute(
+      con,
+      sprintf(
+        "
+      CREATE OR REPLACE VIEW sc_muni AS
+      SELECT
+        *,
+        ST_GeomFromWKB(geom_wkb) AS geom
+      FROM sc_uf_raw
+      WHERE substr(code_tract, 1, 7) = '%s';
+    ",
+        muni_prefix
+      )
     )
-  )
+  })
 
   invisible(TRUE)
 }
@@ -700,15 +711,17 @@
   # Ensure zipfs is available (community extension)
   ok_zipfs <- tryCatch(
     {
-      DBI::dbExecute(con, "LOAD zipfs;")
+      suppressMessages(DBI::dbExecute(con, "LOAD zipfs;"))
       TRUE
     },
     error = function(e) FALSE
   )
 
   if (!ok_zipfs) {
-    DBI::dbExecute(con, "INSTALL zipfs FROM community;")
-    DBI::dbExecute(con, "LOAD zipfs;")
+    suppressMessages({
+      DBI::dbExecute(con, "INSTALL zipfs FROM community;")
+      DBI::dbExecute(con, "LOAD zipfs;")
+    })
   }
 
   # Ensure the municipality ZIP exists locally (reuses your existing cache logic)
@@ -728,41 +741,43 @@
   uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
   uri_sql <- gsub("'", "''", uri)
 
-  DBI::dbExecute(
-    con,
-    sprintf(
-      "
-    CREATE OR REPLACE VIEW cnefe_raw AS
-    SELECT
-      CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
-      CAST(COD_SETOR         AS VARCHAR) AS COD_SETOR,
-      try_cast(COD_ESPECIE   AS INTEGER) AS COD_ESPECIE,
-      CAST(LONGITUDE         AS DOUBLE)  AS lon,
-      CAST(LATITUDE          AS DOUBLE)  AS lat
-    FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false);
-  ",
-      uri_sql
+  suppressMessages({
+    DBI::dbExecute(
+      con,
+      sprintf(
+        "
+      CREATE OR REPLACE VIEW cnefe_raw AS
+      SELECT
+        CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
+        CAST(COD_SETOR         AS VARCHAR) AS COD_SETOR,
+        try_cast(COD_ESPECIE   AS INTEGER) AS COD_ESPECIE,
+        CAST(LONGITUDE         AS DOUBLE)  AS lon,
+        CAST(LATITUDE          AS DOUBLE)  AS lat
+      FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false);
+    ",
+        uri_sql
+      )
     )
-  )
 
-  DBI::dbExecute(
-    con,
+    DBI::dbExecute(
+      con,
+      "
+      CREATE OR REPLACE VIEW cnefe_pts AS
+      SELECT
+        COD_UNICO_ENDERECO,
+        COD_SETOR,
+        COD_ESPECIE,
+        lon,
+        lat,
+        ST_Point(lon, lat) AS geom
+      FROM cnefe_raw
+      WHERE
+        COD_ESPECIE IN (1, 2)
+        AND lon IS NOT NULL
+        AND lat IS NOT NULL;
     "
-    CREATE OR REPLACE VIEW cnefe_pts AS
-    SELECT
-      COD_UNICO_ENDERECO,
-      COD_SETOR,
-      COD_ESPECIE,
-      lon,
-      lat,
-      ST_Point(lon, lat) AS geom
-    FROM cnefe_raw
-    WHERE
-      COD_ESPECIE IN (1, 2)
-      AND lon IS NOT NULL
-      AND lat IS NOT NULL;
-  "
-  )
+    )
+  })
 
   # Clean up temp ZIP if cache = FALSE
   if (isTRUE(zip_info$cleanup_zip)) {
