@@ -24,6 +24,7 @@ utils::globalVariables(
     "hhi_sc",
     "ei",
     "bal",
+    "ice",
     "hhi_adp",
     "bgbi",
     "geometry"
