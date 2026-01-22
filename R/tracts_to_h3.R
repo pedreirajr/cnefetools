@@ -115,7 +115,7 @@ tracts_to_h3 <- function(
         )
 
         if (!ok) {
-          .duckdb_quiet_execute(con, sprintf("INSTALL %s;", ext))
+          .duckdb_quiet_execute(con, sprintf("INSTALL %s FROM community;", ext))
           .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
         }
       }, type = "message"),
