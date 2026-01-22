@@ -719,7 +719,7 @@
 
   if (!ok_zipfs) {
     suppressMessages({
-      DBI::dbExecute(con, "INSTALL zipfs;")
+      DBI::dbExecute(con, "INSTALL zipfs FROM community;")
       DBI::dbExecute(con, "LOAD zipfs;")
     })
   }
