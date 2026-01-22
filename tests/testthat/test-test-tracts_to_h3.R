@@ -50,7 +50,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
 
   testthat::with_mocked_bindings(
     {
-      testthat::expect_warning(
+      testthat::expect_message(
         res <- cnefetools::tracts_to_h3(
           code_muni = 2927408,
           h3_resolution = 9,
