@@ -46,7 +46,7 @@ Imports:
     DBI,
     duckdb,
     duckspatial,
-    cli,
+    cli (>= 3.6.0),
     checkmate,
     fs,
     httr2

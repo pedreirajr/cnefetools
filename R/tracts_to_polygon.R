@@ -137,10 +137,6 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
   # helpers -------------------------------------------------------------------
-  .t0 <- function() Sys.time()
-  .td <- function(t_start, t_end) {
-    as.numeric(difftime(t_end, t_start, units = "secs"))
-  }
 
   .duckdb_quiet_execute <- function(con, sql) {
     invisible(utils::capture.output(
@@ -177,9 +173,10 @@ cnefe_index <- .get_cnefe_index(year)
 
   # Step 1/6: CRS alignment ---------------------------------------------------
   if (verbose) {
-    cli::cli_alert("Step 1/6: aligning CRS...")
+    cli::cli_progress_step("Step 1/6: aligning CRS...",
+                           msg_done = "Step 1/6 (CRS alignment)")
+
   }
-  t1 <- .t0()
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -217,37 +214,49 @@ cnefe_index <- .get_cnefe_index(year)
   polygon_4326 <- polygon_4326 |>
     dplyr::mutate(.poly_row_id = dplyr::row_number())
 
-  t1e <- .t0()
-  step_times["CRS alignment"] <- .td(t1, t1e)
   if (verbose) {
-    cli::cli_alert_success("Step 1/6 (CRS alignment) completed in {.val {sprintf('%.2f', step_times['CRS alignment'])}} s.")
+    cli::cli_progress_done("Step 1/6: connecting to DuckDB and loading extensions...")
   }
 
   # Step 2/6: Connect to DuckDB -----------------------------------------------
   if (verbose) {
-    cli::cli_alert("Step 2/6: connecting to DuckDB and loading extensions...")
-  }
-  t2 <- .t0()
+    cli::cli_progress_step("Step 2/6: connecting to DuckDB and loading extensions...",
+                           msg_done = "Step 2/6 (DuckDB ready)")
 
-  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
+  }
+
+  #silent please
+  con <- NULL
+  utils::capture.output(
+    utils::capture.output({
+      con <- DBI::dbConnect(
+        duckdb::duckdb(),
+        dbdir = ":memory:",
+        config = list(
+          'enable_progress_bar' = FALSE,
+          'enable_print_progress' = FALSE,
+          'print_progress_bar' = FALSE
+        )
+      )
+
+      duckspatial::ddbs_load(con)
+      .duckdb_load_ext(con, "zipfs")
+    }, type = "message"),
+    type = "output"
+  )
+
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
-  duckspatial::ddbs_load(con)
-
-  # always keep DuckDB extension load messages silent
-  .duckdb_load_ext(con, "zipfs")
-
-  t2e <- .t0()
-  step_times["DuckDB ready"] <- .td(t2, t2e)
   if (verbose) {
-    cli::cli_alert_success("Step 2/6 (DuckDB ready) completed in {.val {sprintf('%.2f', step_times['DuckDB ready'])}} s.")
+    cli::cli_progress_done("Step 2/6: connecting to DuckDB and loading extensions...")
   }
 
   # Step 3/6: Prepare census tracts -------------------------------------------
   if (verbose) {
-    cli::cli_alert("Step 3/6: preparing census tracts in DuckDB...")
+    cli::cli_progress_step("Step 3/6: preparing census tracts in DuckDB...",
+                           msg_done = "Step 3/6 (tracts ready)")
+
   }
-  t3 <- .t0()
 
   .sc_create_views_in_duckdb(
     con,
@@ -311,17 +320,16 @@ cnefe_index <- .get_cnefe_index(year)
     }
   }
 
-  t3e <- .t0()
-  step_times["tracts ready"] <- .td(t3, t3e)
   if (verbose) {
-    cli::cli_alert_success("Step 3/6 (tracts ready) completed in {.val {sprintf('%.2f', step_times['tracts ready'])}} s.")
+    cli::cli_progress_done("Step 3/6: preparing census tracts in DuckDB...")
   }
 
   # Step 4/6: Prepare CNEFE points --------------------------------------------
   if (verbose) {
-    cli::cli_alert("Step 4/6: preparing CNEFE points in DuckDB...")
+    cli::cli_progress_step("Step 4/6: preparing CNEFE points in DuckDB...",
+                           msg_done = "Step 4/6 (CNEFE points ready)")
+
   }
-  t4 <- .t0()
 
   .cnefe_create_points_view_in_duckdb(
     con,
@@ -349,17 +357,16 @@ cnefe_index <- .get_cnefe_index(year)
     "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
   )$n[1]
 
-  t4e <- .t0()
-  step_times["CNEFE points ready"] <- .td(t4, t4e)
   if (verbose) {
-    cli::cli_alert_success("Step 4/6 (CNEFE points ready) completed in {.val {sprintf('%.2f', step_times['CNEFE points ready'])}} s.")
+    cli::cli_progress_done("Step 4/6: preparing CNEFE points in DuckDB...")
   }
 
   # Step 5/6: Spatial join and allocation -------------------------------------
   if (verbose) {
-    cli::cli_alert("Step 5/6: spatial join (points to tracts) and allocation...")
+    cli::cli_progress_step("Step 5/6: spatial join (points to tracts) and allocation...",
+                           msg_done = "Step 5/6 (join and allocation)")
+
   }
-  t5 <- .t0()
 
   # Matched points only (spatial join without LEFT JOIN)
   .duckdb_quiet_execute(
@@ -524,12 +531,19 @@ cnefe_index <- .get_cnefe_index(year)
     ))
   }
 
-  # Register user polygons in DuckDB using duckspatial
-  duckspatial::ddbs_write_vector(
-    conn = con,
-    data = polygon_4326[, ".poly_row_id"],
-    name = "user_polygons",
-    overwrite = TRUE
+  # Register user polygons in DuckDB using duckspatial (quiet)
+  invisible(
+    utils::capture.output(
+      suppressMessages(
+        duckspatial::ddbs_write_vector(
+          conn = con,
+          data = polygon_4326[, ".poly_row_id"],
+          name = "user_polygons",
+          overwrite = TRUE
+        )
+      ),
+      type = "output"
+    )
   )
 
   # Create spatial index on user polygons
@@ -590,17 +604,16 @@ cnefe_index <- .get_cnefe_index(year)
     cli::cli_alert_success("All {.val {total_alloc_pts}} CNEFE dwelling points were captured within the provided polygon.")
   }
 
-  t5e <- .t0()
-  step_times["join and allocation"] <- .td(t5, t5e)
   if (verbose) {
-    cli::cli_alert_success("Step 5/6 (join and allocation) completed in {.val {sprintf('%.2f', step_times['join and allocation'])}} s.")
+    cli::cli_progress_done("Step 5/6: spatial join (points to tracts) and allocation...")
   }
 
   # Step 6/6: Aggregate to polygons -------------------------------------------
   if (verbose) {
-    cli::cli_alert("Step 6/6: aggregating allocated values to polygons...")
+    cli::cli_progress_step("Step 6/6: aggregating allocated values to polygons...",
+                           msg_done = "Step 6/6 (polygon aggregation)")
+
   }
-  t6 <- .t0()
 
   # Build SQL aggregation expressions
   agg_sql_exprs <- character(0)
@@ -626,7 +639,14 @@ cnefe_index <- .get_cnefe_index(year)
     paste(agg_sql_exprs, collapse = ",\n      ")
   )
 
-  poly_vals <- DBI::dbGetQuery(con, agg_sql)
+  poly_vals <- NULL
+  utils::capture.output(
+    utils::capture.output(
+      poly_vals <- DBI::dbGetQuery(con, agg_sql),
+      type = "message"
+    ),
+    type = "output"
+  )
 
   # Join back to polygon
   out <- polygon_4326 |>
@@ -643,23 +663,12 @@ cnefe_index <- .get_cnefe_index(year)
   # Transform to output CRS
   out <- sf::st_transform(out, output_crs)
 
-  t6e <- .t0()
-  step_times["polygon aggregation"] <- .td(t6, t6e)
   if (verbose) {
-    cli::cli_alert_success("Step 6/6 (polygon aggregation) completed in {.val {sprintf('%.2f', step_times['polygon aggregation'])}} s.")
+    cli::cli_progress_done("Step 6/6: aggregating allocated values to polygons...")
+    #force to close the last progress
+    cli::cli_progress_done()
   }
 
-  # attributes ----------------------------------------------------------------
-  attr(out, "timing") <- as.list(step_times)
-
-  if (verbose) {
-    total_time <- sum(step_times)
-    cli::cli_h3("Timing summary (seconds)")
-    for (nm in names(step_times)) {
-      cli::cli_alert_info("{nm}: {.val {sprintf('%.2f', step_times[[nm]])}}")
-    }
-    cli::cli_alert_success("Total time: {.val {sprintf('%.2f', total_time)}} s.")
-  }
 
   # diagnostics and warning ----------------------------------------------------
   warn_lines <- character(0)
@@ -699,21 +708,16 @@ cnefe_index <- .get_cnefe_index(year)
     if (total_v > 0 && unalloc > 0) {
       pct <- 100 * unalloc / total_v
 
-      label <- v
-      if (v == "n_inhab_p") {
-        label <- "population from private households (n_inhab_p)"
-      }
-      if (v == "n_inhab_c") {
-        label <- "population from collective households (n_inhab_c)"
-      }
+      label <- switch(v,
+                      "n_inhab_p" = "population from private households",
+                      "n_inhab_c" = "population from collective households",
+                      v  # default: usa o nome da variável
+      )
 
       warn_lines <- c(
         warn_lines,
-        sprintf(
-          "- Unallocated total for %s = %.0f (%s of total).",
-          label,
-          unalloc,
-          .fmt_pct(pct)
+        cli::format_inline(
+          "Unallocated total for {label} ({.field {v}}): {.val {sprintf('%.0f', unalloc)}} ({.val {sprintf('%.2f%%', pct)}} of total)"
         )
       )
     }
@@ -747,7 +751,7 @@ cnefe_index <- .get_cnefe_index(year)
     warn_lines <- c(
       warn_lines,
       sprintf(
-        "- avg_inc_resp assigned to %d of %d eligible points.",
+        "avg_inc_resp assigned to %d of %d eligible points.",
         assigned_avg,
         eligible_avg
       )
@@ -765,7 +769,7 @@ cnefe_index <- .get_cnefe_index(year)
     if (na_avg_tracts > 0) {
       warn_lines <- c(
         warn_lines,
-        sprintf("- avg_inc_resp NA in %d tracts.", na_avg_tracts)
+        sprintf("avg_inc_resp NA in %d tracts.", na_avg_tracts)
       )
     }
   }
@@ -773,7 +777,7 @@ cnefe_index <- .get_cnefe_index(year)
   if (unmatched_pts > 0) {
     warn_lines <- c(
       warn_lines,
-      sprintf("- Unmatched CNEFE points (no tract) = %d.", unmatched_pts)
+      "Unmatched CNEFE points (no tract) = {.val {unmatched_pts}}"
     )
   }
 
@@ -787,16 +791,18 @@ cnefe_index <- .get_cnefe_index(year)
       )
     )$n[1]
     if (n_na > 0) {
-      na_totals <- c(na_totals, sprintf("%s NA in %d", v, n_na))
+      na_totals <- c(
+        na_totals,
+        cli::format_inline("{.field {v}} {.val NA} in {.val {n_na}}")
+      )
     }
   }
+
   if (length(na_totals) > 0) {
     warn_lines <- c(
       warn_lines,
-      paste0(
-        "- Tracts with NA totals: ",
-        paste(na_totals, collapse = "; "),
-        "."
+      cli::format_inline(
+        "Tracts with {.val NA} totals: {paste(na_totals, collapse = '; ')}."
       )
     )
   }
@@ -807,34 +813,34 @@ cnefe_index <- .get_cnefe_index(year)
       n0 <- DBI::dbGetQuery(
         con,
         "
-        SELECT COUNT(*) AS n
-        FROM sc_muni_w_dom
-        WHERE n_inhab_p IS NOT NULL AND n_inhab_p > 0 AND n_dom_p = 0;
-      "
+      SELECT COUNT(*) AS n
+      FROM sc_muni_w_dom
+      WHERE n_inhab_p IS NOT NULL AND n_inhab_p > 0 AND n_dom_p = 0;
+    "
       )$n[1]
     } else if (v == "n_inhab_c") {
       n0 <- DBI::dbGetQuery(
         con,
         "
-        SELECT COUNT(*) AS n
-        FROM sc_muni_w_dom
-        WHERE n_inhab_c IS NOT NULL AND n_inhab_c > 0 AND n_dom_c = 0;
-      "
+      SELECT COUNT(*) AS n
+      FROM sc_muni_w_dom
+      WHERE n_inhab_c IS NOT NULL AND n_inhab_c > 0 AND n_dom_c = 0;
+    "
       )$n[1]
     } else {
       n0 <- DBI::dbGetQuery(
         con,
         sprintf(
           "
-        SELECT COUNT(*) AS n
-        FROM sc_muni_w_dom
-        WHERE %s IS NOT NULL AND %s > 0
-          AND (CASE
-                 WHEN n_dom_p > 0 THEN n_dom_p
-                 WHEN n_dom_c > 0 THEN n_dom_c
-                 ELSE 0
-               END) = 0;
-      ",
+      SELECT COUNT(*) AS n
+      FROM sc_muni_w_dom
+      WHERE %s IS NOT NULL AND %s > 0
+        AND (CASE
+               WHEN n_dom_p > 0 THEN n_dom_p
+               WHEN n_dom_c > 0 THEN n_dom_c
+               ELSE 0
+             END) = 0;
+    ",
           v,
           v
         )
@@ -842,29 +848,38 @@ cnefe_index <- .get_cnefe_index(year)
     }
 
     if (n0 > 0) {
-      no_elig <- c(no_elig, sprintf("%s in %d tracts", v, n0))
+      no_elig <- c(
+        no_elig,
+        cli::format_inline("{.field {v}} in {.val {n0}} tracts")
+      )
     }
   }
+
   if (length(no_elig) > 0) {
     warn_lines <- c(
       warn_lines,
-      paste0(
-        "- Tracts with no eligible dwellings: ",
-        paste(no_elig, collapse = "; "),
-        "."
+      cli::format_inline(
+        "Tracts with no eligible dwellings: {paste(no_elig, collapse = '; ')}"
       )
     )
   }
 
+
   if (length(warn_lines) > 0) {
-    warning(
-      paste(
-        c("Dasymetric interpolation diagnostics:", warn_lines),
-        collapse = "\n"
-      ),
-      call. = FALSE
+    cli::cli_h2("Dasymetric interpolation diagnostics")
+    cli::cli_bullets(
+      stats::setNames(warn_lines, rep("!", length(warn_lines)))
     )
+    # warning(
+    #   paste(
+    #     c("Dasymetric interpolation diagnostics:", warn_lines),
+    #     collapse = "\n"
+    #   ),
+    #   call. = FALSE
+    # )
   }
 
-  out
+  return(out)
 }
+
+
