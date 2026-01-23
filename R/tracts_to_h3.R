@@ -13,18 +13,23 @@
 #' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to 9.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
 #'   Supported variables:
-#'   - `n_inhab_p`: population in private households (*Domicílios particulares*).
-#'   - `n_inhab_c`: population in collective households (*Domicílios coletivos*).
+#'   - `pop_ph`: population in private households (*Domicílios particulares*).
+#'   - `pop_ch`: population in collective households (*Domicílios coletivos*).
 #'   - `male`: total male population.
 #'   - `female`: total female population.
 #'   - `age_0_4`, `age_5_9`, `age_10_14`, `age_15_19`, `age_20_24`, `age_25_29`,
 #'     `age_30_39`, `age_40_49`, `age_50_59`, `age_60_69`, `age_70m`: population by age group.
+#'   - `race_branca`, `race_preta`, `race_amarela`, `race_parda`, `race_indigena`:
+#'     population by race/color (*cor ou raça*).
 #'   - `n_resp`: number of household heads (*Pessoas responsáveis por domicílios*).
 #'   - `avg_inc_resp`: average income of the household heads.
 #'
+#'   For a reference table mapping these variable names to the official IBGE
+#'   census tract codes and descriptions, see [tracts_variables_ref].
+#'
 #'   Allocation rules:
-#'   - `n_inhab_p` is allocated only to private dwellings.
-#'   - `n_inhab_c` is allocated only to collective dwellings.
+#'   - `pop_ph` is allocated only to private dwellings.
+#'   - `pop_ch` is allocated only to collective dwellings.
 #'   - All other sum-like variables are allocated to private dwellings when the tract has any;
 #'     if the tract has zero private dwellings but has collective dwellings, they are allocated to collective.
 #'   - `avg_inc_resp` is assigned (not split) to each eligible dwelling point using the same eligibility rule.
@@ -40,8 +45,8 @@
 tracts_to_h3 <- function(
   code_muni,
   year = 2022,
-  h3_resolution = 9L,
-  vars = c("n_inhab_p", "n_inhab_c"),
+  h3_resolution = 9,
+  vars = c("pop_ph", "pop_ch"),
   cache = TRUE,
   verbose = TRUE
 ) {
@@ -65,8 +70,8 @@ tracts_to_h3 <- function(
   }
 
   allowed_vars <- c(
-    "n_inhab_p",
-    "n_inhab_c",
+    "pop_ph",
+    "pop_ch",
     "male",
     "female",
     "age_0_4",
@@ -80,6 +85,11 @@ tracts_to_h3 <- function(
     "age_50_59",
     "age_60_69",
     "age_70m",
+    "race_branca",
+    "race_preta",
+    "race_amarela",
+    "race_parda",
+    "race_indigena",
     "n_resp",
     "avg_inc_resp"
   )
@@ -315,30 +325,30 @@ tracts_to_h3 <- function(
         END AS avg_inc_resp_pt
       "
       )
-    } else if (v == "n_inhab_p") {
+    } else if (v == "pop_ph") {
       alloc_exprs <- c(
         alloc_exprs,
         "
         CASE
           WHEN p.COD_ESPECIE = 1
-           AND s.n_inhab_p IS NOT NULL
+           AND s.pop_ph IS NOT NULL
            AND s.n_dom_p > 0
-          THEN CAST(s.n_inhab_p AS DOUBLE) / s.n_dom_p
+          THEN CAST(s.pop_ph AS DOUBLE) / s.n_dom_p
           ELSE NULL
-        END AS n_inhab_p_pt
+        END AS pop_ph_pt
       "
       )
-    } else if (v == "n_inhab_c") {
+    } else if (v == "pop_ch") {
       alloc_exprs <- c(
         alloc_exprs,
         "
         CASE
           WHEN p.COD_ESPECIE = 2
-           AND s.n_inhab_c IS NOT NULL
+           AND s.pop_ch IS NOT NULL
            AND s.n_dom_c > 0
-          THEN CAST(s.n_inhab_c AS DOUBLE) / s.n_dom_c
+          THEN CAST(s.pop_ch AS DOUBLE) / s.n_dom_c
           ELSE NULL
-        END AS n_inhab_c_pt
+        END AS pop_ch_pt
       "
       )
     } else {
@@ -507,23 +517,24 @@ tracts_to_h3 <- function(
       as.numeric(alloc_v)
     }
 
+    # Use threshold >= 0.5 to avoid floating point precision issues
     unalloc <- max(total_v - alloc_v, 0)
-    if (total_v > 0 && unalloc > 0) {
-      pct <- 100 * unalloc / total_v
+    unalloc <- if (unalloc < 0.5) 0 else round(unalloc)
+    pct <- if (total_v > 0) 100 * unalloc / total_v else 0
 
-      label <- switch(v,
-                      "n_inhab_p" = "population from private households",
-                      "n_inhab_c" = "population from collective households",
-                      v  # default: usa o nome da variável
-      )
+    label <- switch(v,
+                    "pop_ph" = "population from private households",
+                    "pop_ch" = "population from collective households",
+                    v  # default: use variable name
+    )
 
-      warn_lines <- c(
-        warn_lines,
-        cli::format_inline(
-          "Unallocated total for {label} ({.field {v}}): {.val {sprintf('%.0f', unalloc)}} ({.val {sprintf('%.2f%%', pct)}} of total)"
-        )
+    # Always show all requested variables for consistency
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Unallocated total for {label} ({.field {v}}): {.val {sprintf('%.0f', unalloc)}} ({.val {sprintf('%.2f%%', pct)}} of total)"
       )
-    }
+    )
   }
 
   if ("avg_inc_resp" %in% vars) {
@@ -623,26 +634,26 @@ tracts_to_h3 <- function(
 
   no_elig <- character(0)
   for (v in totals_vars) {
-    if (v == "n_inhab_p") {
+    if (v == "pop_ph") {
       n0 <- suppressMessages(
         DBI::dbGetQuery(
         con,
         "
       SELECT COUNT(*) AS n
       FROM sc_muni_w_dom
-      WHERE n_inhab_p IS NOT NULL AND n_inhab_p > 0 AND n_dom_p = 0;
+      WHERE pop_ph IS NOT NULL AND pop_ph > 0 AND n_dom_p = 0;
     "
       )$n[1]
       )
 
-    } else if (v == "n_inhab_c") {
+    } else if (v == "pop_ch") {
       n0 <- suppressMessages(
         DBI::dbGetQuery(
         con,
         "
       SELECT COUNT(*) AS n
       FROM sc_muni_w_dom
-      WHERE n_inhab_c IS NOT NULL AND n_inhab_c > 0 AND n_dom_c = 0;
+      WHERE pop_ch IS NOT NULL AND pop_ch > 0 AND n_dom_c = 0;
     "
       )$n[1]
       )

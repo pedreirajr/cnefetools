@@ -8,7 +8,7 @@ tracts_to_polygon(
   code_muni,
   polygon,
   year = 2022,
-  vars = c("n_inhab_p", "n_inhab_c"),
+  vars = c("pop_ph", "pop_ch"),
   crs_output = NULL,
   cache = TRUE,
   verbose = TRUE
@@ -27,20 +27,25 @@ Defaults to 2022.}
 \item{vars}{Character vector. Names of tract-level variables to interpolate.
 Supported variables:
 \itemize{
-\item \code{n_inhab_p}: population in private households (\emph{Domicílios particulares}).
-\item \code{n_inhab_c}: population in collective households (\emph{Domicílios coletivos}).
+\item \code{pop_ph}: population in private households (\emph{Domicílios particulares}).
+\item \code{pop_ch}: population in collective households (\emph{Domicílios coletivos}).
 \item \code{male}: total male population.
 \item \code{female}: total female population.
 \item \code{age_0_4}, \code{age_5_9}, \code{age_10_14}, \code{age_15_19}, \code{age_20_24}, \code{age_25_29},
 \code{age_30_39}, \code{age_40_49}, \code{age_50_59}, \code{age_60_69}, \code{age_70m}: population by age group.
+\item \code{race_branca}, \code{race_preta}, \code{race_amarela}, \code{race_parda}, \code{race_indigena}:
+population by race/color (\emph{cor ou raça}).
 \item \code{n_resp}: number of household heads (\emph{Pessoas responsáveis por domicílios}).
 \item \code{avg_inc_resp}: average income of the household heads.
 }
 
+For a reference table mapping these variable names to the official IBGE
+census tract codes and descriptions, see \link{tracts_variables_ref}.
+
 Allocation rules:
 \itemize{
-\item \code{n_inhab_p} is allocated only to private dwellings.
-\item \code{n_inhab_c} is allocated only to collective dwellings.
+\item \code{pop_ph} is allocated only to private dwellings.
+\item \code{pop_ch} is allocated only to collective dwellings.
 \item All other sum-like variables are allocated to private dwellings when the tract has any;
 if the tract has zero private dwellings but has collective dwellings, they are allocated to collective.
 \item \code{avg_inc_resp} is assigned (not split) to each eligible dwelling point using the same eligibility rule.
