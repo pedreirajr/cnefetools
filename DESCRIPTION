@@ -49,4 +49,5 @@ Imports:
     cli (>= 3.6.0),
     checkmate,
     fs,
-    httr2
+    httr2,
+    piggyback
