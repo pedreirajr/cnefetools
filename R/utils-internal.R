@@ -386,35 +386,6 @@
   getOption("cnefetools.sc_assets_tag", "sc-assets-v1")
 }
 
-#' @keywords internal
-#' @noRd
-.cnefetools_github_url <- function() {
-  # Prefer DESCRIPTION URL so forks still work when installed from a fork
-  url <- getOption("cnefetools.github_url", NA_character_)
-
-  if (is.na(url) || !nzchar(url)) {
-    desc <- tryCatch(
-      utils::packageDescription("cnefetools"),
-      error = function(e) NULL
-    )
-    url <- if (!is.null(desc) && !is.null(desc$URL)) desc$URL else ""
-  }
-
-  # URL may have multiple entries separated by commas
-  url <- trimws(strsplit(url, ",", fixed = TRUE)[[1L]][1L])
-
-  if (!nzchar(url) || !grepl("^https?://github\\.com/", url)) {
-    url <- "https://github.com/pedreirajr/cnefetools"
-  }
-
-  url
-}
-
-#' @keywords internal
-#' @noRd
-.sc_assets_download_base_url <- function() {
-  paste0(.cnefetools_github_url(), "/releases/download")
-}
 
 #' @keywords internal
 #' @noRd
@@ -453,17 +424,6 @@
   file.path(.sc_cache_dir(), .sc_asset_filename(uf))
 }
 
-#' @keywords internal
-#' @noRd
-.sc_asset_url <- function(uf) {
-  paste0(
-    .sc_assets_download_base_url(),
-    "/",
-    .sc_assets_tag(),
-    "/",
-    .sc_asset_filename(uf)
-  )
-}
 
 #' @keywords internal
 #' @noRd
@@ -482,167 +442,141 @@
   )
 }
 
-#' @keywords internal
-#' @noRd
-.download_file_with_retry <- function(
-    url,
-    destfile,
-    retry_timeouts = c(300L, 600L, 1800L),
-    validate_fun = NULL,
-    verbose = TRUE
-) {
-  # argument checks
-  checkmate::assert_string(url, min.chars = 1)
-  checkmate::assert_path_for_output(destfile, overwrite = TRUE)
-  checkmate::assert_logical(verbose, len = 1)
-
-  if (!is.null(validate_fun)) {
-    checkmate::assert_function(validate_fun)
-  }
-
-  if (!grepl("^https?://", url)) {
-    rlang::abort("`url` must be an HTTP or HTTPS URL.")
-  }
-
-  retry_timeouts <- unique(as.integer(retry_timeouts))
-  retry_timeouts <- retry_timeouts[!is.na(retry_timeouts) & retry_timeouts > 0L]
-
-  if (length(retry_timeouts) == 0L) {
-    rlang::abort(
-      "`retry_timeouts` must contain at least one positive value."
-    )
-  }
-
-  fs::dir_create(fs::path_dir(destfile))
-
-  last_err <- NULL
-
-  for (t in retry_timeouts) {
-    tmp <- tempfile(fileext = ".parquet")
-
-    if (isTRUE(verbose)) {
-      message(
-        "Downloading file (timeout = ",
-        t,
-        "s): ",
-        url
-      )
-    }
-
-    res <- tryCatch(
-      {
-        req <- httr2::request(url) |>
-          httr2::req_timeout(t)
-
-        httr2::req_perform(req, path = tmp)
-
-        if (!fs::file_exists(tmp) || fs::file_size(tmp) == 0) {
-          rlang::abort("Downloaded file is empty.")
-        }
-
-        if (!is.null(validate_fun)) {
-          if (!isTRUE(validate_fun(tmp))) {
-            rlang::abort("Downloaded file failed validation.")
-          }
-        }
-
-        if (fs::file_exists(destfile)) {
-          fs::file_delete(destfile)
-        }
-
-        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
-
-        if (!isTRUE(ok_copy)) {
-          rlang::abort("Failed to copy downloaded file to destination.")
-        }
-
-        list(ok = TRUE, err = NULL)
-      },
-      error = function(e) {
-        if (inherits(e, "interrupt")) rlang::interrupt()
-        list(ok = FALSE, err = e)
-      },
-      finally = {
-        if (fs::file_exists(tmp)) fs::file_delete(tmp)
-      }
-    )
-
-    if (isTRUE(res$ok)) {
-      return(invisible(destfile))
-    }
-
-    last_err <- res$err
-
-    if (isTRUE(verbose) && !is.null(last_err)) {
-      message(
-        "Download attempt failed: ",
-        conditionMessage(last_err)
-      )
-    }
-  }
-
-  rlang::abort(
-    "Failed to download file after multiple attempts.",
-    parent = last_err
-  )
-}
 
 #' @keywords internal
 #' @noRd
 .sc_ensure_parquet_uf <- function(
-  uf,
-  cache = TRUE,
-  verbose = TRUE,
-  retry_timeouts = c(300L, 600L, 1800L)
+    uf,
+    cache = TRUE,
+    verbose = TRUE,
+    retry_timeouts = c(300L, 600L, 1800L)  # Ignorado, mantido para compatibilidade
 ) {
+
   uf <- as.character(uf)
+
   uf <- trimws(uf)
+
   if (nchar(uf) == 1L) {
     uf <- paste0("0", uf)
   }
+
   if (!grepl("^[0-9]{2}$", uf)) {
     rlang::abort("`uf` must be a two-digit string like '29'.")
   }
 
-  url <- .sc_asset_url(uf)
+  # Usa piggyback para download dos assets do SC
+  .sc_download_with_piggyback(uf = uf, cache = cache, verbose = verbose)
+}
+
+#' Download census tract parquet from GitHub releases using piggyback
+#' @keywords internal
+#' @noRd
+.sc_download_with_piggyback <- function(
+    uf,
+    cache = TRUE,
+    verbose = TRUE
+) {
+
+  rlang::check_installed(
+    "piggyback",
+    reason = "to download census tract data from GitHub releases."
+  )
+
+  filename <- .sc_asset_filename(uf)
+  tag <- .sc_assets_tag()
+  repo <- "pedreirajr/cnefetools"
 
   if (isTRUE(cache)) {
     destfile <- .sc_asset_local_path(uf)
 
-    if (file.exists(destfile)) {
-      valid <- .validate_sc_parquet(destfile)
-      if (isTRUE(valid)) {
-        return(destfile)
-      }
-
+    # Se já existe e é válido, retorna
+    if (file.exists(destfile) && .validate_sc_parquet(destfile)) {
       if (verbose) {
-        message("Cached SC Parquet appears corrupted. Deleting it...")
+        cli::cli_alert_info("Using cached file: {.file {basename(destfile)}}")
       }
-      unlink(destfile)
+      return(destfile)
     }
 
-    .download_file_with_retry(
-      url = url,
-      destfile = destfile,
-      validate_fun = .validate_sc_parquet,
-      verbose = verbose,
-      retry_timeouts = retry_timeouts
-    )
+    # Download com piggyback
+    if (verbose) {
+      cli::cli_progress_step("Downloading {.file {filename}} from GitHub release")
+    }
 
-    return(destfile)
+    tryCatch({
+      piggyback::pb_download(
+        file = filename,
+        repo = repo,
+        tag = tag,
+        dest = dirname(destfile),
+        overwrite = TRUE,
+        show_progress = verbose
+      )
+
+      if (verbose) {
+        cli::cli_progress_done()
+      }
+
+      # Valida depois do download
+      if (!.validate_sc_parquet(destfile)) {
+        cli::cli_abort("Downloaded file failed validation: {.file {filename}}")
+      }
+
+      return(destfile)
+    }, error = function(e) {
+      if (verbose) {
+        cli::cli_progress_done()
+      }
+      cli::cli_abort(
+        c(
+          "Failed to download {.file {filename}} from GitHub release.",
+          "i" = "Error: {conditionMessage(e)}"
+        ),
+        parent = e
+      )
+    })
   }
 
-  # No-cache mode: download to a temp file and return its path
-  tmp <- tempfile(fileext = ".parquet")
-  .download_file_with_retry(
-    url = url,
-    destfile = tmp,
-    validate_fun = .validate_sc_parquet,
-    verbose = verbose,
-    retry_timeouts = retry_timeouts
-  )
+  # No-cache mode: baixa para temp
+  tmp_dir <- tempdir()
 
-  tmp
+  if (verbose) {
+    cli::cli_progress_step("Downloading {.file {filename}} from GitHub release")
+  }
+
+  tryCatch({
+    piggyback::pb_download(
+      file = filename,
+      repo = repo,
+      tag = tag,
+      dest = tmp_dir,
+      overwrite = TRUE,
+      show_progress = verbose
+    )
+
+    if (verbose) {
+      cli::cli_progress_done()
+    }
+
+    # O arquivo baixado está em tmp_dir/filename
+    downloaded_file <- file.path(tmp_dir, filename)
+
+    if (!file.exists(downloaded_file)) {
+      cli::cli_abort("Downloaded file not found at expected location: {.path {downloaded_file}}")
+    }
+
+    return(downloaded_file)
+  }, error = function(e) {
+    if (verbose) {
+      cli::cli_progress_done()
+    }
+    cli::cli_abort(
+      c(
+        "Failed to download {.file {filename}} from GitHub release.",
+        "i" = "Error: {conditionMessage(e)}"
+      ),
+      parent = e
+    )
+  })
 }
 
 #' @keywords internal
