@@ -1,0 +1,99 @@
+# Script to generate the reference table for tracts_to_* variables
+# This table maps variable names used in tracts_to_h3() and tracts_to_polygon()
+# to the official census tract dataset codes and names from IBGE.
+#
+# Source: D:/7. PRODUÇÃO CIENTÍFICA/2026 INTERPOLAÇÃO DASIMÉTRICA CNEFE/tab_vars_cnefetools.xlsx
+
+tracts_variables_ref <- data.frame(
+ var_cnefetools = c(
+    "pop_ph",
+    "pop_ch",
+    "male",
+    "female",
+    "age_0_4",
+    "age_5_9",
+    "age_10_14",
+    "age_15_19",
+    "age_20_24",
+    "age_25_29",
+    "age_30_39",
+    "age_40_49",
+    "age_50_59",
+    "age_60_69",
+    "age_70m",
+    "race_branca",
+    "race_preta",
+    "race_parda",
+    "race_amarela",
+    "race_indigena"
+  ),
+  code_var_ibge = c(
+    "V00005",
+    "V00007",
+    "V01007",
+    "V01008",
+    "V01031",
+    "V01032",
+    "V01033",
+    "V01034",
+    "V01035",
+    "V01036",
+    "V01037",
+    "V01038",
+    "V01039",
+    "V01040",
+    "V01041",
+    "V01317",
+    "V01318",
+    "V01320",
+    "V01319",
+    "V01321"
+  ),
+  desc_var_ibge = c(
+    "Domicilios Particulares Permanentes Ocupados, Quantidade de moradores",
+    "Domicilios Coletivos Com Morador, Quantidade de moradores",
+    "Sexo masculino",
+    "Sexo feminino",
+    "0 a 4 anos",
+    "5 a 9 anos",
+    "10 a 14 anos",
+    "15 a 19 anos",
+    "20 a 24 anos",
+    "25 a 29 anos",
+    "30 a 39 anos",
+    "40 a 49 anos",
+    "50 a 59 anos",
+    "60 a 69 anos",
+    "70 anos ou mais",
+    "Cor ou raca e branca",
+    "Cor ou raca e preta",
+    "Cor ou raca e parda",
+    "Cor ou raca e amarela",
+    "Cor ou raca e indigena"
+  ),
+  table_ibge = c(
+    "Domicilios",
+    "Domicilios",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas",
+    "Pessoas"
+  ),
+  stringsAsFactors = FALSE
+)
+
+usethis::use_data(tracts_variables_ref, overwrite = TRUE)
