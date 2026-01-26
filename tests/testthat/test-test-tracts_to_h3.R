@@ -54,7 +54,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
         res <- cnefetools::tracts_to_h3(
           code_muni = 2927408,
           h3_resolution = 9,
-          vars = c("n_inhab_p", "avg_inc_resp", "n_resp", "female", "age_70m"),
+          vars = c("pop_ph", "avg_inc_resp", "n_resp", "female", "age_70m"),
           cache = TRUE,
           verbose = FALSE
         ),
@@ -66,7 +66,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
 
       needed <- c(
         "id_hex",
-        "n_inhab_p",
+        "pop_ph",
         "avg_inc_resp",
         "n_resp",
         "female",
@@ -78,11 +78,11 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       testthat::expect_true(is.list(timing) || is.null(timing))
 
       # Minimal sanity checks on returned values
-      testthat::expect_true(is.numeric(res$n_inhab_p))
-      testthat::expect_gt(sum(res$n_inhab_p, na.rm = TRUE), 0)
+      testthat::expect_true(is.numeric(res$pop_ph))
+      testthat::expect_gt(sum(res$pop_ph, na.rm = TRUE), 0)
 
       # With our mocked data: tract1 allocates 100; tract2 is unallocated
-      testthat::expect_equal(round(sum(res$n_inhab_p, na.rm = TRUE)), 100)
+      testthat::expect_equal(round(sum(res$pop_ph, na.rm = TRUE)), 100)
 
       # avg_inc_resp should be present and numeric (mean over eligible points)
       testthat::expect_true(
@@ -97,7 +97,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
         CREATE OR REPLACE VIEW sc_muni AS
         SELECT
           '292740800000001' AS code_tract,
-          100::INTEGER AS n_inhab_p,
+          100::INTEGER AS pop_ph,
           60::INTEGER  AS female,
           5::INTEGER   AS age_70m,
           40::INTEGER  AS n_resp,
@@ -106,7 +106,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
         UNION ALL
         SELECT
           '292740800000002' AS code_tract,
-          50::INTEGER  AS n_inhab_p,
+          50::INTEGER  AS pop_ph,
           20::INTEGER  AS female,
           2::INTEGER   AS age_70m,
           10::INTEGER  AS n_resp,

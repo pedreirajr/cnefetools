@@ -74,7 +74,7 @@ testthat::test_that("tracts_to_polygon validates vars argument", {
     cnefetools::tracts_to_polygon(
       code_muni,
       polygon = test_polygon,
-      vars = c("n_inhab_p", "invalid_var"),
+      vars = c("pop_ph", "invalid_var"),
       verbose = FALSE
     ),
     "Unknown.*vars"
