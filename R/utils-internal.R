@@ -248,15 +248,8 @@
         # ZIP integrity check
         utils::unzip(tmp, list = TRUE)
 
-        if (fs::file_exists(destfile)) {
-          fs::file_delete(destfile)
-        }
-
-        ok_copy <- file.copy(tmp, destfile, overwrite = TRUE)
-
-        if (!isTRUE(ok_copy)) {
-          rlang::abort("Failed to copy downloaded ZIP to destination.")
-        }
+        # Use fs::file_copy for better Windows compatibility
+        fs::file_copy(tmp, destfile, overwrite = TRUE)
 
         list(ok = TRUE, err = NULL)
       },
@@ -383,7 +376,7 @@
 #' @noRd
 .sc_assets_tag <- function() {
   # Advanced users can override via options() without changing the API
-  getOption("cnefetools.sc_assets_tag", "sc-assets-v1")
+  getOption("cnefetools.sc_assets_tag", "sc-assets-v2")
 }
 
 
@@ -428,13 +421,20 @@
 #' @keywords internal
 #' @noRd
 .validate_sc_parquet <- function(path) {
-  # Cheap validation: open Parquet metadata and check required fields
+
+  # Validation: open Parquet metadata and check required fields
+  # Includes v2 variables (pop_ph, pop_ch, race_*) to invalidate old v1 cache
   tryCatch(
     {
       reader <- arrow::ParquetFileReader$create(path)
       schema <- reader$GetSchema()
       fields <- schema$names
-      all(c("code_tract", "geom_wkb") %in% fields)
+      required_fields <- c(
+        "code_tract", "geom_wkb",
+        "pop_ph", "pop_ch",
+        "race_branca", "race_preta", "race_amarela", "race_parda", "race_indigena"
+      )
+      all(required_fields %in% fields)
     },
     error = function(e) {
       FALSE
@@ -468,7 +468,42 @@
   .sc_download_with_piggyback(uf = uf, cache = cache, verbose = verbose)
 }
 
+#' Try to copy file to cache, return FALSE if file is locked
+#'
+#' On Windows, files may be locked by DuckDB or other processes.
+#' This function attempts to copy but returns FALSE instead of erroring
+#' if the destination file is locked.
+#'
+#' @param from Source file path
+#' @param to Destination file path
+#' @return TRUE if copy succeeded, FALSE if destination is locked
+#' @keywords internal
+#' @noRd
+.try_copy_to_cache <- function(from, to) {
+  tryCatch(
+    {
+      # First try to delete destination if it exists
+      if (fs::file_exists(to)) {
+        fs::file_delete(to)
+      }
+      fs::file_copy(from, to, overwrite = TRUE)
+
+      # Verify the copy succeeded
+      fs::file_exists(to) && fs::file_size(to) > 0
+    },
+    error = function(e) {
+      # File is locked or other error - return FALSE
+      FALSE
+    }
+  )
+}
+
 #' Download census tract parquet from GitHub releases using piggyback
+#'
+#' This function handles the common Windows issue where cached files are locked
+#' by DuckDB or other processes. When the cache file cannot be updated, it falls
+#' back to using a temporary file for the current session.
+#'
 #' @keywords internal
 #' @noRd
 .sc_download_with_piggyback <- function(
@@ -486,69 +521,42 @@
   tag <- .sc_assets_tag()
   repo <- "pedreirajr/cnefetools"
 
+  # Determine cache destination
+  destfile <- NULL
   if (isTRUE(cache)) {
-    destfile <- .sc_asset_local_path(uf)
+    destfile <- normalizePath(.sc_asset_local_path(uf), winslash = "/", mustWork = FALSE)
+    dest_dir <- dirname(destfile)
 
-    # Se já existe e é válido, retorna
+    # Ensure cache directory exists
+    if (!dir.exists(dest_dir)) {
+      dir.create(dest_dir, recursive = TRUE, showWarnings = FALSE)
+    }
+
+    # If file already exists and is valid, return it
     if (file.exists(destfile) && .validate_sc_parquet(destfile)) {
       if (verbose) {
         cli::cli_alert_info("Using cached file: {.file {basename(destfile)}}")
       }
       return(destfile)
     }
-
-    # Download com piggyback
-    if (verbose) {
-      cli::cli_progress_step("Downloading {.file {filename}} from GitHub release")
-    }
-
-    tryCatch({
-      piggyback::pb_download(
-        file = filename,
-        repo = repo,
-        tag = tag,
-        dest = dirname(destfile),
-        overwrite = TRUE,
-        show_progress = verbose
-      )
-
-      if (verbose) {
-        cli::cli_progress_done()
-      }
-
-      # Valida depois do download
-      if (!.validate_sc_parquet(destfile)) {
-        cli::cli_abort("Downloaded file failed validation: {.file {filename}}")
-      }
-
-      return(destfile)
-    }, error = function(e) {
-      if (verbose) {
-        cli::cli_progress_done()
-      }
-      cli::cli_abort(
-        c(
-          "Failed to download {.file {filename}} from GitHub release.",
-          "i" = "Error: {conditionMessage(e)}"
-        ),
-        parent = e
-      )
-    })
   }
 
-  # No-cache mode: baixa para temp
-  tmp_dir <- tempdir()
+  # Download to a unique temp location to avoid conflicts
+  tmp_download_dir <- file.path(tempdir(), paste0("sc_download_", Sys.getpid()))
+  if (!dir.exists(tmp_download_dir)) {
+    dir.create(tmp_download_dir, recursive = TRUE, showWarnings = FALSE)
+  }
 
   if (verbose) {
     cli::cli_progress_step("Downloading {.file {filename}} from GitHub release")
   }
 
-  tryCatch({
+  download_result <- tryCatch({
     piggyback::pb_download(
       file = filename,
       repo = repo,
       tag = tag,
-      dest = tmp_dir,
+      dest = tmp_download_dir,
       overwrite = TRUE,
       show_progress = verbose
     )
@@ -557,26 +565,62 @@
       cli::cli_progress_done()
     }
 
-    # O arquivo baixado está em tmp_dir/filename
-    downloaded_file <- file.path(tmp_dir, filename)
-
-    if (!file.exists(downloaded_file)) {
-      cli::cli_abort("Downloaded file not found at expected location: {.path {downloaded_file}}")
-    }
-
-    return(downloaded_file)
+    list(ok = TRUE, err = NULL)
   }, error = function(e) {
     if (verbose) {
       cli::cli_progress_done()
     }
+    list(ok = FALSE, err = e)
+  })
+
+  if (!download_result$ok) {
     cli::cli_abort(
       c(
         "Failed to download {.file {filename}} from GitHub release.",
-        "i" = "Error: {conditionMessage(e)}"
+        "i" = "Error: {conditionMessage(download_result$err)}"
       ),
-      parent = e
+      parent = download_result$err
     )
-  })
+  }
+
+  # File downloaded to temp location
+  tmp_file <- file.path(tmp_download_dir, filename)
+
+  if (!file.exists(tmp_file)) {
+    cli::cli_abort("Downloaded file not found at expected location: {.path {tmp_file}}")
+  }
+
+  # Validate the downloaded file
+ if (!.validate_sc_parquet(tmp_file)) {
+    cli::cli_abort("Downloaded file failed validation: {.file {filename}}")
+  }
+
+  # If cache is disabled, return temp file directly
+  if (!isTRUE(cache)) {
+    return(tmp_file)
+  }
+
+  # Try to copy to cache
+  copy_ok <- .try_copy_to_cache(tmp_file, destfile)
+
+  if (copy_ok) {
+    # Successfully cached - clean up temp and return cache path
+    tryCatch(fs::file_delete(tmp_file), error = function(e) NULL)
+    return(destfile)
+  }
+
+  # Cache copy failed (file locked) - use temp file for this session
+  if (verbose) {
+    cli::cli_alert_warning(
+      c(
+        "Cache file is locked (possibly by another R session or DuckDB).",
+        "i" = "Using temporary file for this session.",
+        "i" = "Restart R to update the cached file."
+      )
+    )
+  }
+
+  return(tmp_file)
 }
 
 #' @keywords internal

@@ -51,3 +51,4 @@ Imports:
     fs,
     httr2,
     piggyback
+LazyData: true
