@@ -684,42 +684,49 @@ compute_lumi <- function(
   polygon,
   verbose
 ) {
-  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                        config = list(
-                          'enable_progress_bar' = FALSE,
-                          'enable_print_progress' = FALSE,
-                          'print_progress_bar' = FALSE
-                        ))
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  res <- NULL
 
-  .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-  .duckdb_ensure_extension(con, "spatial", verbose = verbose)
+  utils::capture.output(
+    utils::capture.output({
 
-  zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-  uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-  uri_sql <- gsub("'", "''", uri)
+      con <- DBI::dbConnect(
+        duckdb::duckdb(),
+        dbdir = ":memory:",
+        config = list(
+          enable_progress_bar = FALSE,
+          enable_print_progress = FALSE,
+          print_progress_bar = FALSE
+        )
+      )
 
-  # Create CNEFE points table in DuckDB with point geometry
-  # Excluding COD_ESPECIE == 7, keeping 1-6 and 8
-  DBI::dbExecute(con, sprintf(
-    "
-    CREATE TABLE cnefe_pts AS
-    SELECT
-      ROW_NUMBER() OVER () AS pt_id,
-      CAST(LONGITUDE AS DOUBLE) AS lon,
-      CAST(LATITUDE  AS DOUBLE) AS lat,
-      try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE,
-      ST_Point(CAST(LONGITUDE AS DOUBLE), CAST(LATITUDE AS DOUBLE)) AS geom
-    FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
-    WHERE
-      LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
-      AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8
-      AND try_cast(COD_ESPECIE AS INTEGER) != 7;
-    ",
-    uri_sql
-  ))
+      .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
+      .duckdb_ensure_extension(con, "spatial", verbose = verbose)
 
-  total_points <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_pts;")$n[1]
+      zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
+      uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+      uri_sql <- gsub("'", "''", uri)
+
+      DBI::dbExecute(con, sprintf(
+        "
+      CREATE TABLE cnefe_pts AS
+      SELECT
+        ROW_NUMBER() OVER () AS pt_id,
+        CAST(LONGITUDE AS DOUBLE) AS lon,
+        CAST(LATITUDE  AS DOUBLE) AS lat,
+        try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE,
+        ST_Point(CAST(LONGITUDE AS DOUBLE), CAST(LATITUDE AS DOUBLE)) AS geom
+      FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+      WHERE
+        LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
+        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8;
+      ",
+        uri_sql
+      ))
+
+      total_points <- DBI::dbGetQuery(
+        con,
+        "SELECT COUNT(*) AS n FROM cnefe_pts;"
+      )$n[1]
 
   if (total_points == 0L) {
     return(list(
@@ -749,18 +756,11 @@ compute_lumi <- function(
   total_n_tot <- as.integer(global_totals$total_n_tot[1])
 
   # Write user polygon to DuckDB via duckspatial
-  invisible(
-    utils::capture.output(
-      suppressMessages(
-        duckspatial::ddbs_write_vector(
-          conn = con,
-          data = polygon[, ".poly_row_id"],
-          name = "user_polygons",
-          overwrite = TRUE
-        )
-      ),
-      type = "output"
-    )
+  duckspatial::ddbs_write_vector(
+    conn = con,
+    data = polygon[, ".poly_row_id"],
+    name = "user_polygons",
+    overwrite = TRUE
   )
 
   # Spatial index on user polygons for faster joins
@@ -771,16 +771,16 @@ compute_lumi <- function(
 
   # Spatial join in DuckDB via ST_Within (LEFT JOIN to track coverage)
   DBI::dbExecute(con,
-    "
-    CREATE TABLE joined AS
-    SELECT
-      p.pt_id,
-      p.COD_ESPECIE,
-      u.\".poly_row_id\" AS poly_row_id
-    FROM cnefe_pts p
-    LEFT JOIN user_polygons u
-      ON ST_Within(p.geom, u.geom);
-    "
+                 "
+      CREATE TABLE joined AS
+      SELECT
+        p.pt_id,
+        p.COD_ESPECIE,
+        u.\".poly_row_id\" AS poly_row_id
+      FROM cnefe_pts p
+      LEFT JOIN user_polygons u
+        ON ST_Within(p.geom, u.geom);
+      "
   )
 
   # Coverage stats (computed inside DuckDB)
@@ -812,14 +812,23 @@ compute_lumi <- function(
       n_tot = as.integer(.data$n_tot)
     )
 
-  return(list(
+  res <- list(
     counts = counts,
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside,
     total_n_res = total_n_res,
     total_n_tot = total_n_tot
-  ))
+  )
+
+    }, type = "message"),
+  type = "output"
+  )
+
+  DBI::dbDisconnect(con, shutdown = TRUE)
+
+  return(res)
+
 }
 
 
