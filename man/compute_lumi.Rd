@@ -2,11 +2,14 @@
 % Please edit documentation in R/compute_lumi.R
 \name{compute_lumi}
 \alias{compute_lumi}
-\title{Compute land-use mix indicators on an H3 grid}
+\title{Compute land-use mix indicators on a spatial grid}
 \usage{
 compute_lumi(
   code_muni,
   year = 2022,
+  polygon_type = c("hex", "user"),
+  polygon = NULL,
+  crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
   backend = c("duckdb", "r")
@@ -18,7 +21,22 @@ compute_lumi(
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
 
-\item{h3_resolution}{Integer. H3 grid resolution (default: 9).}
+\item{polygon_type}{Character. Type of polygon aggregation: \code{"hex"} (default)
+uses an H3 hexagonal grid; \code{"user"} uses polygons provided via the \code{polygon}
+parameter.}
+
+\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Required when
+\code{polygon_type = "user"}. A warning is issued reporting the percentage of
+CNEFE points covered by the polygon area. If no CNEFE points fall within
+the polygon, an error is raised.}
+
+\item{crs_output}{The CRS for the output object. Only used when
+\code{polygon_type = "user"}. Default is \code{NULL}, which uses the original CRS of
+the \code{polygon} argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
+object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
+
+\item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used when
+\code{polygon_type = "hex"}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
@@ -26,19 +44,34 @@ Defaults to 2022.}
 reading directly from the cached ZIP. \code{"r"} computes H3 in R using h3jsr.}
 }
 \value{
-An \code{\link[sf:sf]{sf::sf}} object with CRS 4326 containing:
+An \code{\link[sf:sf]{sf::sf}} object containing:
+\describe{
+\item{When \code{polygon_type = "hex"}:}{
 \itemize{
 \item \code{id_hex}: H3 cell identifier
-\item \code{p_res}: share of residential addresses in the hexagon
-\item \code{ei}, \code{hhi}, \code{bal}, \code{ice}, \code{hhi_adp}, \code{bgbi}: land-use mix indicators
-\item \code{geometry}: hexagon geometry
+\item \code{p_res}, \code{ei}, \code{hhi}, \code{bal}, \code{ice}, \code{hhi_adp}, \code{bgbi}: land-use
+mix indicators
+\item \code{geometry}: hexagon geometry (CRS 4326)
+}
+}
+\item{When \code{polygon_type = "user"}:}{
+\itemize{
+\item Original columns from \code{polygon}
+\item \code{p_res}, \code{ei}, \code{hhi}, \code{bal}, \code{ice}, \code{hhi_adp}, \code{bgbi}: land-use
+mix indicators
+\item \code{geometry}: polygon geometry (in the original or \code{crs_output} CRS)
+}
+}
 }
 }
 \description{
 \code{compute_lumi()} reads CNEFE records for a given municipality,
-assigns each address point to an H3 cell, and computes land-use mix
-indices per hexagon (EI, HHI, ICE, adapted HHI, and BGBI), following the
-methodology proposed in Pedreira Jr. et al. (2025).
+assigns each address point to spatial units (either H3 hexagonal cells or
+user-provided polygons), and computes the residential proportion (\code{p_res}) and land-use mix
+indices, such as the Entropy Index (\code{ei}), the Herfindahl-Hirschman Index (\code{hhi}),
+the Balance Index (\code{bal}), the Index of Concentration at Extremes (\code{ice}), the adapted HHI (\code{hhi_adp}),
+and the Bidirectional Global-centered Index (\code{bgbi}), following the methodology proposed in
+Pedreira Jr. et al. (2025).
 }
 \references{
 Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
@@ -46,6 +79,11 @@ Measuring land use mix with address-level census data (2025).
 \emph{engrXiv}. https://engrxiv.org/preprint/view/5975
 
 Booth, A.; Crouter, A. C. (Eds.). (2001).
-Does It Take a Village? Community Effects on Children, Adolescents, and
-Families. Lawrence Erlbaum Associates.
+\emph{Does It Take a Village? Community Effects on Children, Adolescents, and Families}.
+Psychology Press.
+
+Song, Y.; Merlin, L.; Rodriguez, D. (2013).
+Comparing measures of urban land use mix.
+\emph{Computers, Environment and Urban Systems}, 42, 1--13.
+https://doi.org/10.1016/j.compenvurbsys.2013.08.001
 }
