@@ -289,8 +289,8 @@ compute_lumi <- function(
   # Step 1/3: Ensure ZIP and find CSV inside
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 1/3: ensuring ZIP and inspecting archive...",
-                           msg_done = "Step 1/3 (ZIP ready)")
+    cli::cli_progress_step("Step 1/3: Ensuring ZIP and inspecting archive...",
+                           msg_done = "Step 1/3 (CNEFE ZIP ready)")
   }
 
   zip_info <- .cnefe_ensure_zip(
@@ -305,15 +305,15 @@ compute_lumi <- function(
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   if (verbose) {
-    cli::cli_progress_done("Step 1/3: ensuring ZIP and inspecting archive...")
+    cli::cli_progress_done("Step 1/3: Ensuring ZIP and inspecting archive...")
   }
 
   # ---------------------------------------------------------------------------
   # Step 2/3: Aggregate counts per hex (n_res, n_tot)
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 2/3: aggregating CNEFE counts per H3 cell...",
-                           msg_done = "Step 2/3 (counts per hex)")
+    cli::cli_progress_step("Step 2/3: Counting addresses per H3 cell...",
+                           msg_done = "Step 2/3 (Addresses counted)")
   }
 
   counts_hex <- NULL
@@ -396,7 +396,7 @@ compute_lumi <- function(
       year = year,
       output = "arrow",
       cache = TRUE,
-      verbose = verbose
+      verbose = FALSE
     )
 
     df <- as.data.frame(tab) |>
@@ -447,7 +447,7 @@ compute_lumi <- function(
   }
 
   if (verbose) {
-    cli::cli_progress_done("Step 2/3: aggregating CNEFE counts per H3 cell...")
+    cli::cli_progress_done("Step 2/3: Counting addresses per H3 cell...")
   }
 
   if (is.null(counts_hex) || nrow(counts_hex) == 0L) {
@@ -461,8 +461,8 @@ compute_lumi <- function(
   # Step 3/3: Build H3 grid from ids + compute indices
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 3/3: building grid and computing LUMI indices...",
-                           msg_done = "Step 3/3 (indices)")
+    cli::cli_progress_step("Step 3/3: Building grid and computing LUMI...",
+                           msg_done = "Step 3/3 (Land use mix indices computed)")
   }
 
   hex_grid <- build_h3_grid(
@@ -493,7 +493,7 @@ compute_lumi <- function(
     )
 
   if (verbose) {
-    cli::cli_progress_done("Step 3/3: building grid and computing LUMI indices...")
+    cli::cli_progress_done("Step 3/3: Building grid and computing LUMI...")
   }
 
   return(out)
@@ -513,13 +513,12 @@ compute_lumi <- function(
   verbose
 ) {
   # ---------------------------------------------------------------------------
-  # Step 1/4: Ensure ZIP exists in cache
+  # Step 1/3: Ensure ZIP exists in cache and prepare polygon
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 1/4: ensuring ZIP and inspecting archive...",
-                           msg_done = "Step 1/4 (ZIP ready)")
+    cli::cli_progress_step("Step 1/3: Ensuring data and preparing polygon...",
+                           msg_done = "Step 1/3 (Data and polygon ready)")
   }
-
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
@@ -531,18 +530,6 @@ compute_lumi <- function(
   zip_path <- zip_info$zip_path
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
-  if (verbose) {
-    cli::cli_progress_done("Step 1/4: ensuring ZIP and inspecting archive...")
-  }
-
-  # ---------------------------------------------------------------------------
-  # Step 2/4: Store original CRS and prepare polygon for spatial join
-  # ---------------------------------------------------------------------------
-  if (verbose) {
-    cli::cli_progress_step("Step 2/4: preparing polygon for spatial join...",
-                           msg_done = "Step 2/4 (CRS alignment)")
-  }
-
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
 
@@ -551,24 +538,6 @@ compute_lumi <- function(
     output_crs <- original_crs
   } else {
     output_crs <- sf::st_crs(crs_output)
-  }
-
-  if (verbose) {
-    crs_input_label <- if (!is.na(original_crs$epsg)) {
-      paste0("EPSG:", original_crs$epsg)
-    } else if (!is.null(original_crs$input)) {
-      original_crs$input
-    } else {
-      "unknown"
-    }
-    crs_output_label <- if (!is.na(output_crs$epsg)) {
-      paste0("EPSG:", output_crs$epsg)
-    } else if (!is.null(output_crs$input)) {
-      output_crs$input
-    } else {
-      "unknown"
-    }
-    message(sprintf("  Input CRS: %s | Output CRS: %s", crs_input_label, crs_output_label))
   }
 
   # Transform polygon to WGS84 internally for spatial join with CNEFE points
@@ -580,15 +549,15 @@ compute_lumi <- function(
     dplyr::mutate(.poly_row_id = dplyr::row_number())
 
   if (verbose) {
-    cli::cli_progress_done("Step 2/4: preparing polygon for spatial join...")
+    cli::cli_progress_done("Step 1/3: Ensuring data and preparing polygon...")
   }
 
   # ---------------------------------------------------------------------------
-  # Step 3/4: Read CNEFE points and perform spatial join
+  # Step 2/3: Read CNEFE points and perform spatial join
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 3/4: reading CNEFE points and performing spatial join...",
-                           msg_done = "Step 3/4 (spatial join)")
+    cli::cli_progress_step("Step 2/3: Counting addresses per polygon...",
+                           msg_done = "Step 2/3 (Addresses counted)")
   }
 
   if (identical(backend, "duckdb")) {
@@ -617,15 +586,15 @@ compute_lumi <- function(
   }
 
   if (verbose) {
-    cli::cli_progress_done("Step 3/4: reading CNEFE points and performing spatial join...")
+    cli::cli_progress_done("Step 2/3: Counting addresses per polygon...")
   }
 
   # ---------------------------------------------------------------------------
-  # Step 4/4: Report coverage, compute LUMI indices, and join back to polygon
+  # Step 3/3: Report coverage, compute LUMI indices, and join back to polygon
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 4/4: computing LUMI indices per polygon...",
-                           msg_done = "Step 4/4 (LUMI indices)")
+    cli::cli_progress_step("Step 3/3: Computing land use mix indices...",
+                           msg_done = "Step 3/3 (Land use mix indices computed)")
   }
 
   # Extract coverage statistics
@@ -699,7 +668,7 @@ compute_lumi <- function(
   out <- sf::st_transform(out, output_crs)
 
   if (verbose) {
-    cli::cli_progress_done("Step 4/4: computing LUMI indices per polygon...")
+    cli::cli_progress_done("Step 3/3: Computing land use mix indices...")
   }
 
   return(out)
@@ -715,39 +684,49 @@ compute_lumi <- function(
   polygon,
   verbose
 ) {
-  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                        config = list(
-                          'enable_progress_bar' = FALSE,
-                          'enable_print_progress' = FALSE,
-                          'print_progress_bar' = FALSE
-                        ))
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  res <- NULL
 
-  .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-  .duckdb_ensure_extension(con, "spatial", verbose = verbose)
+  utils::capture.output(
+    utils::capture.output({
 
-  zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-  uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-  uri_sql <- gsub("'", "''", uri)
+      con <- DBI::dbConnect(
+        duckdb::duckdb(),
+        dbdir = ":memory:",
+        config = list(
+          enable_progress_bar = FALSE,
+          enable_print_progress = FALSE,
+          print_progress_bar = FALSE
+        )
+      )
 
-  # Read all CNEFE points, excluding COD_ESPECIE == 7, keeping 1-6 and 8
-  sql_points <- sprintf(
-    "
-    SELECT
-      CAST(LONGITUDE AS DOUBLE) AS lon,
-      CAST(LATITUDE  AS DOUBLE) AS lat,
-      try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE
-    FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
-    WHERE
-      LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
-      AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8
-      AND try_cast(COD_ESPECIE AS INTEGER) != 7;
-  ",
-    uri_sql
-  )
+      .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
+      .duckdb_ensure_extension(con, "spatial", verbose = verbose)
 
-  cnefe_df <- DBI::dbGetQuery(con, sql_points)
-  total_points <- nrow(cnefe_df)
+      zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
+      uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+      uri_sql <- gsub("'", "''", uri)
+
+      DBI::dbExecute(con, sprintf(
+        "
+      CREATE TABLE cnefe_pts AS
+      SELECT
+        ROW_NUMBER() OVER () AS pt_id,
+        CAST(LONGITUDE AS DOUBLE) AS lon,
+        CAST(LATITUDE  AS DOUBLE) AS lat,
+        try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE,
+        ST_Point(CAST(LONGITUDE AS DOUBLE), CAST(LATITUDE AS DOUBLE)) AS geom
+      FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+      WHERE
+        LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
+        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8;
+      ",
+        uri_sql
+      ))
+
+      total_points <- DBI::dbGetQuery(
+        con,
+        "SELECT COUNT(*) AS n FROM cnefe_pts;"
+      )$n[1]
 
   if (total_points == 0L) {
     return(list(
@@ -764,43 +743,92 @@ compute_lumi <- function(
     ))
   }
 
-  # Global totals from all municipality points
-  total_n_res <- sum(cnefe_df$COD_ESPECIE == 1L, na.rm = TRUE)
-  total_n_tot <- nrow(cnefe_df)
-
-  # Convert to sf and perform spatial join
-  cnefe_pts <- sf::st_as_sf(
-    cnefe_df,
-    coords = c("lon", "lat"),
-    crs = 4326
+  # Global totals from all municipality points (computed inside DuckDB)
+  global_totals <- DBI::dbGetQuery(con,
+    "
+    SELECT
+      SUM(CASE WHEN COD_ESPECIE = 1 THEN 1 ELSE 0 END)::INTEGER AS total_n_res,
+      COUNT(*)::INTEGER AS total_n_tot
+    FROM cnefe_pts;
+    "
   )
-  cnefe_pts$.pt_id <- seq_len(nrow(cnefe_pts))
+  total_n_res <- as.integer(global_totals$total_n_res[1])
+  total_n_tot <- as.integer(global_totals$total_n_tot[1])
 
-  joined <- sf::st_join(cnefe_pts, polygon[, ".poly_row_id"], join = sf::st_within)
+  # Write user polygon to DuckDB via duckspatial
+  duckspatial::ddbs_write_vector(
+    conn = con,
+    data = polygon[, ".poly_row_id"],
+    name = "user_polygons",
+    overwrite = TRUE
+  )
 
-  # Count unique points matched
-  unique_pts_matched <- length(unique(joined$.pt_id[!is.na(joined$.poly_row_id)]))
+  # Spatial index on user polygons for faster joins
+  DBI::dbExecute(
+    con,
+    "CREATE INDEX IF NOT EXISTS poly_geom_idx ON user_polygons USING RTREE (geom);"
+  )
+
+  # Spatial join in DuckDB via ST_Within (LEFT JOIN to track coverage)
+  DBI::dbExecute(con,
+                 "
+      CREATE TABLE joined AS
+      SELECT
+        p.pt_id,
+        p.COD_ESPECIE,
+        u.\".poly_row_id\" AS poly_row_id
+      FROM cnefe_pts p
+      LEFT JOIN user_polygons u
+        ON ST_Within(p.geom, u.geom);
+      "
+  )
+
+  # Coverage stats (computed inside DuckDB)
+  coverage <- DBI::dbGetQuery(con,
+    "
+    SELECT
+      COUNT(DISTINCT CASE WHEN poly_row_id IS NOT NULL THEN pt_id END) AS matched
+    FROM joined;
+    "
+  )
+  unique_pts_matched <- as.integer(coverage$matched[1])
   points_outside <- total_points - unique_pts_matched
 
-  # Aggregate n_res and n_tot per polygon
-  counts <- joined |>
-    sf::st_drop_geometry() |>
-    dplyr::filter(!is.na(.data$.poly_row_id)) |>
-    dplyr::group_by(.data$.poly_row_id) |>
-    dplyr::summarise(
-      n_res = as.integer(sum(.data$COD_ESPECIE == 1L, na.rm = TRUE)),
-      n_tot = as.integer(dplyr::n()),
-      .groups = "drop"
+  # Aggregate n_res and n_tot per polygon (inside DuckDB)
+  counts <- DBI::dbGetQuery(con,
+    "
+    SELECT
+      poly_row_id AS \".poly_row_id\",
+      SUM(CASE WHEN COD_ESPECIE = 1 THEN 1 ELSE 0 END)::INTEGER AS n_res,
+      COUNT(*)::INTEGER AS n_tot
+    FROM joined
+    WHERE poly_row_id IS NOT NULL
+    GROUP BY poly_row_id;
+    "
+  ) |>
+    dplyr::as_tibble() |>
+    dplyr::mutate(
+      n_res = as.integer(.data$n_res),
+      n_tot = as.integer(.data$n_tot)
     )
 
-  return(list(
+  res <- list(
     counts = counts,
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside,
-    total_n_res = as.integer(total_n_res),
-    total_n_tot = as.integer(total_n_tot)
-  ))
+    total_n_res = total_n_res,
+    total_n_tot = total_n_tot
+  )
+
+    }, type = "message"),
+  type = "output"
+  )
+
+  DBI::dbDisconnect(con, shutdown = TRUE)
+
+  return(res)
+
 }
 
 
@@ -819,7 +847,7 @@ compute_lumi <- function(
     year = year,
     output = "arrow",
     cache = TRUE,
-    verbose = verbose
+    verbose = FALSE
   )
 
   df <- as.data.frame(tab) |>
