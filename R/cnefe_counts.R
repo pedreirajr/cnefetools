@@ -140,7 +140,7 @@ g., 4674, 31983) or a CRS object."
     )
   }
 
-  out
+  return(out)
 }
 
 
@@ -159,9 +159,8 @@ g., 4674, 31983) or a CRS object."
   # Step 1/3: Ensure ZIP exists in cache and find CSV inside
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 1/3: ensuring ZIP and inspecting archive...",
-                           msg_done = "Step 1/3 (ZIP ready)")
-
+    cli::cli_progress_step("Step 1/3: Ensuring ZIP and inspecting archive...",
+                           msg_done = "Step 1/3 (CNEFE ZIP ready)")
   }
 
   zip_info <- .cnefe_ensure_zip(
@@ -176,7 +175,7 @@ g., 4674, 31983) or a CRS object."
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   if (verbose) {
-  cli::cli_progress_done("Step 1/3: Ensure ZIP exists in cache and find CSV inside")
+  cli::cli_progress_done("Step 1/3: Ensuring ZIP and inspecting archive...")
   }
 
   # ---------------------------------------------------------------------------
@@ -184,8 +183,8 @@ g., 4674, 31983) or a CRS object."
   # ---------------------------------------------------------------------------
   if (verbose) {
 
-    cli::cli_progress_step("Step 2/3: building full H3 grid over municipality boundary...",
-                           msg_done = "Step 2/3 (H3 grid)")
+    cli::cli_progress_step("Step 2/3: Building full H3 grid over municipality boundary...",
+                           msg_done = "Step 2/3 (H3 grid built)")
   }
 
   # t2 <- Sys.time()
@@ -196,7 +195,7 @@ g., 4674, 31983) or a CRS object."
   )
 
   if (verbose) {
-    cli::cli_progress_done("Step 2/3: building full H3 grid over municipality boundary...")
+    cli::cli_progress_done("Step 2/3: Building full H3 grid over municipality boundary...")
   }
 
 
@@ -204,8 +203,8 @@ g., 4674, 31983) or a CRS object."
   # Step 3/3: Count address species per hexagon
   # ---------------------------------------------------------------------------
   if (verbose) {
-  cli::cli_progress_step("Step 3/3: counting address species per hexagon...",
-                         msg_done = "Step 3/3 (count computation)")
+  cli::cli_progress_step("Step 3/3: Counting address species per hexagon...",
+                         msg_done = "Step 3/3 (Addresses counted)")
 
   }
 
@@ -281,7 +280,7 @@ g., 4674, 31983) or a CRS object."
       year = year,
       output = "arrow",
       cache = TRUE,
-      verbose = verbose
+      verbose = FALSE
     )
 
     df <- as.data.frame(tab) |>
@@ -369,10 +368,10 @@ g., 4674, 31983) or a CRS object."
     )
 
   if (verbose) {
-    cli::cli_progress_done("Step 3/3: counting address species per hexagon...")
+    cli::cli_progress_done("Step 3/3: Counting address species per hexagon...")
   }
 
-  out
+  return(out)
 }
 
 
@@ -389,12 +388,11 @@ g., 4674, 31983) or a CRS object."
   verbose
 ) {
   # ---------------------------------------------------------------------------
-  # Step 1/4: Ensure ZIP exists in cache
+  # Step 1/2: Ensure ZIP exists in cache and prepare polygon
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 1/4: ensuring ZIP and inspecting archive...",
-                           msg_done = "Step 1/4 (ZIP ready)")
-
+    cli::cli_progress_step("Step 1/2: Ensuring data and preparing polygon...",
+                           msg_done = "Step 1/2 (Data and polygon ready)")
   }
 
   zip_info <- .cnefe_ensure_zip(
@@ -407,19 +405,6 @@ g., 4674, 31983) or a CRS object."
   zip_path <- zip_info$zip_path
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
-  if (verbose) {
-    cli::cli_progress_done("Step 1/4: ensuring ZIP and inspecting archive...")
-  }
-
-  # ---------------------------------------------------------------------------
-  # Step 2/4: Store original CRS and prepare polygon for spatial join
-  # ---------------------------------------------------------------------------
-  if (verbose) {
-    cli::cli_progress_step("Step 2/4: preparing polygon for spatial join...",
-                           msg_done = "Step 2/4 (CRS alignment)")
-
-  }
-
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
 
@@ -428,24 +413,6 @@ g., 4674, 31983) or a CRS object."
     output_crs <- original_crs
   } else {
     output_crs <- sf::st_crs(crs_output)
-  }
-
-  if (verbose) {
-    crs_input_label <- if (!is.na(original_crs$epsg)) {
-      paste0("EPSG:", original_crs$epsg)
-    } else if (!is.null(original_crs$input)) {
-      original_crs$input
-    } else {
-      "unknown"
-    }
-    crs_output_label <- if (!is.na(output_crs$epsg)) {
-      paste0("EPSG:", output_crs$epsg)
-    } else if (!is.null(output_crs$input)) {
-      output_crs$input
-    } else {
-      "unknown"
-    }
-    message(sprintf("  Input CRS: %s | Output CRS: %s", crs_input_label, crs_output_label))
   }
 
   # Transform polygon to WGS84 internally for spatial join with CNEFE points
@@ -457,16 +424,15 @@ g., 4674, 31983) or a CRS object."
     dplyr::mutate(.poly_row_id = dplyr::row_number())
 
   if (verbose) {
-    cli::cli_progress_done("Step 2/4: preparing polygon for spatial join...")
+    cli::cli_progress_done("Step 1/2: Ensuring data and preparing polygon...")
   }
 
   # ---------------------------------------------------------------------------
-  # Step 3/4: Read CNEFE points and perform spatial join
+  # Step 2/2: Read CNEFE, spatial join, and count addresses per polygon
   # ---------------------------------------------------------------------------
-
   if (verbose) {
-    cli::cli_progress_step("Step 3/4: reading CNEFE points and performing spatial join...",
-                           msg_done = "Step 3/4 (spatial join)")
+    cli::cli_progress_step("Step 2/2: Counting addresses per polygon...",
+                           msg_done = "Step 2/2 (Addresses counted)")
   }
 
   if (identical(backend, "duckdb")) {
@@ -493,20 +459,6 @@ g., 4674, 31983) or a CRS object."
       polygon = polygon_4326,
       verbose = verbose
     )
-  }
-
-  if (verbose) {
-    cli::cli_progress_done("Step 3/4: reading CNEFE points and performing spatial join...")
-  }
-
-
-  # ---------------------------------------------------------------------------
-  # Step 4/4: Report coverage, pivot to wide, and join back to polygon
-  # ---------------------------------------------------------------------------
-
-  if (verbose) {
-    cli::cli_progress_step("Step 4/4: aggregating counts per polygon...",
-                           msg_done = "Step 4/4 (aggregation)")
   }
 
   # Extract coverage statistics
@@ -598,10 +550,10 @@ g., 4674, 31983) or a CRS object."
   out <- sf::st_transform(out, output_crs)
 
   if (verbose) {
-    cli::cli_progress_done("Step 4/4: aggregating counts per polygon...")
+    cli::cli_progress_done("Step 2/2: Counting addresses per polygon...")
   }
 
-  out
+  return(out)
 }
 
 
@@ -629,23 +581,25 @@ g., 4674, 31983) or a CRS object."
   uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
   uri_sql <- gsub("'", "''", uri)
 
-  # Read all CNEFE points
-  sql_points <- sprintf(
+  # Create CNEFE points table in DuckDB with point geometry
+  DBI::dbExecute(con, sprintf(
     "
+    CREATE TABLE cnefe_pts AS
     SELECT
+      ROW_NUMBER() OVER () AS pt_id,
       CAST(LONGITUDE AS DOUBLE) AS lon,
       CAST(LATITUDE  AS DOUBLE) AS lat,
-      try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE
+      try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE,
+      ST_Point(CAST(LONGITUDE AS DOUBLE), CAST(LATITUDE AS DOUBLE)) AS geom
     FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
     WHERE
       LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
       AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8;
-  ",
+    ",
     uri_sql
-  )
+  ))
 
-  cnefe_df <- DBI::dbGetQuery(con, sql_points)
-  total_points <- nrow(cnefe_df)
+  total_points <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_pts;")$n[1]
 
   if (total_points == 0L) {
     return(list(
@@ -660,53 +614,76 @@ g., 4674, 31983) or a CRS object."
     ))
   }
 
-  # Convert to sf and perform spatial join in R
-  cnefe_pts <- sf::st_as_sf(
-    cnefe_df,
-    coords = c("lon", "lat"),
-    crs = 4326
+  # Write user polygon to DuckDB via duckspatial
+  invisible(
+    utils::capture.output(
+      suppressMessages(
+        duckspatial::ddbs_write_vector(
+          conn = con,
+          data = polygon[, ".poly_row_id"],
+          name = "user_polygons",
+          overwrite = TRUE
+        )
+      ),
+      type = "output"
+    )
   )
 
-  # Spatial join - use st_intersects to handle edge cases better
-  joined <- sf::st_join(cnefe_pts, polygon[, ".poly_row_id"], join = sf::st_within)
+  # Spatial index on user polygons for faster joins
+  DBI::dbExecute(
+    con,
+    "CREATE INDEX IF NOT EXISTS poly_geom_idx ON user_polygons USING RTREE (geom);"
+  )
 
-  # Count unique points that matched at least one polygon
-  points_matched <- sum(!is.na(joined$.poly_row_id))
+  # Spatial join in DuckDB via ST_Within (LEFT JOIN to track coverage)
+  DBI::dbExecute(con,
+    "
+    CREATE TABLE joined AS
+    SELECT
+      p.pt_id,
+      p.COD_ESPECIE,
+      u.\".poly_row_id\" AS poly_row_id
+    FROM cnefe_pts p
+    LEFT JOIN user_polygons u
+      ON ST_Within(p.geom, u.geom);
+    "
+  )
 
-  # For counting unique points matched (not duplicated by overlapping polygons)
-  unique_matched <- length(unique(which(!is.na(joined$.poly_row_id))))
-
-  # Use original point count to determine points outside
-  # A point is "outside" if it didn't match any polygon
-  pts_with_match <- !is.na(joined$.poly_row_id)
-
-  # Get row indices of original points that got at least one match
-  # Since st_join preserves order and can duplicate rows for overlapping polygons,
-  # we need to track which original points got matched
-
-  # Add point ID before join to track properly
-  cnefe_pts$.pt_id <- seq_len(nrow(cnefe_pts))
-  joined_with_id <- sf::st_join(cnefe_pts, polygon[, ".poly_row_id"], join = sf::st_within)
-
-  unique_pts_matched <- length(unique(joined_with_id$.pt_id[!is.na(joined_with_id$.poly_row_id)]))
+  # Coverage stats (computed inside DuckDB)
+  coverage <- DBI::dbGetQuery(con,
+    "
+    SELECT
+      COUNT(DISTINCT CASE WHEN poly_row_id IS NOT NULL THEN pt_id END) AS matched
+    FROM joined;
+    "
+  )
+  unique_pts_matched <- as.integer(coverage$matched[1])
   points_outside <- total_points - unique_pts_matched
 
-  # Count by polygon and species (using joined without pt_id for cleaner output)
-  counts_long <- joined |>
-    sf::st_drop_geometry() |>
-    dplyr::filter(!is.na(.data$.poly_row_id)) |>
-    dplyr::count(.data$.poly_row_id, .data$COD_ESPECIE, name = "n") |>
+  # Aggregate counts per polygon and species (inside DuckDB)
+  counts_long <- DBI::dbGetQuery(con,
+    "
+    SELECT
+      poly_row_id AS \".poly_row_id\",
+      COD_ESPECIE,
+      COUNT(*)::INTEGER AS n
+    FROM joined
+    WHERE poly_row_id IS NOT NULL
+    GROUP BY poly_row_id, COD_ESPECIE;
+    "
+  ) |>
+    dplyr::as_tibble() |>
     dplyr::mutate(
       COD_ESPECIE = as.integer(.data$COD_ESPECIE),
       n = as.integer(.data$n)
     )
 
-  list(
+  return(list(
     counts = counts_long,
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside
-  )
+  ))
 }
 
 
@@ -725,7 +702,7 @@ g., 4674, 31983) or a CRS object."
     year = year,
     output = "arrow",
     cache = TRUE,
-    verbose = verbose
+    verbose = FALSE
   )
 
   df <- as.data.frame(tab) |>
@@ -781,12 +758,12 @@ g., 4674, 31983) or a CRS object."
       n = as.integer(.data$n)
     )
 
-  list(
+  return(list(
     counts = counts_long,
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside
-  )
+  ))
 }
 
 
