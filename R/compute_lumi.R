@@ -177,7 +177,7 @@ compute_lumi <- function(
     )
   }
 
-  out
+  return(out)
 }
 
 
@@ -496,7 +496,7 @@ compute_lumi <- function(
     cli::cli_progress_done("Step 3/3: building grid and computing LUMI indices...")
   }
 
-  out
+  return(out)
 }
 
 
@@ -702,7 +702,7 @@ compute_lumi <- function(
     cli::cli_progress_done("Step 4/4: computing LUMI indices per polygon...")
   }
 
-  out
+  return(out)
 }
 
 
@@ -793,14 +793,14 @@ compute_lumi <- function(
       .groups = "drop"
     )
 
-  list(
+  return(list(
     counts = counts,
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside,
     total_n_res = as.integer(total_n_res),
     total_n_tot = as.integer(total_n_tot)
-  )
+  ))
 }
 
 
@@ -883,12 +883,12 @@ compute_lumi <- function(
       .groups = "drop"
     )
 
-  list(
+  return(list(
     counts = counts,
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside,
     total_n_res = total_n_res,
     total_n_tot = total_n_tot
-  )
+  ))
 }

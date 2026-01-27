@@ -158,6 +158,72 @@ testthat::test_that("compute_lumi works with user polygon (backend r)", {
 })
 
 
+testthat::test_that("LUMI helper functions return expected values", {
+  # Access internal functions
+  bal_fun <- cnefetools:::.bal_fun
+  bgbi_fun <- cnefetools:::.bgbi_fun
+  safe_plogp <- cnefetools:::.safe_plogp
+
+  # --- .safe_plogp ---
+  # 0 * log(0) should be treated as 0
+
+  testthat::expect_equal(safe_plogp(0), 0)
+  # NA input returns 0
+  testthat::expect_equal(safe_plogp(NA), 0)
+  # Negative input returns 0
+  testthat::expect_equal(safe_plogp(-0.5), 0)
+  # 1 * log(1) = 0
+  testthat::expect_equal(safe_plogp(1), 0)
+  # 0.5 * log(0.5)
+  testthat::expect_equal(safe_plogp(0.5), 0.5 * log(0.5))
+
+  # --- .bal_fun ---
+  # When p == P, BAL should be 1 (perfect balance)
+  testthat::expect_equal(bal_fun(0.6, 0.6), 1)
+  # When p == 0 and P > 0, BAL should be 0
+  testthat::expect_equal(bal_fun(0, 0.5), 0)
+  # When p == 1 and P < 1, BAL should be 0
+  testthat::expect_equal(bal_fun(1, 0.5), 0)
+  # Symmetric: bal_fun(0.3, 0.5) should equal bal_fun(0.7, 0.5)
+  testthat::expect_equal(bal_fun(0.3, 0.5), bal_fun(0.7, 0.5))
+
+  # --- .bgbi_fun ---
+  # When p == P, BGBI should be 0
+  testthat::expect_equal(bgbi_fun(0.6, 0.6), 0)
+  # When p > P, BGBI should be positive
+  testthat::expect_true(bgbi_fun(0.8, 0.5) > 0)
+  # When p < P, BGBI should be negative
+  testthat::expect_true(bgbi_fun(0.2, 0.5) < 0)
+
+  # --- .compute_lumi_indices ---
+  # Test with known values: 3 residential out of 4 total, P = 0.6
+  compute_lumi_indices <- cnefetools:::.compute_lumi_indices
+  test_df <- dplyr::tibble(n_res = 3L, n_tot = 4L)
+  result <- compute_lumi_indices(test_df, P = 0.6)
+
+  # p_res = 3/4 = 0.75
+  testthat::expect_equal(result$p_res, 0.75)
+  # EI: -(0.75*log(0.75) + 0.25*log(0.25)) / log(2)
+  expected_ei <- -(0.75 * log(0.75) + 0.25 * log(0.25)) / log(2)
+  testthat::expect_equal(result$ei, expected_ei, tolerance = 1e-12)
+  # HHI: 0.75^2 + 0.25^2 = 0.625
+  testthat::expect_equal(result$hhi, 0.625)
+  # ICE: 0.75 - 0.25 = 0.5
+  testthat::expect_equal(result$ice, 0.5)
+  # BAL at p=0.75, P=0.6
+  testthat::expect_equal(result$bal, bal_fun(0.75, 0.6))
+  # BGBI at p=0.75, P=0.6
+  testthat::expect_equal(result$bgbi, bgbi_fun(0.75, 0.6))
+
+  # Test with n_tot = 0 (should produce NA for all indices)
+  test_df_zero <- dplyr::tibble(n_res = 0L, n_tot = 0L)
+  result_zero <- compute_lumi_indices(test_df_zero, P = 0.5)
+  testthat::expect_true(is.na(result_zero$p_res))
+  testthat::expect_true(is.na(result_zero$ei))
+  testthat::expect_true(is.na(result_zero$hhi))
+})
+
+
 testthat::test_that("compute_lumi validates polygon argument", {
   testthat::skip_if_not_installed("sf")
 
