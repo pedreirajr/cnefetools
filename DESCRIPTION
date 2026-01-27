@@ -28,6 +28,7 @@ BugReports: https://github.com/pedreirajr/cnefetools/issues
 Suggests: 
     ggplot2,
     knitr,
+    mapview,
     rmarkdown,
     testthat (>= 3.0.0),
     zip
