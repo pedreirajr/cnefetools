@@ -33,6 +33,41 @@ In this article, we compute an Index of Concentration at the Extremes
 municipality of Porto Alegre, using both H3 resolution 8 hexagons and
 official neighborhood boundaries.
 
+Before computing the ICE, let's read the CNEFE data for Porto Alegre as
+point geometries and visualize the spatial distribution of educational
+and religious establishments:
+
+### Attatching libraries:
+
+```{r}
+library(cnefetools)
+library(geobr)
+library(dplyr)
+library(sf)
+library(mapview)
+```
+
+### Reading CNEFE data to visualize educational and religious establishments:
+
+```{r}
+poa_cnefe <- read_cnefe(
+  code_muni = 4314902, # IBGE code for Porto Alegre)
+  cache = T,
+  output = 'sf'
+  )
+
+mapview(poa_cnefe |> 
+          filter(COD_ESPECIE %in% c(4,8)) |> # Select only educational (4) and religious (8) facilities
+          mutate(est_type = 
+                   factor(ifelse(COD_ESPECIE == 4,'Educational','Religious')
+                          )
+                 ), 
+        zcol = 'est_type', 
+        layer.name = 'Establishment type',
+        col.regions = c("blue","red") # Blue (educational) and Red (religious)
+        )   
+```
+
 ## The Index of Concentration at the Extremes (ICE)
 
 The ICE was originally proposed by Booth & Crouter (2001) to measure
@@ -49,16 +84,6 @@ The index ranges from -1 to +1:
 -   **0**: equal number of educational and religious establishments
 -   **-1**: all establishments are religious (maximum concentration of
     temples)
-
-## Setup
-
-```{r}
-library(cnefetools)
-library(geobr)
-library(dplyr)
-library(sf)
-library(mapview)
-```
 
 ## Aggregating counts to H3 hexagons
 
@@ -77,7 +102,7 @@ head(poa_hex_counts)
 ```
 
 The output contains columns `addr_type1` through `addr_type8`,
-corresponding to CNEFE address types:
+corresponding to CNEFE address types. The ones we are interested in are:
 
 -   `addr_type4`: Educational establishments
 -   `addr_type8`: Religious establishments
@@ -107,17 +132,16 @@ indicates higher concentration of religious establishments (-1).
 mapview(
   poa_hex_ice,
   zcol = "ice",
-  at = seq(-1, 1, by = 0.25),
-  col.regions = colorRampPalette(c("red", "white", "blue"))(9),
+  col.regions = colorRampPalette(c("red", "white", "blue")),
   layer.name = "ICE (H3 res. 8)"
 )
 ```
 
 ## Aggregating counts to neighborhoods
 
-Now we use official neighborhood boundaries from the `geobr` package.
-The `cnefe_counts()` function accepts user-provided polygons via the
-`polygon` argument.
+Now we use official neighborhood boundaries from the [`geobr`
+package](https://github.com/ipeaGIT/geobr). The `cnefe_counts()`
+function accepts user-provided polygons via the `polygon` argument.
 
 ```{r}
 # Load Porto Alegre neighborhoods
@@ -155,21 +179,30 @@ summary(poa_neigh_ice$ice)
 mapview(
   poa_neigh_ice,
   zcol = "ice",
-  at = seq(-1, 1, by = 0.25),
-  col.regions = colorRampPalette(c("red", "white", "blue"))(9),
+  col.regions = colorRampPalette(c("red", "white", "blue")),
   layer.name = "ICE (Neighborhoods)"
 )
 ```
 
 ## Comparing spatial resolutions
 
-The H3 hexagonal grid provides a finer spatial resolution, revealing
-local variations within neighborhoods. The neighborhood-level analysis
-offers a coarser but administratively meaningful aggregation.
+The H3 hexagonal grid offers several desirable topological properties
+for spatial analysis: all cells have the same area and shape, every cell
+has exactly six neighbors at equal distances, and the grid avoids the
+orientation artifacts that arise with square grids. These properties
+make hexagonal grids particularly well-suited for spatial statistics,
+neighborhood-based indicators, and smooth interpolation across space.
+
+On the other hand, user-provided polygons, such as neighborhoods or
+health districts, carry administrative or institutional meaning that is
+directly relevant to policy-making and domain-specific research. By
+supporting any polygon geometry, `cnefe_counts()` allows researchers and
+practitioners to aggregate CNEFE data to whichever spatial unit best
+fits their study design.
 
 Both approaches demonstrate how `cnefe_counts()` enables intra-urban
-analysis of CNEFE data, moving beyond the aggregate national statistics
-to understand spatial patterns within cities.
+analysis, moving beyond aggregate national statistics to reveal spatial
+patterns within cities.
 
 ## References
 
