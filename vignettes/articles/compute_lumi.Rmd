@@ -1,0 +1,245 @@
+---
+title: "Comparing land use mix indices with compute_lumi()"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+Land use mix (LUM) indices quantify how different types of activities
+are distributed within a spatial unit. They are widely used in urban
+planning to monitor mixed-use targets, inform zoning revisions, and
+prioritize transit-oriented development interventions. `compute_lumi()`
+computes a suite of LUM indices from CNEFE data considering a binary comparison
+of residential vs. non-residential uses, aggregated either to H3 hexagonal cells
+or user-provided polygons.
+
+This article compares three of the indices produced by `compute_lumi()`:
+the **Entropy Index (EI)**, the **Balance Index (BAL)**, and the
+**Bidirectional Global-centered Balance Index (BGBI)**, proposed by
+Pedreira Jr. et al. (2025). We use the municipality of São Paulo at H3
+resolution 8 and produce a synchronized three-panel map using the
+`leafsync` package.
+
+## A brief overview of the indices
+
+All three indices are computed from the local residential share within each spatial unit $i$,
+$p_{i} = n_{\text{res},i} / n_{\text{tot},i}$, where
+$n_{\text{res},i}$ is the number of residential addresses and
+$n_{\text{tot},i}$ is the total number of addresses (excluding those under
+construction) for this spatial unit ${i}$. The local non-residential share is $q_{i} = 1 - p_{i}$, and the
+citywide residential share is denoted $P$.
+
+### Entropy Index (EI)
+
+$$
+\text{EI}_{i} = -\frac{p_{i} \ln p_{i} + q_{i} \ln q_{i}}{\ln 2}
+$$
+
+EI ranges from 0 (complete homogeneity) to 1 (perfect 50/50 balance). It
+measures *how mixed* a unit is, but it does not indicate *which use
+dominates* when the unit is homogeneous: a fully residential cell and a
+fully non-residential cell both receive EI = 0.
+
+### Balance Index (BAL)
+
+$$
+\text{BAL}_{i} = 1 - \frac{\left| p_{i} - \frac{P}{1-P} \cdot q_{i} \right|}{p_{i} + \frac{P}{1-P} \cdot q_{i}}
+$$
+
+BAL also ranges from 0 to
+1, but it defines balance relative to the observed citywide composition
+rather than a fixed 50/50 split. This means BAL = 1 when $p_{i} = P$, not
+necessarily when $p_{i} = 0.5$. Like EI, however, BAL is
+**non-directional**: it does not indicate whether a low-balance cell is
+predominantly residential or non-residential.
+
+### Bidirectional Global-centered Balance Index (BGBI)
+
+$$
+\text{BGBI}_{i} = \frac{(2p_{i} - 1) - (2P - 1)}{1 - (2p_{i} - 1)(2P - 1)}
+$$
+
+BGBI ranges from -1 to +1 and addresses two limitations of conventional
+indices:
+
+1.  **Directionality**: positive values indicate a local residential
+    share above the citywide reference ($p_{i} > P$), while negative values
+    indicate non-residential dominance ($p_{i} < P$). This allows analysts
+    to distinguish between functionally opposite patterns without
+    consulting auxiliary data.
+2.  **Citywide reference**: BGBI is centered at $p_{i} = P$ (BGBI = 0)
+    rather than at $p_{i} = 0.5$. When the citywide composition is highly
+    asymmetric (e.g., $P \approx 0.9$), treating 50/50 as the universal
+    balance target can distort interpretation. BGBI instead evaluates
+    local composition against the empirically observed baseline.
+
+## Setup
+
+```{r}
+library(cnefetools)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(sf)
+library(mapview)
+library(leafsync)
+```
+
+## Visualizing the index domains
+
+Before generating these indices with real data, let's examine how EI,
+BAL, and BGBI behave as a function of $p_{i}$ for a stylized city with
+$P = 0.9$, which is typical of Brazilian municipalities.
+
+```{r, fig.width = 8, fig.height = 4}
+P <- 0.8 # citywide residential proportion
+
+## BGBI function:
+bgbi_fun <- function(p, P) {
+  ((2 * p - 1) - (2 * P - 1)) / (1 - (2 * p - 1) * (2 * P - 1))
+}
+
+## BAL function:
+bal_fun <- function(p, P) {
+  1 - abs(p - (P / (1 - P)) * (1 - p)) /
+    (p + (P / (1 - P)) * (1 - p))
+}
+
+## Generating p and q values between 0 and 1
+p <- seq(0, 1, by = 0.01)
+q <- 1 - p
+
+## Index dataframe
+df_ind <- data.frame(p = p, q = q) |>
+  mutate(
+    EI = {
+      m <- cbind(p, q)
+      m[m == 0] <- NA # Assign NA values when p or q = 0 to avoid log(0)
+      -rowSums(m * log(m), na.rm = TRUE) / log(2)
+    },
+    BAL = bal_fun(p, P),
+    BGBI = bgbi_fun(p, P)
+  ) |>
+  pivot_longer(
+    cols = c(EI, BAL, BGBI),
+    names_to = "Index",
+    values_to = "Value"
+  ) |>
+  mutate(Index = factor(Index, levels = c("EI", "BAL", "BGBI")))
+
+## Plotting
+ggplot(df_ind, aes(x = p, y = Value, color = Index)) +
+  geom_line(linewidth = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_vline(xintercept = P, linetype = "dotted", color = "gray50") +
+  annotate("text", x = P + 0.02, y = -0.8, label = paste0("P = ", P),
+           hjust = 0, size = 3.5, color = "gray30") +
+  scale_x_continuous(
+    expression(p[i]),
+    breaks = seq(0, 1, by = 0.2)
+  ) +
+  labs(y = "Index value", color = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+Notice that EI peaks at $p_{i} = 0.5$ (the 50/50 split) and is symmetric around
+that point, whereas BAL peaks at $p_{i} = P = 0.8$ (the citywide reference),
+reflecting its global centering. Both are non-negative and
+non-directional. BGBI, in contrast, crosses zero at $p_{i} = P$ and
+spans the full $[-1, +1]$ range, providing a signed measure that
+distinguishes residential-dominant from non-residential-dominant cells.
+
+## Computing the indices with `compute_lumi` for São Paulo (H3 resolution 8)
+
+```{r, warning = TRUE, message = TRUE}
+spo_lumi <- compute_lumi(
+  code_muni = 3550308, # IBGE code for São Paulo
+  h3_resolution = 8
+)
+
+head(spo_lumi)
+```
+
+The output includes, among others, the columns `ei`, `bal`, and `bgbi`.
+
+## Mapping EI, BAL, and BGBI side by side
+
+We use `leafsync::sync()` to display three maps in a single row. EI and
+BAL use the default mapview palette, while BGBI uses a diverging
+red-white-blue scale where red indicates non-residential dominance
+(-1), white indicates citywide-referenced balance (0), and blue
+indicates residential dominance (+1).
+
+```{r}
+map_ei <- mapview(
+  spo_lumi,
+  zcol = "ei",
+  layer.name = "EI"
+)
+
+map_bal <- mapview(
+  spo_lumi,
+  zcol = "bal",
+  layer.name = "BAL"
+)
+
+map_bgbi <- mapview(
+  spo_lumi,
+  zcol = "bgbi",
+  col.regions = colorRampPalette(c("red", "white", "blue")),
+  layer.name = "BGBI"
+)
+
+sync(map_ei, map_bal, map_bgbi, ncol = 3)
+```
+
+
+## Interpreting the maps
+
+EI and BAL highlight *how mixed* each hexagon is, but they cannot
+distinguish between hexagons dominated by residential addresses and
+those dominated by non-residential addresses. BGBI resolves this ambiguity by 
+encoding the direction of deviation from the citywide baseline in its sign.
+This yields a three-part spatial interpretation:
+
+-   **BGBI near 0** (white): the local composition is close to the
+    citywide reference (these are balanced transition zones).
+-   **BGBI \> 0** (blue): the local residential share exceeds the
+    citywide reference.
+-   **BGBI \< 0** (red): non-residential uses dominate relative to the
+    citywide reference.
+
+This directional information is especially useful when the citywide
+composition is highly asymmetric (as is typical in Brazilian cities,
+where $P \approx 0.9$), because conventional indices compress most cells
+into a narrow range and cannot indicate the direction of homogeneity.
+
+## Notes
+
+In addition to EI, BAL, and BGBI, `compute_lumi()` also produces the
+Index of Concentration at the Extremes (ICE), the Herfindahl--Hirschman
+Index (HHI), and an adapted directional HHI (aHHI). All indices
+are returned in a single output, allowing comprehensive comparisons
+within the same workflow.
+
+`compute_lumi()` also supports user-provided polygons via the
+`polygon_type = "user"` argument, enabling computation of these indices
+for any spatial unit of interest (such as neighborhoods, census tracts,
+or health districts) depending on the specific research or policy
+purpose.
+
+## References
+
+Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. (2025).
+Measuring land use mix with address-level census data. *engrXiv*.
+<https://engrxiv.org/preprint/view/5975>
