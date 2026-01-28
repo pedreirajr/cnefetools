@@ -66,14 +66,14 @@ We use `cnefe_counts()` with `polygon_type = "hex"` and
 `h3_resolution = 8` to aggregate address counts to H3 hexagonal cells.
 Resolution 8 cells have an average area of approximately 0.74 km².
 
-```{r}
+```{r, warning = T, message = T}
 poa_hex_counts <- cnefe_counts(
   code_muni = 4314902, # IBGE code for Porto Alegre
   polygon_type = "hex",
   h3_resolution = 8
 )
 
-glimpse(poa_hex_counts)
+head(poa_hex_counts)
 ```
 
 The output contains columns `addr_type1` through `addr_type8`,
@@ -127,14 +127,14 @@ poa_neighborhoods <- read_neighborhood(year = 2022, simplified = FALSE) |>
 nrow(poa_neighborhoods)
 ```
 
-```{r}
+```{r, warning = T, message = T}
 poa_neigh_counts <- cnefe_counts(
   code_muni = 4314902,
   polygon_type = "user",
   polygon = poa_neighborhoods
 )
 
-glimpse(poa_neigh_counts)
+head(poa_neigh_counts)
 ```
 
 ## Computing the ICE by neighborhood
