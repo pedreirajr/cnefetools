@@ -171,9 +171,10 @@ counts to custom polygons instead of H3 hexagons. See
 `compute_lumi()` computes land-use mix indicators on spatial units for
 any municipality covered by the 2022 CNEFE dataset ([Pedreira Junior et
 al., 2025](https://engrxiv.org/preprint/view/5975/version/7846)).
-Available indicators include the Entropy Index (`ei`), Balance Index
-(`bal`), HHI (`hhi`), adapted HHI (`hhi_adp`), and the Bidirectional
-Global-centered Balance Index (`bgbi`).
+Available indicators include the Entropy Index (`ei`), HHI (`hhi`),
+Balance Index (`bal`), the Index of Concentration at Extrems (`ice`),
+adapted HHI (`hhi_adp`), and the Bidirectional Global-centered Balance
+Index (`bgbi`).
 
 Below is an example for Fortaleza at H3 resolution 8:
 
@@ -296,6 +297,8 @@ ggplot(rec_poly) +
   ) +
   theme_minimal()
 ```
+
+<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
 
 See `vignette("tracts_to")` for details.
 
