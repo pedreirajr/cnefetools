@@ -8,10 +8,10 @@ articles:
 - title: Articles
   navbar: ~
   contents:
-  - read_cnefe
-  - cnefe_counts
-  - compute_lumi
-  - tracts_to
+  - articles/read_cnefe
+  - articles/cnefe_counts
+  - articles/compute_lumi
+  - articles/tracts_to
 - title: FAQ
   contents:
-  - faq
+  - articles/faq
