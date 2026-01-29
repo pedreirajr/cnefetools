@@ -33,11 +33,11 @@ In this article, we compute an Index of Concentration at the Extremes
 municipality of Porto Alegre, using both H3 resolution 8 hexagons and
 official neighborhood boundaries.
 
-Before computing the ICE, let's read the CNEFE data for Porto Alegre as
+Before computing ICE, let's read the CNEFE data for Porto Alegre as
 point geometries and visualize the spatial distribution of educational
 and religious establishments:
 
-### Attatching libraries:
+### Attaching libraries:
 
 ```{r}
 library(cnefetools)
