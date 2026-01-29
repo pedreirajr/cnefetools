@@ -1,6 +1,6 @@
 Package: cnefetools
 Title: Tools for Working with Brazilian CNEFE 2022 Address Data
-Version: 0.1.1
+Version: 0.2.0.9000
 Authors@R:
     c(
       person(given = "Jorge Ubirajara", family = "Pedreira Junior",
@@ -25,10 +25,14 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3.9000
 URL: https://github.com/pedreirajr/cnefetools, https://pedreirajr.github.io/cnefetools/
 BugReports: https://github.com/pedreirajr/cnefetools/issues
-Suggests: 
+Suggests:
     ggplot2,
     knitr,
+    leafsync,
+    mapview,
+    odbr,
     rmarkdown,
+    scales,
     testthat (>= 3.0.0),
     zip
 Config/testthat/edition: 3
@@ -46,7 +50,9 @@ Imports:
     DBI,
     duckdb,
     duckspatial,
-    cli,
+    cli (>= 3.6.0),
     checkmate,
     fs,
-    httr2
+    httr2,
+    piggyback
+LazyData: true

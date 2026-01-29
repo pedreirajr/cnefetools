@@ -1,0 +1,272 @@
+---
+title: "Exploring CNEFE address data"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+
+
+The 2022 Brazilian CNEFE (*Cadastro Nacional de Endereços para Fins
+Estatísticos*) is an address-level dataset released by IBGE containing
+over 100 million geocoded records across all Brazilian municipalities.
+Each record carries the address type (`COD_ESPECIE`), geographic
+coordinates, and a free-text description of the establishment
+(`DSC_ESTABELECIMENTO`) for non-residential addresses.
+
+`read_cnefe()` downloads and reads CNEFE data for any municipality,
+returning either an Arrow table (default) or an `sf` spatial object of
+point data. This article walks through a practical example: filtering
+health facilities and finding those that contain the term "hospital" in
+the `DSC_ESTABELECIMENTO` column.
+
+## Downloading CNEFE data
+
+You can download CNEFE data for any Brazilian municipality with just a
+single line of code. By setting `output = "sf"`, the result is returned
+as a spatial `sf` object, ready for mapping and spatial analysis. To
+avoid downloading the same file in all sections, you can cache the
+municipality of interest by setting the `cache` parameter to `TRUE`.
+
+
+``` r
+library(cnefetools)
+library(dplyr)
+library(sf)
+
+# Download CNEFE for Salvador (IBGE code 2927408) as an sf object
+ssa_cnefe <- read_cnefe(code_muni = 2927408, cache = TRUE, output = "sf")
+```
+
+Be careful, however, when plotting the full dataset, since large
+municipalities may contain millions of points (Salvador has over 1.3
+million records).
+
+## Exploring available columns
+
+
+``` r
+names(ssa_cnefe)
+#>  [1] "COD_UNICO_ENDERECO"             "COD_UF"                        
+#>  [3] "COD_MUNICIPIO"                  "COD_DISTRITO"                  
+#>  [5] "COD_SUBDISTRITO"                "COD_SETOR"                     
+#>  [7] "NUM_QUADRA"                     "NUM_FACE"                      
+#>  [9] "CEP"                            "DSC_LOCALIDADE"                
+#> [11] "NOM_TIPO_SEGLOGR"               "NOM_TITULO_SEGLOGR"            
+#> [13] "NOM_SEGLOGR"                    "NUM_ENDERECO"                  
+#> [15] "DSC_MODIFICADOR"                "NOM_COMP_ELEM1"                
+#> [17] "VAL_COMP_ELEM1"                 "NOM_COMP_ELEM2"                
+#> [19] "VAL_COMP_ELEM2"                 "NOM_COMP_ELEM3"                
+#> [21] "VAL_COMP_ELEM3"                 "NOM_COMP_ELEM4"                
+#> [23] "VAL_COMP_ELEM4"                 "NOM_COMP_ELEM5"                
+#> [25] "VAL_COMP_ELEM5"                 "LATITUDE"                      
+#> [27] "LONGITUDE"                      "NV_GEO_COORD"                  
+#> [29] "COD_ESPECIE"                    "DSC_ESTABELECIMENTO"           
+#> [31] "COD_INDICADOR_ESTAB_ENDERECO"   "COD_INDICADOR_CONST_ENDERECO"  
+#> [33] "COD_INDICADOR_FINALIDADE_CONST" "COD_TIPO_ESPECI"               
+#> [35] "geometry"
+```
+
+Key columns for this example:
+
+-   **`COD_ESPECIE`** — address type (1 = private household, 2 =
+    collective household, 3 = agricultural, 4 = educational, 5 = health,
+    6 = other, 7 = under construction, 8 = religious).
+-   **`DSC_ESTABELECIMENTO`** — free-text name/description of the
+    establishment (only filled for non-residential addresses).
+-   **`geometry`** — point geometry with geographic coordinates.
+
+A spreadsheet with the data dictionary (in Portuguese) can be accessed
+with the function `cnefe_dictionary()`, which will open your system's
+default spreadsheet viewer. To understand the whole methodology of the
+CNEFE collection, you should also consult the PDF methodological
+document (also in Portuguese) with the `cnefe_doc()` function.
+Currently, only the CNEFE from the 2022 Census is available in the
+package.
+
+
+``` r
+## Opens the bundled Excel data dictionary:
+cnefe_dictionary(year = 2022)
+
+## Opens the bundled PDF methodological document:
+cnefe_doc(year = 2022)
+```
+
+## Filtering for health establishments
+
+We can keep only health establishments (`COD_ESPECIE == 5`):
+
+
+``` r
+ssa_health <- ssa_cnefe |>
+  filter(COD_ESPECIE == 5)
+
+nrow(ssa_health)
+#> [1] 1509
+```
+
+## Searching for "hospital" in the description
+
+We can use `grepl()` within `dplyr::filter()` to find records containing
+specific terms:
+
+
+``` r
+ssa_hospitals <- ssa_health |>
+  filter(grepl("hospital", DSC_ESTABELECIMENTO, ignore.case = TRUE))
+
+ssa_hospitals
+#> Simple feature collection with 75 features and 34 fields
+#> Geometry type: POINT
+#> Dimension:     XY
+#> Bounding box:  xmin: -38.53268 ymin: -13.00781 xmax: -38.36594 ymax: -12.86486
+#> Geodetic CRS:  SIRGAS 2000
+#> First 10 features:
+#>    COD_UNICO_ENDERECO COD_UF COD_MUNICIPIO COD_DISTRITO COD_SUBDISTRITO
+#> 1            27815649     29       2927408    292740805     29274080512
+#> 2           217839825     29       2927408    292740805     29274080515
+#> 3            91099415     29       2927408    292740805     29274080521
+#> 4            28518541     29       2927408    292740805     29274080507
+#> 5            28485049     29       2927408    292740805     29274080519
+#> 6            28226794     29       2927408    292740805     29274080526
+#> 7            90818500     29       2927408    292740805     29274080512
+#> 8            27811802     29       2927408    292740805     29274080511
+#> 9           195176533     29       2927408    292740805     29274080527
+#> 10          192566810     29       2927408    292740805     29274080521
+#>           COD_SETOR NUM_QUADRA NUM_FACE      CEP   DSC_LOCALIDADE
+#> 1  292740805120005P          1        1 40050003           NAZARE
+#> 2  292740805150210P          4        5 40440415 CAMINHO DE AREIA
+#> 3  292740805210329P          2        2 40330200             IAPI
+#> 4  292740805070382P          1        1 40255020           MATATU
+#> 5  292740805190107P          1       18 40711060           ESCADA
+#> 6  292740805260333P          9        1 41330065  CAJAZEIRAS VIII
+#> 7  292740805120021P          2        1 40050410           NAZARE
+#> 8  292740805110004P          1        3 40415031           BONFIM
+#> 9  292740805270001P          2       32 40226545        FEDERACAO
+#> 10 292740805210230P          1        1 40310000        PAU MIUDO
+#>    NOM_TIPO_SEGLOGR NOM_TITULO_SEGLOGR           NOM_SEGLOGR NUM_ENDERECO
+#> 1           AVENIDA               <NA>        JOANA ANGELICA          110
+#> 2               RUA               <NA>       DUARTE DA COSTA            0
+#> 3               RUA              CONDE       DE PORTO ALEGRE           11
+#> 4               RUA               <NA>          CASTRO NEVES           17
+#> 5           LADEIRA               <NA>          DA TEREZINHA            0
+#> 6               RUA               <NA> ANGELINA GARCIA AVENA         2009
+#> 7             PRACA        CONSELHEIRO         ALMEIDA COUTO          512
+#> 8               RUA               <NA>   AUGUSTO DE MENDONCA            0
+#> 9               RUA             DOUTOR      ARLINDO DE ASSIS            0
+#> 10              RUA            MARQUES             DE MARICA            0
+#>    DSC_MODIFICADOR NOM_COMP_ELEM1 VAL_COMP_ELEM1 NOM_COMP_ELEM2 VAL_COMP_ELEM2
+#> 1             <NA>           <NA>           <NA>           <NA>           <NA>
+#> 2               SN          ANEXO   LATERAL HOSP           <NA>           <NA>
+#> 3             <NA>           <NA>           <NA>           <NA>           <NA>
+#> 4             <NA>           <NA>           <NA>           <NA>           <NA>
+#> 5               SN           <NA>           <NA>           <NA>           <NA>
+#> 6                2           <NA>           <NA>           <NA>           <NA>
+#> 7             <NA>           <NA>           <NA>           <NA>           <NA>
+#> 8               SN         PREDIO              1           <NA>           <NA>
+#> 9               SN           <NA>           <NA>           <NA>           <NA>
+#> 10              SN           <NA>           <NA>           <NA>           <NA>
+#>    NOM_COMP_ELEM3 VAL_COMP_ELEM3 NOM_COMP_ELEM4 VAL_COMP_ELEM4 NOM_COMP_ELEM5
+#> 1            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 2            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 3            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 4            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 5            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 6            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 7            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 8            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 9            <NA>           <NA>           <NA>           <NA>           <NA>
+#> 10           <NA>           <NA>           <NA>           <NA>           <NA>
+#>    VAL_COMP_ELEM5  LATITUDE LONGITUDE NV_GEO_COORD COD_ESPECIE
+#> 1            <NA> -12.97484 -38.50243            1           5
+#> 2            <NA> -12.92919 -38.50526            1           5
+#> 3            <NA> -12.95778 -38.48798            1           5
+#> 4            <NA> -12.97707 -38.49978            1           5
+#> 5            <NA> -12.88256 -38.48162            1           5
+#> 6            <NA> -12.90013 -38.41087            1           5
+#> 7            <NA> -12.97188 -38.50293            1           5
+#> 8            <NA> -12.92953 -38.50912            1           5
+#> 9            <NA> -12.99757 -38.51595            4           5
+#> 10           <NA> -12.95874 -38.48849            1           5
+#>                         DSC_ESTABELECIMENTO COD_INDICADOR_ESTAB_ENDERECO
+#> 1                                  HOSPITAL                            1
+#> 2                     HOSPITAL AGENOR PAIVA                            1
+#> 3                    HOSPITAL ESPECIALIZADO                            1
+#> 4                      HOSPITAL DO EXERCITO                            1
+#> 5                 HAC HOSPITAL ALAYDE COSTA                            1
+#> 6               2 ANEXO DO HOSPITAL PROHOPE                            1
+#> 7           HOSPITAL PROFESSOR CARVALHO LUZ                            1
+#> 8  CENTRO MEDICO HOSPITALAR DA POLICIA MILI                            1
+#> 9                      HOSPITAL SANTO AMARO                            1
+#> 10            HOSPITAL GERAL ERNESTO SIMOES                            1
+#>    COD_INDICADOR_CONST_ENDERECO COD_INDICADOR_FINALIDADE_CONST COD_TIPO_ESPECI
+#> 1                            NA                             NA              NA
+#> 2                            NA                             NA              NA
+#> 3                            NA                             NA              NA
+#> 4                            NA                             NA              NA
+#> 5                            NA                             NA              NA
+#> 6                            NA                             NA              NA
+#> 7                            NA                             NA              NA
+#> 8                            NA                             NA              NA
+#> 9                            NA                             NA              NA
+#> 10                           NA                             NA              NA
+#>                       geometry
+#> 1  POINT (-38.50243 -12.97484)
+#> 2  POINT (-38.50526 -12.92919)
+#> 3  POINT (-38.48798 -12.95778)
+#> 4  POINT (-38.49978 -12.97707)
+#> 5  POINT (-38.48162 -12.88256)
+#> 6  POINT (-38.41087 -12.90013)
+#> 7  POINT (-38.50293 -12.97188)
+#> 8  POINT (-38.50912 -12.92953)
+#> 9  POINT (-38.51595 -12.99757)
+#> 10 POINT (-38.48849 -12.95874)
+```
+
+## Mapping the results
+
+Since we already have an `sf` object, we can visualise the locations
+directly with `mapview`:
+
+
+``` r
+library(mapview)
+
+mapview(ssa_hospitals, layer.name = "Health facilities with 'hospital' term in their description column in Salvador")
+#> Error in path.expand(path): argumento 'path' inválido
+```
+
+## Working with Arrow tables for better performance
+
+By default, `read_cnefe()` returns an Arrow table instead of an `sf`
+object. Arrow tables are more memory-efficient and faster for large
+municipalities, which makes them a better choice when you need to filter
+or transform the data before converting to a spatial format:
+
+
+``` r
+ssa_arrow <- read_cnefe(code_muni = 2927408, cache = TRUE)
+
+class(ssa_arrow)
+#> [1] "Table"        "ArrowTabular" "ArrowObject"  "R6"
+```
+
+With Arrow, you can filter the data before loading it into memory with
+`collect()`, and then convert only the subset you need to `sf`:
+
+
+``` r
+ssa_hospitals_arrow <- ssa_arrow |>
+  filter(COD_ESPECIE == 5) |>
+  filter(grepl("hospital", DSC_ESTABELECIMENTO, ignore.case = TRUE)) |>
+  collect() |>
+  filter(!is.na(LONGITUDE), !is.na(LATITUDE)) |>
+  st_as_sf(
+    coords = c("LONGITUDE", "LATITUDE"),
+    crs = 4674
+  )
+```
+
+This approach is particularly useful when working with very large
+municipalities where loading all records as `sf` at once may be slow.

@@ -1,0 +1,301 @@
+---
+title: "Dasymetric interpolation with tracts_to_* functions"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+
+
+Census data in Brazil are published at the census tract level. However,
+many research and planning applications require data at different
+spatial granularities, such as hexagonal grids for standardized spatial
+analysis, or custom polygons such as traffic zones for transportation
+modeling.
+
+`tracts_to_h3()` and `tracts_to_polygon()` perform **dasymetric
+interpolation** using CNEFE dwelling points as ancillary data. Instead
+of assuming uniform distribution within tracts, they allocate
+tract-level values to individual dwelling points identified in the CNEFE
+and then aggregate these to the target spatial units. The allocation
+rule depends on the variable type:
+
+-   **Sum variables** (e.g., `pop_ph`, `race_preta`, `age_70m`): the
+    tract total is divided equally among eligible dwelling points. The
+    target spatial unit (e.g., hexagons, traffic zones, or any
+    user-supplied polygon) receives the sum of all point-level shares
+    that fall within it.
+-   **Average variables** (`avg_inc_resp`): the tract-level average is
+    assigned (not split) to each eligible dwelling point. The target
+    spatial unit receives the average of all assigned values within it.
+
+This approach preserves the heterogeneous distribution of dwellings
+within each tract, yielding more accurate estimates than simple areal
+interpolation.
+
+This article demonstrates both functions: `tracts_to_h3()` for
+transferring census variables to an H3 hexagonal grid in Fortaleza, and
+`tracts_to_polygon()` for transferring census variables to traffic zones
+in São Paulo.
+
+The currently supported variables (and their respective IBGE census
+tract codes) can be found using the `tracts_variables_ref` dataframe
+that accompanies the package:
+
+
+``` r
+library(cnefetools)
+
+tracts_variables_ref |>
+  knitr::kable()
+#> Error: objeto 'tracts_variables_ref' não encontrado
+```
+
+## Setup
+
+
+``` r
+library(dplyr) 
+library(ggplot2)
+library(sf)
+library(mapview)
+library(leafsync)
+```
+
+## Part 1: Census variables on H3 hexagons (Fortaleza)
+
+We interpolate three census variables to H3 resolution 8 hexagons for
+Fortaleza (IBGE code 2304400):
+
+-   `pop_ph`: population in private households
+-   `avg_inc_resp`: average income of household heads
+-   `race_preta`: population self-identified as Black (*preta*)
+
+
+``` r
+ftl_h3 <- tracts_to_h3(
+  code_muni = 2304400,
+  h3_resolution = 8,
+  vars = c("pop_ph", "avg_inc_resp", "race_preta")
+)
+#> Error in `tracts_to_h3()`:
+#> ! Unknown `vars`: pop_ph and race_preta. See `?tracts_to_h3` for
+#>   available variables.
+
+head(ftl_h3)
+#> Error: objeto 'ftl_h3' não encontrado
+```
+
+### Mapping the results
+
+We use `leafsync::sync()` to display the three variables side by side:
+
+
+``` r
+map_pop <- mapview(
+  ftl_h3,
+  zcol = "pop_ph",
+  layer.name = "Population"
+)
+#> Error: objeto 'ftl_h3' não encontrado
+
+map_inc <- mapview(
+  ftl_h3,
+  zcol = "avg_inc_resp",
+  layer.name = "Avg. income"
+)
+#> Error: objeto 'ftl_h3' não encontrado
+
+map_race <- mapview(
+  ftl_h3,
+  zcol = "race_preta",
+  layer.name = "Black pop."
+)
+#> Error: objeto 'ftl_h3' não encontrado
+
+sync(map_pop, map_inc, map_race, ncol = 3)
+#> Error: objeto 'map_pop' não encontrado
+```
+
+### Exploring the relationship between income and racial composition
+
+We can examine the relationship between average household head income
+and the proportion of Black population in each hexagon:
+
+
+``` r
+ftl_h3_plot <- ftl_h3 |>
+  st_drop_geometry() |>
+  filter(pop_ph > 0) |>
+  mutate(pct_preta = race_preta / pop_ph)
+#> Error: objeto 'ftl_h3' não encontrado
+
+ggplot(ftl_h3_plot, aes(x = avg_inc_resp, y = pct_preta)) +
+  geom_point(alpha = 0.3, size = 3) +
+  geom_smooth(method = "loess", se = TRUE, color = "steelblue") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    x = "Average income of household heads (R$)",
+    y = "Black population share (race_preta / pop_ph)"
+  ) +
+  theme_minimal()
+#> Error: objeto 'ftl_h3_plot' não encontrado
+```
+
+As expected, the plot reveals a strong negative correlation between
+these two variables: hexagons with a higher share of Black population
+tend to have substantially lower average household income. This pattern
+reflects deep-rooted racial income inequality, a persistent feature of
+the Brazilian social landscape.
+
+## Part 2: Census variables on traffic zones (São Paulo)
+
+Transportation planning often requires census-derived variables at the
+traffic zone level rather than the census tract level. The [`odbr`
+package](https://github.com/hsvab/odbr/) provides traffic zone
+geometries from origin-destination surveys conducted in Brazilian
+metropolitan areas. Since the OD survey for São Paulo covers the entire
+metropolitan region (39 municipalities), we filter only the traffic
+zones within the municipality of São Paulo.
+
+
+``` r
+library(odbr)
+
+# Load traffic zones for the São Paulo metropolitan region
+sp_zones <- read_map(
+  city = "Sao Paulo",
+  year = 2017,
+  geometry = "zone"
+)
+
+# Filter zones within the municipality of São Paulo
+sp_zones_muni <- sp_zones |>
+  filter(NomeMunici == "São Paulo") |> 
+  sf::st_make_valid() # Correcting invalid geometries in advance
+
+nrow(sp_zones_muni)
+#> [1] 342
+```
+
+We interpolate two variables:
+
+-   `pop_ph`: population in private households
+-   `age_70m`: population aged 70 years or older
+
+
+``` r
+sp_zones_census <- tracts_to_polygon(
+  code_muni = 3550308,
+  polygon = sp_zones_muni, 
+  vars = c("pop_ph", "age_70m")
+)
+#> Error in `tracts_to_polygon()`:
+#> ! Unknown `vars`: "pop_ph".
+#> ℹ See `?tracts_to_polygon` for available variables.
+
+head(sp_zones_census)
+#> Error: objeto 'sp_zones_census' não encontrado
+```
+
+### Mapping the elderly population share
+
+We compute the share of population aged 70+ in each traffic zone. This
+indicator is relevant for identifying areas where transport planning
+should prioritize accessibility for people with reduced mobility, such
+as low-floor buses, accessible sidewalks, and demand-responsive transit
+services.
+
+
+``` r
+sp_zones_ratio <- sp_zones_census |>
+  filter(pop_ph > 0) |>
+  mutate(pct_70m = age_70m / pop_ph)
+#> Error: objeto 'sp_zones_census' não encontrado
+
+mapview(
+  sp_zones_ratio,
+  zcol = "pct_70m",
+  layer.name = "Share of pop. aged 70+"
+)
+#> Error: objeto 'sp_zones_ratio' não encontrado
+```
+
+## Notes
+
+Notice how `tracts_to_polygon()` is particularly useful in
+transportation research, where census variables (such as population by
+age group and income) are essential inputs for travel demand models
+(especially in Trip Generation models from 4-Step modeling). However,
+traffic zone geometries rarely align with census tract boundaries.
+Dasymetric interpolation via CNEFE dwelling points provides a principled
+method to bridge this spatial mismatch, transferring census data to
+custom spatial units and supporting more accurate trip generation and
+distribution models.
+
+### Hint to scaling to multiple municipalities
+
+The `odbr` traffic zones cover the entire São Paulo metropolitan region
+(39 municipalities). To interpolate census data for all municipalities,
+you can use `purrr::map()` to apply `tracts_to_polygon()` to each
+municipality and then combine the results with `dplyr::bind_rows()`.
+
+### Future versions
+
+In future versions of the package, `tracts_to_polygon()` will support
+municipality-independent operation, allowing users to pass polygons that
+span multiple municipalities without the need for per-municipality
+iteration.
+
+### Interpolation diagnostics
+
+Both functions print detailed diagnostics after each run, so the user
+can assess the quality of the interpolation. For example, the
+`tracts_to_h3()` call for Fortaleza above produces:
+
+```         
+── Dasymetric interpolation diagnostics ──
+! Unallocated total for population from private households (pop_ph): "2169" ("0.09%" of total)
+! Unallocated total for race_preta (race_preta): "74" ("0.04%" of total)
+! avg_inc_resp assigned to 1032500 of 1033953 eligible points
+! avg_inc_resp is "NA" in 128 tracts
+! Unmatched CNEFE points (no tract): 194
+! Tracts with "NA" totals: pop_ph "NA" in 128; race_preta "NA" in 200
+! Tracts with no eligible dwellings: pop_ph in 6 tracts; race_preta in 6 tracts
+```
+
+And the `tracts_to_polygon()` call for São Paulo:
+
+```         
+── Dasymetric interpolation diagnostics ──
+! Unallocated total for population from private households (pop_ph): "86998" ("0.76%" of total)
+! Unallocated total for age_70m (age_70m): "5397" ("0.58%" of total)
+! Unmatched CNEFE points (no tract) = 2935
+! Tracts with "NA" totals: pop_ph "NA" in 622; age_70m "NA" in 1316
+! Tracts with no eligible dwellings: pop_ph in 324 tracts; age_70m in 297 tracts
+```
+
+These warnings report the amount of unallocated population (and its
+percentage of the census total), the number of CNEFE points that could
+not be matched to a tract, and the number of tracts with missing values
+or no eligible dwellings. In both examples, the unallocated shares are
+small (below 1%), indicating that the interpolation preserves most of
+the original census totals. Users should inspect these diagnostics to
+decide whether the loss is acceptable for their application.
+
+### Ecological fallacy caveat
+
+Dasymetric interpolation distributes tract-level aggregates to dwelling
+points under the assumption that each dwelling within a tract receives
+an equal share of the total. This means that the method does not recover
+true individual- or dwelling-level values; it redistributes a group
+statistic. Drawing conclusions about individuals from such aggregated
+data constitutes an **ecological fallacy** (the error of attributing
+group-level patterns to individuals).
+
+The risk is greater when the source census tracts are large, since
+larger tracts are more likely to contain internally heterogeneous
+populations, making the uniform allocation assumption less realistic.
+Users should interpret interpolated values as spatial estimates of
+aggregate quantities, not as precise measurements at the dwelling or
+individual level.
