@@ -25,7 +25,9 @@ tracts_variables_ref <- data.frame(
     "race_preta",
     "race_parda",
     "race_amarela",
-    "race_indigena"
+    "race_indigena",
+    "n_resp",
+    "avg_inc_resp"
   ),
   code_var_ibge = c(
     "V00005",
@@ -47,7 +49,9 @@ tracts_variables_ref <- data.frame(
     "V01318",
     "V01320",
     "V01319",
-    "V01321"
+    "V01321",
+    "V06001",
+    "V06004"
   ),
   desc_var_ibge = c(
     "Domicilios Particulares Permanentes Ocupados, Quantidade de moradores",
@@ -69,7 +73,9 @@ tracts_variables_ref <- data.frame(
     "Cor ou raca e preta",
     "Cor ou raca e parda",
     "Cor ou raca e amarela",
-    "Cor ou raca e indigena"
+    "Cor ou raca e indigena",
+    "Pessoas responsaveis em domicilios particulares permanentes ocupados",
+    "Valor do rendimento nominal medio mensal das pessoas responsaveis com rendimentos por domicilios particulares permanentes ocupados"
   ),
   table_ibge = c(
     "Domicilios",
@@ -91,7 +97,9 @@ tracts_variables_ref <- data.frame(
     "Pessoas",
     "Pessoas",
     "Pessoas",
-    "Pessoas"
+    "Pessoas",
+    "ResponsavelRenda",
+    "ResponsavelRenda"
   ),
   stringsAsFactors = FALSE
 )
