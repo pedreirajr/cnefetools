@@ -53,24 +53,29 @@ library(mapview)
 poa_cnefe <- read_cnefe(
   code_muni = 4314902, # IBGE code for Porto Alegre)
   cache = T,
-  output = 'sf'
+  output = 'sf',
+  verbose = F
   )
 
-mapview(poa_cnefe |> 
-          filter(COD_ESPECIE %in% c(4,8)) |> # Select only educational (4) and religious (8) facilities
-          mutate(est_type = 
-                   factor(ifelse(COD_ESPECIE == 4,'Educational','Religious')
-                          )
-                 ), 
-        zcol = 'est_type', 
-        layer.name = 'Establishment type',
-        col.regions = c("blue","red") # Blue (educational) and Red (religious)
-        )   
+poa_cnefe_edurel <- poa_cnefe |> 
+  filter(COD_ESPECIE %in% c(4,8)) |> # Select only educational (4) and religious (8) facilities
+  mutate(
+    est_type = factor(ifelse(COD_ESPECIE == 4,'Educational','Religious'))
+         )
+
+mapview(
+  poa_cnefe_edurel, 
+  zcol = 'est_type', 
+  layer.name = 'Establishment type',
+  col.regions = c("blue","red"), # Blue (educational) and Red (religious)
+  cex = 2,
+  burst = T
+)   
 ```
 
 ## The Index of Concentration at the Extremes (ICE)
 
-The ICE was originally proposed by Booth & Crouter (2001) to measure
+ICE was originally proposed by Booth & Crouter (2001) to measure
 spatial concentration between two groups. We adapt it here to compare
 educational (`addr_type4`) and religious (`addr_type8`) establishments:
 $$
@@ -107,9 +112,9 @@ corresponding to CNEFE address types. The ones we are interested in are:
 -   `addr_type4`: Educational establishments
 -   `addr_type8`: Religious establishments
 
-## Computing the ICE for H3 hexagons
+## Computing ICE for H3 hexagons
 
-We compute the ICE only for hexagons that have at least one educational
+We compute ICE only for hexagons that have at least one educational
 or religious establishment:
 
 ```{r}
@@ -161,7 +166,7 @@ poa_neigh_counts <- cnefe_counts(
 head(poa_neigh_counts)
 ```
 
-## Computing the ICE by neighborhood
+## Computing ICE by neighborhood
 
 ```{r}
 poa_neigh_ice <- poa_neigh_counts |>

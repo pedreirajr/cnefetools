@@ -1,5 +1,5 @@
 ---
-title: "Dasymetric interpolation with tracts_to* functions"
+title: "Dasymetric interpolation with tracts_to_* functions"
 editor_options:
   markdown:
     wrap: 72
@@ -122,13 +122,13 @@ ftl_h3_plot <- ftl_h3 |>
   filter(pop_ph > 0) |>
   mutate(pct_preta = race_preta / pop_ph)
 
-ggplot(ftl_h3_plot, aes(x = pct_preta, y = avg_inc_resp)) +
+ggplot(ftl_h3_plot, aes(x = avg_inc_resp, y = pct_preta)) +
   geom_point(alpha = 0.3, size = 3) +
   geom_smooth(method = "loess", se = TRUE, color = "steelblue") +
-  scale_x_continuous(labels = scales::percent_format()) +
+  scale_y_continuous(labels = scales::percent_format()) +
   labs(
-    x = "Black population share (race_preta / pop_ph)",
-    y = "Average income of household heads (R$)"
+    x = "Average income of household heads (R$)",
+    y = "Black population share (race_preta / pop_ph)"
   ) +
   theme_minimal()
 ```
@@ -161,7 +161,8 @@ sp_zones <- read_map(
 
 # Filter zones within the municipality of São Paulo
 sp_zones_muni <- sp_zones |>
-  filter(NomeMunici == "São Paulo")
+  filter(NomeMunici == "São Paulo") |> 
+  sf::st_make_valid() # Correcting invalid geometries in advance
 
 nrow(sp_zones_muni)
 ```
@@ -174,7 +175,7 @@ We interpolate two variables:
 ```{r, warning = TRUE, message = TRUE}
 sp_zones_census <- tracts_to_polygon(
   code_muni = 3550308,
-  polygon = sp_zones_muni |> sf::st_make_valid(), # Correcting invalid geometries in advance
+  polygon = sp_zones_muni, 
   vars = c("pop_ph", "age_70m")
 )
 

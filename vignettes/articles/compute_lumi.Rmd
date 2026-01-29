@@ -18,9 +18,9 @@ Land use mix (LUM) indices quantify how different types of activities
 are distributed within a spatial unit. They are widely used in urban
 planning to monitor mixed-use targets, inform zoning revisions, and
 prioritize transit-oriented development interventions. `compute_lumi()`
-computes a suite of LUM indices from CNEFE data considering a binary comparison
-of residential vs. non-residential uses, aggregated either to H3 hexagonal cells
-or user-provided polygons.
+computes a suite of LUM indices from CNEFE data considering a binary
+comparison of residential vs. non-residential uses, aggregated either to
+H3 hexagonal cells or user-provided polygons.
 
 This article compares three of the indices produced by `compute_lumi()`:
 the **Entropy Index (EI)**, the **Balance Index (BAL)**, and the
@@ -98,14 +98,22 @@ library(leafsync)
 
 Before generating these indices with real data, let's examine how EI,
 BAL, and BGBI behave as a function of $p_{i}$ for a stylized city with
-$P = 0.9$, which is typical of Brazilian municipalities.
+$P = 0.75$, which is typical of Brazilian municipalities.
 
 ```{r, fig.width = 8, fig.height = 4}
-P <- 0.8 # citywide residential proportion
+P <- 0.75 # citywide residential proportion
 
 ## BGBI function:
 bgbi_fun <- function(p, P) {
   ((2 * p - 1) - (2 * P - 1)) / (1 - (2 * p - 1) * (2 * P - 1))
+}
+
+## EI function:
+ei_fun <- function(p) {
+  q <- 1 - p
+  m <- cbind(p, q)
+  m[m == 0] <- NA # avoid log(0)
+  -rowSums(m * log(m), na.rm = TRUE) / log(2)
 }
 
 ## BAL function:
@@ -114,18 +122,13 @@ bal_fun <- function(p, P) {
     (p + (P / (1 - P)) * (1 - p))
 }
 
-## Generating p and q values between 0 and 1
+## Generating p values between 0 and 1
 p <- seq(0, 1, by = 0.01)
-q <- 1 - p
 
 ## Index dataframe
-df_ind <- data.frame(p = p, q = q) |>
+df_ind <- data.frame(p = p) |>
   mutate(
-    EI = {
-      m <- cbind(p, q)
-      m[m == 0] <- NA # Assign NA values when p or q = 0 to avoid log(0)
-      -rowSums(m * log(m), na.rm = TRUE) / log(2)
-    },
+    EI = ei_fun(p),
     BAL = bal_fun(p, P),
     BGBI = bgbi_fun(p, P)
   ) |>
@@ -153,7 +156,7 @@ ggplot(df_ind, aes(x = p, y = Value, color = Index)) +
 ```
 
 Notice that EI peaks at $p_{i} = 0.5$ (the 50/50 split) and is symmetric around
-that point, whereas BAL peaks at $p_{i} = P = 0.8$ (the citywide reference),
+that point, whereas BAL peaks at $p_{i} = P = 0.75$ (the citywide reference),
 reflecting its global centering. Both are non-negative and
 non-directional. BGBI, in contrast, crosses zero at $p_{i} = P$ and
 spans the full $[-1, +1]$ range, providing a signed measure that
@@ -204,6 +207,7 @@ sync(map_ei, map_bal, map_bgbi, ncol = 3)
 ```
 
 
+
 ## Interpreting the maps
 
 EI and BAL highlight *how mixed* each hexagon is, but they cannot
@@ -224,19 +228,54 @@ composition is highly asymmetric (as is typical in Brazilian cities,
 where $P \approx 0.9$), because conventional indices compress most cells
 into a narrow range and cannot indicate the direction of homogeneity.
 
-## Notes
-
-In addition to EI, BAL, and BGBI, `compute_lumi()` also produces the
-Index of Concentration at the Extremes (ICE), the Herfindahl--Hirschman
-Index (HHI), and an adapted directional HHI (aHHI). All indices
-are returned in a single output, allowing comprehensive comparisons
-within the same workflow.
+## Producing indices for any user-supplied polygon
 
 `compute_lumi()` also supports user-provided polygons via the
 `polygon_type = "user"` argument, enabling computation of these indices
 for any spatial unit of interest (such as neighborhoods, census tracts,
-or health districts) depending on the specific research or policy
-purpose.
+or health districts), depending on the specific research or policy
+purpose. See the example below for the neighborhoods of Maringá (IBGE
+code 4115200), downloaded with the
+[`geobr` package](https://github.com/ipeaGIT/geobr).
+
+```{r}
+library(geobr)
+
+mga_nei <- read_neighborhood(year = 2022) |>
+  filter(code_muni == 4115200) # IBGE code for Maringá
+
+mga_lumi <- compute_lumi(
+  code_muni = 4115200,
+  polygon_type = "user",
+  polygon = mga_nei
+)
+
+mapview(
+  mga_lumi,
+  zcol = "bgbi",
+  col.regions = colorRampPalette(c("red", "white", "blue")),
+  layer.name = "BGBI"
+)
+```
+
+### Notes on user-supplied polygons
+
+-   If `polygon` is provided but `polygon_type` is not explicitly set to
+    `"user"`, the function automatically switches to
+    `polygon_type = "user"` and issues a warning at the beginning of the
+    processing.
+-   The CRS of the output layer matches the CRS of the layer supplied in
+    `polygon`. If a different CRS is desired, it can be specified via the
+    `crs_output` argument.
+
+## Notes
+
+In addition to EI, BAL, and BGBI, `compute_lumi()` also produces the
+Index of Concentration at the Extremes (ICE), the
+Herfindahl--Hirschman Index (HHI), and an adapted HHI (aHHI), which
+converts the HHI into a directional index (Pedreira Jr. et al., 2025).
+All indices are returned in a single output, allowing comprehensive
+comparisons within the same workflow.
 
 ## References
 
