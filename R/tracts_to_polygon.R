@@ -216,9 +216,11 @@ cnefe_index <- .get_cnefe_index(year)
     cli::cli_alert_info("Input CRS: {.val {crs_input_label}} | Output CRS: {.val {crs_output_label}}")
   }
 
+  # Fix invalid geometries before any spatial operation
+  polygon <- sf::st_make_valid(polygon)
+
   # Transform polygon to WGS84 internally for spatial join with CNEFE points
   polygon_4326 <- sf::st_transform(polygon, 4326)
-  polygon_4326 <- sf::st_make_valid(polygon_4326)
 
   # Add row ID for joining
   polygon_4326 <- polygon_4326 |>
