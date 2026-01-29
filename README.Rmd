@@ -138,7 +138,7 @@ ggplot(hex_sp) +
 
 ## Land-use mix indices with `compute_lumi()`
 
-`compute_lumi()` computes land-use mix indicators on spatial units for any municipality covered by the 2022 CNEFE dataset ([Pedreira Junior et al., 2025](https://engrxiv.org/preprint/view/5975/version/7846)). Available indicators include the Entropy Index (`ei`), Balance Index (`bal`), HHI (`hhi`), adapted HHI (`hhi_adp`), and the Bidirectional Global-centered Balance Index (`bgbi`).
+`compute_lumi()` computes land-use mix indicators on spatial units for any municipality covered by the 2022 CNEFE dataset ([Pedreira Junior et al., 2025](https://engrxiv.org/preprint/view/5975/version/7846)). Available indicators include the Entropy Index (`ei`), HHI (`hhi`), Balance Index (`bal`), the Index of Concentration at Extrems (`ice`), adapted HHI (`hhi_adp`), and the Bidirectional Global-centered Balance Index (`bgbi`).
 
 Below is an example for Fortaleza at H3 resolution 8:
 
@@ -218,7 +218,7 @@ The full list of available variables is documented in the `tracts_variables_ref`
 
 `tracts_to_polygon()` follows the same two-stage workflow as `tracts_to_h3()`, but aggregates the allocated values to user-provided polygons (e.g. neighborhoods, administrative divisions, or custom areas) instead of an H3 grid. Let's generate the neighborhoods of Recife with the `read_neighborhood()` function from the `geobr` package and interpolate the average income of household heads per neighborhood:
 
-```{r, eval=FALSE, warning = F, message = F}
+```{r, warning = F, message = F}
 library(geobr)
 # Example: interpolate population to neighborhood polygons
 rec_nei <- read_neighborhood(year = 2022, simplified = F, showProgress = F) |> 
