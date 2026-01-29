@@ -6,7 +6,8 @@ title: "FAQ"
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "faq_files/figure-html/"
+  fig.path = "faq_files/figure-html/",
+  error = FALSE
 )
 ```
 

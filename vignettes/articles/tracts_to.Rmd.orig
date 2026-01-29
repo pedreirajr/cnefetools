@@ -11,7 +11,8 @@ knitr::opts_chunk$set(
   comment = "#>",
   message = FALSE,
   warning = FALSE,
-  fig.path = "tracts_to_files/figure-html/"
+  fig.path = "tracts_to_files/figure-html/",
+  error = FALSE
 )
 ```
 
