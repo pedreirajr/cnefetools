@@ -41,8 +41,7 @@
   seconds for large municipalities
 - Adds a configurable backend with backwards compatibility:
   `backend = "duckdb"` (default) or `backend = "r"` for
-  [`hex_cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/hex_cnefe_counts.md)
-  and
+  `hex_cnefe_counts()` and
   [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
 - Refactors internals to reuse cached ZIPs and consolidate common
   helpers, reducing repeated overhead and improving maintainability

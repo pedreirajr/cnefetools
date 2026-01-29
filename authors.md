@@ -12,16 +12,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedreirajr/cnefetools/blob/sc-assets-v2/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedreirajr/cnefetools/blob/main/DESCRIPTION)
 
 Pedreira Junior J (2026). *cnefetools: Tools for Working with Brazilian
-CNEFE 2022 Address Data*. R package version 0.1.1,
+CNEFE 2022 Address Data*. R package version 0.2.0,
 <https://github.com/pedreirajr/cnefetools>.
 
     @Manual{,
       title = {cnefetools: Tools for Working with Brazilian CNEFE 2022 Address Data},
       author = {Jorge Ubirajara {Pedreira Junior}},
       year = {2026},
-      note = {R package version 0.1.1},
+      note = {R package version 0.2.0},
       url = {https://github.com/pedreirajr/cnefetools},
     }

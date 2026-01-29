@@ -23,7 +23,7 @@
 
     <a class="navbar-brand me-2" href="index.html">cnefetools</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,16 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><a class="dropdown-item" href="articles/cnefe_counts.html">Intra-urban analysis with cnefe_counts()</a></li>
+    <li><a class="dropdown-item" href="articles/compute_lumi.html">Comparing land use mix indices with compute_lumi()</a></li>
+    <li><a class="dropdown-item" href="articles/faq.html">FAQ</a></li>
+    <li><a class="dropdown-item" href="articles/read_cnefe.html">Exploring CNEFE address data</a></li>
+    <li><a class="dropdown-item" href="articles/tracts_to.html">Dasymetric interpolation with tracts_to_* functions</a></li>
+  </ul>
+</li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -143,19 +153,19 @@
 <h2 id="hexagon-level-address-counts-with-hex_cnefe_counts">Hexagon-level address counts with <code>hex_cnefe_counts()</code>
 <a class="anchor" aria-label="anchor" href="#hexagon-level-address-counts-with-hex_cnefe_counts"></a>
 </h2>
-<p>The <code><a href="reference/hex_cnefe_counts.html">hex_cnefe_counts()</a></code> function aggregates CNEFE address points into an H3 hexagonal grid of any resolution and returns an <code>sf</code> object with one row per hexagon. It includes:</p>
+<p>The <code>hex_cnefe_counts()</code> function aggregates CNEFE address points into an H3 hexagonal grid of any resolution and returns an <code>sf</code> object with one row per hexagon. It includes:</p>
 <ul>
 <li>
 <code>id_hex</code>: H3 cell identifier.</li>
 <li>
-<code>addr_type1</code> … <code>addr_type8</code>: counts by address category (see <code><a href="reference/hex_cnefe_counts.html">?hex_cnefe_counts</a></code> for the mapping).</li>
+<code>addr_type1</code> … <code>addr_type8</code>: counts by address category (see <code>?hex_cnefe_counts</code> for the mapping).</li>
 <li>
 <code>geometry</code>: hexagon geometry (CRS 4326).</li>
 </ul>
 <div class="section level3">
 <h3 id="choosing-a-backend-performance">Choosing a backend (performance)<a class="anchor" aria-label="anchor" href="#choosing-a-backend-performance"></a>
 </h3>
-<p><code><a href="reference/hex_cnefe_counts.html">hex_cnefe_counts()</a></code> supports two backends via the <code>backend</code> argument:</p>
+<p><code>hex_cnefe_counts()</code> supports two backends via the <code>backend</code> argument:</p>
 <ul>
 <li>
 <code>backend = "duckdb"</code> (default): uses DuckDB with the community <code>h3</code> extension to compute the H3 cell id and aggregate counts in SQL. This is substantially faster for large municipalities because it avoids materializing all points as an <code>sf</code> object in R.</li>
@@ -171,7 +181,7 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Fast path (default): DuckDB backend</span></span>
-<span><span class="va">hex_sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/hex_cnefe_counts.html">hex_cnefe_counts</a></span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">3550308</span>, h3_resolution <span class="op">=</span> <span class="fl">9</span>, backend <span class="op">=</span> <span class="st">"duckdb"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">hex_sp</span> <span class="op">&lt;-</span> <span class="fu">hex_cnefe_counts</span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">3550308</span>, h3_resolution <span class="op">=</span> <span class="fl">9</span>, backend <span class="op">=</span> <span class="st">"duckdb"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Pure-R path (can be slower for large cities)</span></span>
 <span><span class="co"># hex_sp_r &lt;- hex_cnefe_counts(code_muni = 3550308, h3_resolution = 9, backend = "r", verbose = TRUE)</span></span></code></pre></div>
@@ -212,7 +222,7 @@
 <div class="section level3">
 <h3 id="choosing-a-backend-performance-1">Choosing a backend (performance)<a class="anchor" aria-label="anchor" href="#choosing-a-backend-performance-1"></a>
 </h3>
-<p>Like <code><a href="reference/hex_cnefe_counts.html">hex_cnefe_counts()</a></code>, <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> supports a <code>backend</code> argument. Below is an example for Fortaleza (IBGE code 2304400) at H3 resolution 8:</p>
+<p>Like <code>hex_cnefe_counts()</code>, <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> supports a <code>backend</code> argument. Below is an example for Fortaleza (IBGE code 2304400) at H3 resolution 8:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedreirajr/cnefetools" class="external-link">cnefetools</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>

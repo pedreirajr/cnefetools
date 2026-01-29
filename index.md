@@ -119,22 +119,18 @@ cnefe_dictionary()
 
 ## Hexagon-level address counts with `hex_cnefe_counts()`
 
-The
-[`hex_cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/hex_cnefe_counts.md)
-function aggregates CNEFE address points into an H3 hexagonal grid of
-any resolution and returns an `sf` object with one row per hexagon. It
-includes:
+The `hex_cnefe_counts()` function aggregates CNEFE address points into
+an H3 hexagonal grid of any resolution and returns an `sf` object with
+one row per hexagon. It includes:
 
 - `id_hex`: H3 cell identifier.
 - `addr_type1` … `addr_type8`: counts by address category (see
-  [`?hex_cnefe_counts`](https://pedreirajr.github.io/cnefetools/reference/hex_cnefe_counts.md)
-  for the mapping).
+  `?hex_cnefe_counts` for the mapping).
 - `geometry`: hexagon geometry (CRS 4326).
 
 ### Choosing a backend (performance)
 
-[`hex_cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/hex_cnefe_counts.md)
-supports two backends via the `backend` argument:
+`hex_cnefe_counts()` supports two backends via the `backend` argument:
 
 - `backend = "duckdb"` (default): uses DuckDB with the community `h3`
   extension to compute the H3 cell id and aggregate counts in SQL. This
@@ -214,8 +210,7 @@ indicators:
 
 ### Choosing a backend (performance)
 
-Like
-[`hex_cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/hex_cnefe_counts.md),
+Like `hex_cnefe_counts()`,
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
 supports a `backend` argument. Below is an example for Fortaleza (IBGE
 code 2304400) at H3 resolution 8:

@@ -6,8 +6,14 @@ PDF viewer.
 ## Usage
 
 ``` r
-cnefe_doc()
+cnefe_doc(year = 2022)
 ```
+
+## Arguments
+
+- year:
+
+  Integer. The CNEFE data year. Currently only 2022 is supported.
 
 ## Value
 

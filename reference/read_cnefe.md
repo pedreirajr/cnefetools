@@ -1,17 +1,22 @@
-# Read CNEFE 2022 data for a given municipality
+# Read CNEFE data for a given municipality
 
-Downloads and reads the CNEFE 2022 CSV file for a given IBGE
-municipality code, using the official IBGE FTP structure. The function
-relies on an internal index linking municipality codes to the
-corresponding ZIP URLs. Data are returned either as an Arrow Table
-(default) or as an
+Downloads and reads the CNEFE CSV file for a given IBGE municipality
+code, using the official IBGE FTP structure. The function relies on an
+internal index linking municipality codes to the corresponding ZIP URLs.
+Data are returned either as an Arrow Table (default) or as an
 [sf](https://r-spatial.github.io/sf/reference/st_as_sf.html) object with
 SIRGAS 2000 coordinates.
 
 ## Usage
 
 ``` r
-read_cnefe(code_muni, verbose = TRUE, cache = TRUE, output = c("arrow", "sf"))
+read_cnefe(
+  code_muni,
+  year = 2022,
+  verbose = TRUE,
+  cache = TRUE,
+  output = c("arrow", "sf")
+)
 ```
 
 ## Arguments
@@ -19,6 +24,11 @@ read_cnefe(code_muni, verbose = TRUE, cache = TRUE, output = c("arrow", "sf"))
 - code_muni:
 
   Integer. Seven-digit IBGE municipality code.
+
+- year:
+
+  Integer. The CNEFE data year. Currently only 2022 is supported.
+  Defaults to 2022.
 
 - verbose:
 

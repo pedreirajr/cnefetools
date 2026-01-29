@@ -17,8 +17,9 @@ heavy work.
 ``` r
 tracts_to_h3(
   code_muni,
-  h3_resolution = 9L,
-  vars = c("n_inhab_p", "n_inhab_c"),
+  year = 2022,
+  h3_resolution = 9,
+  vars = c("pop_ph", "pop_ch"),
   cache = TRUE,
   verbose = TRUE
 )
@@ -30,6 +31,11 @@ tracts_to_h3(
 
   Integer. Seven-digit IBGE municipality code.
 
+- year:
+
+  Integer. The CNEFE data year. Currently only 2022 is supported.
+  Defaults to 2022.
+
 - h3_resolution:
 
   Integer. H3 resolution (0 to 15). Defaults to 9.
@@ -39,10 +45,10 @@ tracts_to_h3(
   Character vector. Names of tract-level variables to interpolate.
   Supported variables:
 
-  - `n_inhab_p`: population in private households (*Domicílios
+  - `pop_ph`: population in private households (*Domicílios
     particulares*).
 
-  - `n_inhab_c`: population in collective households (*Domicílios
+  - `pop_ch`: population in collective households (*Domicílios
     coletivos*).
 
   - `male`: total male population.
@@ -53,16 +59,23 @@ tracts_to_h3(
     `age_25_29`, `age_30_39`, `age_40_49`, `age_50_59`, `age_60_69`,
     `age_70m`: population by age group.
 
+  - `race_branca`, `race_preta`, `race_amarela`, `race_parda`,
+    `race_indigena`: population by race/color (*cor ou raça*).
+
   - `n_resp`: number of household heads (*Pessoas responsáveis por
     domicílios*).
 
   - `avg_inc_resp`: average income of the household heads.
 
+  For a reference table mapping these variable names to the official
+  IBGE census tract codes and descriptions, see
+  [tracts_variables_ref](https://pedreirajr.github.io/cnefetools/reference/tracts_variables_ref.md).
+
   Allocation rules:
 
-  - `n_inhab_p` is allocated only to private dwellings.
+  - `pop_ph` is allocated only to private dwellings.
 
-  - `n_inhab_c` is allocated only to collective dwellings.
+  - `pop_ch` is allocated only to collective dwellings.
 
   - All other sum-like variables are allocated to private dwellings when
     the tract has any; if the tract has zero private dwellings but has
