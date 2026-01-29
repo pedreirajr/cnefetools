@@ -1,0 +1,217 @@
+---
+title: "Intra-urban analysis with cnefe_counts()"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.path = "cnefe_counts_files/figure-html/"
+)
+```
+
+In February 2024, IBGE released CNEFE data from the 2022 Census showing
+that Brazil has more religious temples (579,800) than educational
+establishments (264,400) and health facilities (247,500) combined. This
+finding sparked widespread media coverage and public debate (see
+[Agência
+Brasil](https://agenciabrasil.ebc.com.br/geral/noticia/2024-02/brasil-tem-mais-estabelecimentos-religiosos-que-escolas-e-hospitais)).
+
+However, these figures represent national or state-level aggregates.
+What about the **intra-urban** distribution? Are there neighborhoods
+with a particularly high concentration of religious establishments
+relative to educational establishments? `cnefe_counts()` allows us to
+answer these questions by aggregating CNEFE address counts to H3
+hexagonal cells or user-provided polygons such as neighborhoods.
+
+In this article, we compute an Index of Concentration at the Extremes
+(ICE) comparing educational and religious establishments for the
+municipality of Porto Alegre, using both H3 resolution 8 hexagons and
+official neighborhood boundaries.
+
+Before computing ICE, let's read the CNEFE data for Porto Alegre as
+point geometries and visualize the spatial distribution of educational
+and religious establishments:
+
+### Attaching libraries:
+
+```{r}
+library(cnefetools)
+library(geobr)
+library(dplyr)
+library(sf)
+library(mapview)
+```
+
+### Reading CNEFE data to visualize educational and religious establishments:
+
+```{r}
+poa_cnefe <- read_cnefe(
+  code_muni = 4314902, # IBGE code for Porto Alegre)
+  cache = T,
+  output = 'sf',
+  verbose = F
+  )
+
+poa_cnefe_edurel <- poa_cnefe |> 
+  filter(COD_ESPECIE %in% c(4,8)) |> # Select only educational (4) and religious (8) facilities
+  mutate(
+    est_type = factor(ifelse(COD_ESPECIE == 4,'Educational','Religious'))
+         )
+
+mapview(
+  poa_cnefe_edurel, 
+  zcol = 'est_type', 
+  layer.name = 'Establishment type',
+  col.regions = c("blue","red"), # Blue (educational) and Red (religious)
+  cex = 2,
+  burst = T
+)   
+```
+
+## The Index of Concentration at the Extremes (ICE)
+
+ICE was originally proposed by Booth & Crouter (2001) to measure
+spatial concentration between two groups. We adapt it here to compare
+educational (`addr_type4`) and religious (`addr_type8`) establishments:
+$$
+\text{ICE} = \frac{n_{\text{educational}} - n_{\text{religious}}}{n_{\text{educational}} + n_{\text{religious}}}
+$$
+
+The index ranges from -1 to +1:
+
+-   **+1**: all establishments are educational (maximum concentration of
+    educational establishments)
+-   **0**: equal number of educational and religious establishments
+-   **-1**: all establishments are religious (maximum concentration of
+    temples)
+
+## Aggregating counts to H3 hexagons
+
+We use `cnefe_counts()` with `polygon_type = "hex"` and
+`h3_resolution = 8` to aggregate address counts to H3 hexagonal cells.
+Resolution 8 cells have an average area of approximately 0.74 km².
+
+```{r, warning = T, message = T}
+poa_hex_counts <- cnefe_counts(
+  code_muni = 4314902, # IBGE code for Porto Alegre
+  polygon_type = "hex",
+  h3_resolution = 8
+)
+
+head(poa_hex_counts)
+```
+
+The output contains columns `addr_type1` through `addr_type8`,
+corresponding to CNEFE address types. The ones we are interested in are:
+
+-   `addr_type4`: Educational establishments
+-   `addr_type8`: Religious establishments
+
+## Computing ICE for H3 hexagons
+
+We compute ICE only for hexagons that have at least one educational
+or religious establishment:
+
+```{r}
+poa_hex_ice <- poa_hex_counts |>
+  filter(addr_type4 > 0 | addr_type8 > 0) |>
+  mutate(
+    ice = (addr_type4 - addr_type8) / (addr_type4 + addr_type8)
+  )
+
+summary(poa_hex_ice$ice)
+```
+
+## Mapping H3 results
+
+We use a diverging color scale: blue indicates higher concentration of
+educational establishments (+1), white indicates balance (0), and red
+indicates higher concentration of religious establishments (-1).
+
+```{r}
+mapview(
+  poa_hex_ice,
+  zcol = "ice",
+  col.regions = colorRampPalette(c("red", "white", "blue")),
+  layer.name = "ICE (H3 res. 8)"
+)
+```
+
+## Aggregating counts to neighborhoods
+
+Now we use official neighborhood boundaries from the [`geobr`
+package](https://github.com/ipeaGIT/geobr). The `cnefe_counts()`
+function accepts user-provided polygons via the `polygon` argument.
+
+```{r}
+# Load Porto Alegre neighborhoods
+poa_neighborhoods <- read_neighborhood(year = 2022, simplified = FALSE) |>
+  filter(name_muni == "Porto Alegre")
+
+nrow(poa_neighborhoods)
+```
+
+```{r, warning = T, message = T}
+poa_neigh_counts <- cnefe_counts(
+  code_muni = 4314902,
+  polygon_type = "user",
+  polygon = poa_neighborhoods
+)
+
+head(poa_neigh_counts)
+```
+
+## Computing ICE by neighborhood
+
+```{r}
+poa_neigh_ice <- poa_neigh_counts |>
+  filter(addr_type4 > 0 | addr_type8 > 0) |>
+  mutate(
+    ice = (addr_type4 - addr_type8) / (addr_type4 + addr_type8)
+  )
+
+summary(poa_neigh_ice$ice)
+```
+
+## Mapping neighborhood results
+
+```{r}
+mapview(
+  poa_neigh_ice,
+  zcol = "ice",
+  col.regions = colorRampPalette(c("red", "white", "blue")),
+  layer.name = "ICE (Neighborhoods)"
+)
+```
+
+## Comparing spatial resolutions
+
+The H3 hexagonal grid offers several desirable topological properties
+for spatial analysis: all cells have the same area and shape, every cell
+has exactly six neighbors at equal distances, and the grid avoids the
+orientation artifacts that arise with square grids. These properties
+make hexagonal grids particularly well-suited for spatial statistics,
+neighborhood-based indicators, and smooth interpolation across space.
+
+On the other hand, user-provided polygons, such as neighborhoods or
+health districts, carry administrative or institutional meaning that is
+directly relevant to policy-making and domain-specific research. By
+supporting any polygon geometry, `cnefe_counts()` allows researchers and
+practitioners to aggregate CNEFE data to whichever spatial unit best
+fits their study design.
+
+Both approaches demonstrate how `cnefe_counts()` enables intra-urban
+analysis, moving beyond aggregate national statistics to reveal spatial
+patterns within cities.
+
+## References
+
+Booth, A.; Crouter, A. C. (Eds.). (2001). *Does It Take a Village?
+Community Effects on Children, Adolescents, and Families*. Psychology
+Press.

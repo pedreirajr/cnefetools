@@ -9,3 +9,5 @@
 ^pkgdown$
 ^CLAUDE\.md$
 ^vignettes/articles$
+\.Rmd\.orig$
+_build\.R$
