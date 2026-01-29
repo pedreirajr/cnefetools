@@ -98,26 +98,26 @@ ftl_h3 <- tracts_to_h3(
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
 #> ✔ Spatial extension loaded
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-✔ Step 1/6 (DuckDB ready) [518ms]
+✔ Step 1/6 (DuckDB ready) [552ms]
 #> 
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 #> ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
-✔ Step 2/6 (tracts ready) [322ms]
+✔ Step 2/6 (tracts ready) [308ms]
 #> 
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
 #> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-✔ Step 3/6 (CNEFE points ready) [4s]
+✔ Step 3/6 (CNEFE points ready) [3.8s]
 #> 
 #> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (join and allocation prep) [1.3s]
+#> ✔ Step 4/6 (join and allocation prep) [2.5s]
 #> 
 #> ℹ Step 5/6: aggregating allocated values to H3 cells...
-#> ✔ Step 5/6 (hex aggregation) [218ms]
+#> ✔ Step 5/6 (hex aggregation) [224ms]
 #> 
 #> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [765ms]
+#> ✔ Step 6/6 (sf output) [793ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
@@ -135,22 +135,22 @@ head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -38.61162 ymin: -3.827556 xmax: -38.47009 ymax: -3.71684
+#> Bounding box:  xmin: -38.64091 ymin: -3.845923 xmax: -38.50523 ymax: -3.711455
 #> Geodetic CRS:  WGS 84
 #>            id_hex     pop_ph avg_inc_resp race_preta
-#> 1 8880104f11fffff   547.6366     9501.404   27.97055
-#> 2 8880104c6bfffff  5130.2476    11917.039  151.67999
-#> 3 8880104e17fffff  2969.0585     1637.215  257.11403
-#> 4 8880104553fffff  8415.9331     1245.070  871.71422
-#> 5 8880104cc1fffff  6760.5683     2766.186  469.64049
-#> 6 8880107b6bfffff 15033.8448     1795.090  922.54085
+#> 1 8880104cddfffff 13321.3310     1911.185 1180.05315
+#> 2 88801045e5fffff 13383.8123     1590.995  897.03672
+#> 3 8880107b65fffff 13345.7094     2121.699 1061.31442
+#> 4 88801045ddfffff   890.9914     1467.918   89.11701
+#> 5 8880104c1dfffff  7417.4240     8685.882  257.48227
+#> 6 88801040b5fffff 11225.1574     1277.496 1048.97185
 #>                         geometry
-#> 1 POLYGON ((-38.47411 -3.7882...
-#> 2 POLYGON ((-38.48272 -3.7658...
-#> 3 POLYGON ((-38.53372 -3.7908...
-#> 4 POLYGON ((-38.60576 -3.8275...
-#> 5 POLYGON ((-38.53578 -3.7271...
-#> 6 POLYGON ((-38.58644 -3.7281...
+#> 1 POLYGON ((-38.5506 -3.72179...
+#> 2 POLYGON ((-38.59024 -3.7848...
+#> 3 POLYGON ((-38.56852 -3.7249...
+#> 4 POLYGON ((-38.63505 -3.7927...
+#> 5 POLYGON ((-38.50925 -3.7464...
+#> 6 POLYGON ((-38.52856 -3.8459...
 ```
 
 ### Mapping the results
@@ -255,18 +255,16 @@ sp_zones_census <- tracts_to_polygon(
 #> ℹ Step 1/6: aligning CRS...
 #> ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
-✔ Step 1/6 (CRS alignment) [630ms]
+✔ Step 1/6 (CRS alignment) [660ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
 #> ✔ Spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-✔ Step 2/6 (DuckDB ready) [503ms]
+✔ Step 2/6 (DuckDB ready) [504ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 #> ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-
-
 #> Warning: "0.02%" of polygon area falls outside census tracts of municipality 3550308.
 #> ℹ Only CNEFE points within census tracts will be used for interpolation.
 #> ✔ Step 3/6 (tracts ready) [5.2s]
@@ -274,16 +272,16 @@ sp_zones_census <- tracts_to_polygon(
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-✔ Step 4/6 (CNEFE points ready) [18.4s]
+✔ Step 4/6 (CNEFE points ready) [18s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
 #> Warning: Polygon coverage: "99.99%" of CNEFE dwelling points captured.
 #> ℹ 4993321 of 4993594 points are within the provided polygon.
 #> ℹ 273 points fell outside the polygon and were not counted.
-#> ✔ Step 5/6 (join and allocation) [1m 3.3s]
+#> ✔ Step 5/6 (join and allocation) [1m 7.6s]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (polygon aggregation) [389ms]
+#> ✔ Step 6/6 (polygon aggregation) [474ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
