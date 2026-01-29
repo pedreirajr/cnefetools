@@ -2,12 +2,21 @@
 % Please edit documentation in R/read_cnefe.R
 \name{read_cnefe}
 \alias{read_cnefe}
-\title{Read CNEFE 2022 data for a given municipality}
+\title{Read CNEFE data for a given municipality}
 \usage{
-read_cnefe(code_muni, verbose = TRUE, cache = TRUE, output = c("arrow", "sf"))
+read_cnefe(
+  code_muni,
+  year = 2022,
+  verbose = TRUE,
+  cache = TRUE,
+  output = c("arrow", "sf")
+)
 }
 \arguments{
 \item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+
+\item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
+Defaults to 2022.}
 
 \item{verbose}{Logical; if \code{TRUE}, print informative messages about
 download, extraction, and reading steps.}
@@ -28,7 +37,7 @@ If \code{output = "sf"}, an \link[sf:st_as_sf]{sf} object with point geometry in
 EPSG:4674 (SIRGAS 2000), using the \code{LONGITUDE} and \code{LATITUDE} columns.
 }
 \description{
-Downloads and reads the CNEFE 2022 CSV file for a given
+Downloads and reads the CNEFE CSV file for a given
 IBGE municipality code, using the official IBGE FTP structure. The function
 relies on an internal index linking municipality codes to the corresponding
 ZIP URLs. Data are returned either as an Arrow \link[arrow:Table-class]{Table}

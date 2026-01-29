@@ -1,0 +1,146 @@
+---
+title: "Exploring CNEFE address data"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.path = "read_cnefe_files/figure-html/"
+)
+```
+
+The 2022 Brazilian CNEFE (*Cadastro Nacional de Endereços para Fins
+Estatísticos*) is an address-level dataset released by IBGE containing
+over 100 million geocoded records across all Brazilian municipalities.
+Each record carries the address type (`COD_ESPECIE`), geographic
+coordinates, and a free-text description of the establishment
+(`DSC_ESTABELECIMENTO`) for non-residential addresses.
+
+`read_cnefe()` downloads and reads CNEFE data for any municipality,
+returning either an Arrow table (default) or an `sf` spatial object of
+point data. This article walks through a practical example: filtering
+health facilities and finding those that contain the term "hospital" in
+the `DSC_ESTABELECIMENTO` column.
+
+## Downloading CNEFE data
+
+You can download CNEFE data for any Brazilian municipality with just a
+single line of code. By setting `output = "sf"`, the result is returned
+as a spatial `sf` object, ready for mapping and spatial analysis. To
+avoid downloading the same file in all sections, you can cache the
+municipality of interest by setting the `cache` parameter to `TRUE`.
+
+```{r}
+library(cnefetools)
+library(dplyr)
+library(sf)
+
+# Download CNEFE for Salvador (IBGE code 2927408) as an sf object
+ssa_cnefe <- read_cnefe(code_muni = 2927408, cache = TRUE, output = "sf")
+```
+
+Be careful, however, when plotting the full dataset, since large
+municipalities may contain millions of points (Salvador has over 1.3
+million records).
+
+## Exploring available columns
+
+```{r}
+names(ssa_cnefe)
+```
+
+Key columns for this example:
+
+-   **`COD_ESPECIE`** — address type (1 = private household, 2 =
+    collective household, 3 = agricultural, 4 = educational, 5 = health,
+    6 = other, 7 = under construction, 8 = religious).
+-   **`DSC_ESTABELECIMENTO`** — free-text name/description of the
+    establishment (only filled for non-residential addresses).
+-   **`geometry`** — point geometry with geographic coordinates.
+
+A spreadsheet with the data dictionary (in Portuguese) can be accessed
+with the function `cnefe_dictionary()`, which will open your system's
+default spreadsheet viewer. To understand the whole methodology of the
+CNEFE collection, you should also consult the PDF methodological
+document (also in Portuguese) with the `cnefe_doc()` function.
+Currently, only the CNEFE from the 2022 Census is available in the
+package.
+
+```{r}
+## Opens the bundled Excel data dictionary:
+cnefe_dictionary(year = 2022)
+
+## Opens the bundled PDF methodological document:
+cnefe_doc(year = 2022)
+```
+
+## Filtering for health establishments
+
+We can keep only health establishments (`COD_ESPECIE == 5`):
+
+```{r}
+ssa_health <- ssa_cnefe |>
+  filter(COD_ESPECIE == 5)
+
+nrow(ssa_health)
+```
+
+## Searching for "hospital" in the description
+
+We can use `grepl()` within `dplyr::filter()` to find records containing
+specific terms:
+
+```{r}
+ssa_hospitals <- ssa_health |>
+  filter(grepl("hospital", DSC_ESTABELECIMENTO, ignore.case = TRUE))
+
+ssa_hospitals
+```
+
+## Mapping the results
+
+Since we already have an `sf` object, we can visualise the locations
+directly with `mapview`:
+
+```{r}
+library(mapview)
+
+mapview(ssa_hospitals, layer.name = "Health facilities with 'hospital' term in their description column in Salvador")
+```
+
+## Working with Arrow tables for better performance
+
+By default, `read_cnefe()` returns an Arrow table instead of an `sf`
+object. Arrow tables are more memory-efficient and faster for large
+municipalities, which makes them a better choice when you need to filter
+or transform the data before converting to a spatial format:
+
+```{r}
+ssa_arrow <- read_cnefe(code_muni = 2927408, cache = TRUE)
+
+class(ssa_arrow)
+```
+
+With Arrow, you can filter the data before loading it into memory with
+`collect()`, and then convert only the subset you need to `sf`:
+
+```{r}
+ssa_hospitals_arrow <- ssa_arrow |>
+  filter(COD_ESPECIE == 5) |>
+  filter(grepl("hospital", DSC_ESTABELECIMENTO, ignore.case = TRUE)) |>
+  collect() |>
+  filter(!is.na(LONGITUDE), !is.na(LATITUDE)) |>
+  st_as_sf(
+    coords = c("LONGITUDE", "LATITUDE"),
+    crs = 4674
+  )
+```
+
+This approach is particularly useful when working with very large
+municipalities where loading all records as `sf` at once may be slow.

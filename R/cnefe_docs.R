@@ -1,20 +1,25 @@
-#' Open the official CNEFE 2022 data dictionary
+#' Open the official CNEFE data dictionary
 #'
 #' Opens the bundled Excel data dictionary in the system's default
 #' spreadsheet viewer (e.g., Excel, LibreOffice).
 #'
+#' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
+#'
 #' @return Invisibly, the path to the Excel file inside the installed package.
 #' @export
-cnefe_dictionary <- function() {
+cnefe_dictionary <- function(year = 2022) {
+  year <- .validate_year(year)
+
+  filename <- sprintf("cnefe_dictionary_%d.xls", year)
   path <- system.file(
     "extdata",
-    "cnefe_dictionary_2022.xls",
+    filename,
     package = "cnefetools"
   )
 
   if (!nzchar(path)) {
-    rlang::abort(
-      "Bundled CNEFE dictionary file not found in installed package."
+    cli::cli_abort(
+      "Bundled CNEFE dictionary file for year {.val {year}} not found."
     )
   }
 
@@ -27,18 +32,23 @@ cnefe_dictionary <- function() {
 #' Opens the bundled PDF methodological document in the system's
 #' default PDF viewer.
 #'
+#' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
+#'
 #' @return Invisibly, the path to the PDF file inside the installed package.
 #' @export
-cnefe_doc <- function() {
+cnefe_doc <- function(year = 2022) {
+  year <- .validate_year(year)
+
+  filename <- sprintf("cnefe_metodologica_%d.pdf", year)
   path <- system.file(
     "extdata",
-    "cnefe_metodologica_2024.pdf",
+    filename,
     package = "cnefetools"
   )
 
   if (!nzchar(path)) {
-    rlang::abort(
-      "Bundled CNEFE methodological note not found in installed package."
+    cli::cli_abort(
+      "Bundled CNEFE methodological note for year {.val {year}} not found."
     )
   }
 

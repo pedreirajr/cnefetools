@@ -1,7 +1,7 @@
-#' Read CNEFE 2022 data for a given municipality
+#' Read CNEFE data for a given municipality
 #'
 #' @description
-#' Downloads and reads the CNEFE 2022 CSV file for a given
+#' Downloads and reads the CNEFE CSV file for a given
 #' IBGE municipality code, using the official IBGE FTP structure. The function
 #' relies on an internal index linking municipality codes to the corresponding
 #' ZIP URLs. Data are returned either as an Arrow [Table][arrow::Table]
@@ -25,6 +25,8 @@
 #' removed when the function exits.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
+#'   Defaults to 2022.
 #' @param verbose Logical; if `TRUE`, print informative messages about
 #'   download, extraction, and reading steps.
 #' @param cache Logical; if `TRUE`, cache the downloaded ZIP file in a
@@ -44,17 +46,26 @@
 #' @export
 read_cnefe <- function(
   code_muni,
+  year = 2022,
   verbose = TRUE,
   cache = TRUE,
   output = c("arrow", "sf")
 ) {
   output <- match.arg(output)
   code_muni <- .normalize_code_muni(code_muni)
+  year <- .validate_year(year)
+
+  # Get the appropriate index for the requested year
+  cnefe_index <- .get_cnefe_index(year)
+
+  if (verbose) {
+    cli::cli_alert_info("Processing municipality code {.val {code_muni}}")
+  }
 
   # Ensure ZIP exists (cached or temporary) and is valid
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
-    index = cnefe_index_2022,
+    index = cnefe_index,
     cache = cache,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
@@ -79,12 +90,17 @@ read_cnefe <- function(
 
   # List files and find first CSV inside
   if (verbose) {
-    message("Listing file contents...")
+    cli::cli_progress_step("Listing file contents")
   }
+
   csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   if (verbose) {
-    message("Extracting ", csv_inside, " ...")
+    cli::cli_progress_done()
+  }
+
+  if (verbose) {
+    cli::cli_progress_step("Extracting {.file {csv_inside}}")
   }
 
   utils::unzip(
@@ -95,13 +111,18 @@ read_cnefe <- function(
 
   csv_path <- file.path(tmp_dir, csv_inside)
   if (!file.exists(csv_path)) {
-    rlang::abort(sprintf("Failed to extract CSV to %s", csv_path))
+    cli::cli_abort("Failed to extract CSV to {.path {csv_path}}")
+  }
+
+  if (verbose) {
+    cli::cli_progress_done()
   }
 
   # Read with Arrow
   if (verbose) {
-    message("Reading CSV with arrow...")
+    cli::cli_progress_step("Reading CSV with {.pkg arrow}")
   }
+
   tab <- suppressWarnings(
     arrow::read_delim_arrow(
       csv_path,
@@ -110,6 +131,11 @@ read_cnefe <- function(
       as_data_frame = FALSE
     )
   )
+
+  if (verbose) {
+    cli::cli_progress_done()
+    cli::cli_alert_success("Read {.val {nrow(tab)}} records from CNEFE")
+  }
 
   if (identical(output, "arrow")) {
     return(tab)
@@ -121,12 +147,17 @@ read_cnefe <- function(
     reason = "to use `output = \"sf\"` in `read_cnefe()`."
   )
 
+  if (verbose) {
+    cli::cli_progress_step("Converting to {.pkg sf} object")
+  }
+
   df <- as.data.frame(tab)
 
   if (!all(c("LONGITUDE", "LATITUDE") %in% names(df))) {
-    rlang::abort(
-      "Columns 'LONGITUDE' and 'LATITUDE' not found in CNEFE data; cannot build sf object."
-    )
+    cli::cli_abort(c(
+      "Columns {.field LONGITUDE} and {.field LATITUDE} not found in CNEFE data.",
+      "i" = "Cannot build {.cls sf} object without coordinates."
+    ))
   }
 
   df$LONGITUDE <- as.numeric(df$LONGITUDE)
@@ -135,15 +166,23 @@ read_cnefe <- function(
   df <- df[!is.na(df$LONGITUDE) & !is.na(df$LATITUDE), , drop = FALSE]
 
   if (nrow(df) == 0L) {
-    rlang::abort(
-      "No rows with valid coordinates (LONGITUDE/LATITUDE) were found."
-    )
+    cli::cli_abort(c(
+      "No rows with valid coordinates were found.",
+      "i" = "All {.field LONGITUDE} and {.field LATITUDE} values are {.val NA}."
+    ))
   }
 
-  sf::st_as_sf(
+  out <- sf::st_as_sf(
     df,
     coords = c("LONGITUDE", "LATITUDE"),
     crs = 4674,
     remove = FALSE
   )
+
+  if (verbose) {
+    cli::cli_progress_done()
+    cli::cli_alert_success("Created {.cls sf} object with {.val {nrow(out)}} points (CRS: EPSG:4674)")
+  }
+
+  return(out)
 }
