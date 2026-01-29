@@ -16,17 +16,38 @@ knitr::opts_chunk$set(
 
 Census data in Brazil are published at the census tract level. However,
 many research and planning applications require data at different
-spatial granularities: hexagonal grids for standardized spatial
+spatial granularities, such as hexagonal grids for standardized spatial
 analysis, or custom polygons such as traffic zones for transportation
 modeling.
 
 `tracts_to_h3()` and `tracts_to_polygon()` perform **dasymetric
 interpolation** using CNEFE dwelling points as ancillary data. Instead
 of assuming uniform distribution within tracts, they allocate
-tract-level totals to individual dwelling points identified in the CNEFE
-and then aggregate these to the target spatial units. This approach
-preserves the heterogeneous distribution of dwellings within each tract,
-yielding more accurate estimates than simple areal interpolation.
+tract-level values to individual dwelling points identified in the CNEFE
+and then aggregate these to the target spatial units. The allocation
+rule depends on the variable type:
+
+-   **Sum variables** (e.g., `pop_ph`, `race_preta`, `age_70m`): the
+    tract total is divided equally among eligible dwelling points. The
+    target spatial unit (e.g., hexagons, traffic zones, or any
+    user-supplied polygon) receives the sum of all point-level shares
+    that fall within it.
+-   **Average variables** (`avg_inc_resp`): the tract-level average is
+    assigned (not split) to each eligible dwelling point. The target
+    spatial unit receives the average of all assigned values within it.
+
+This approach preserves the heterogeneous distribution of dwellings
+within each tract, yielding more accurate estimates than simple areal
+interpolation.
+
+The currently supported variables (and their respective IBGE census
+tract codes) can be found using the `tracts_variables_ref` dataframe
+that accompanies the package:
+
+```{r}
+tracts_variables_ref |> 
+  knitr::kable()
+```
 
 This article demonstrates both functions: `tracts_to_h3()` for
 transferring census variables to an H3 hexagonal grid in Fortaleza, and
@@ -111,6 +132,12 @@ ggplot(ftl_h3_plot, aes(x = pct_preta, y = avg_inc_resp)) +
   theme_minimal()
 ```
 
+As expected, the plot reveals a strong negative correlation between
+these two variables: hexagons with a higher share of Black population
+tend to have substantially lower average household income. This pattern
+reflects deep-rooted racial income inequality, a persistent feature of
+the Brazilian social landscape.
+
 ## Part 2: Census variables on traffic zones (São Paulo)
 
 Transportation planning often requires census-derived variables at the
@@ -128,7 +155,6 @@ library(odbr)
 sp_zones <- read_map(
   city = "Sao Paulo",
   year = 2017,
-  harmonize = FALSE,
   geometry = "zone"
 )
 
@@ -147,7 +173,7 @@ We interpolate two variables:
 ```{r, warning = TRUE, message = TRUE}
 sp_zones_census <- tracts_to_polygon(
   code_muni = 3550308,
-  polygon = sp_zones_muni |> sf::st_make_valid(), # Correcting invalid geometries
+  polygon = sp_zones_muni |> sf::st_make_valid(), # Correcting invalid geometries in advance
   vars = c("pop_ph", "age_70m")
 )
 
