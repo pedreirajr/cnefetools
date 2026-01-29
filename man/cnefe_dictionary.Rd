@@ -16,3 +16,9 @@ Invisibly, the path to the Excel file inside the installed package.
 Opens the bundled Excel data dictionary in the system's default
 spreadsheet viewer (e.g., Excel, LibreOffice).
 }
+\examples{
+\dontrun{
+cnefe_dictionary()
+}
+
+}

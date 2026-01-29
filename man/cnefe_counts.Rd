@@ -74,3 +74,17 @@ The counts in the columns \code{addr_type1} to \code{addr_type8} correspond to:
 \item \code{addr_type8}: Religious establishment (Estabelecimento religioso)
 }
 }
+\examples{
+\dontrun{
+# Count addresses per H3 hexagon (resolution 9)
+hex_counts <- cnefe_counts(code_muni = 2304400)
+
+# Count addresses per user-provided polygon
+hex_counts <- cnefe_counts(
+  code_muni = 2304400,
+  polygon_type = "user",
+  polygon = my_polygons
+)
+}
+
+}

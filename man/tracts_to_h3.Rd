@@ -54,10 +54,6 @@ if the tract has zero private dwellings but has collective dwellings, they are a
 }
 \value{
 An \code{sf} object (CRS 4326) with an H3 grid and the requested interpolated variables.
-Attributes:
-\itemize{
-\item \code{attr(x, "timing")}: named numeric vector with step timings (seconds).
-}
 }
 \description{
 \code{tracts_to_h3()} performs a dasymetric interpolation with the following steps:
@@ -67,4 +63,14 @@ Attributes:
 }
 
 The function uses DuckDB with the spatial and H3 extensions for the heavy work.
+}
+\examples{
+\dontrun{
+# Interpolate population to H3 hexagons
+hex_pop <- tracts_to_h3(
+  code_muni = 2304400,
+  vars = c("pop_ph", "pop_ch")
+)
+}
+
 }

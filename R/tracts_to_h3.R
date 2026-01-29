@@ -38,8 +38,15 @@
 #' @param verbose Logical. Whether to print step messages and timing.
 #'
 #' @return An `sf` object (CRS 4326) with an H3 grid and the requested interpolated variables.
-#'   Attributes:
-#'   - `attr(x, "timing")`: named numeric vector with step timings (seconds).
+#'
+#' @examples
+#' \dontrun{
+#' # Interpolate population to H3 hexagons
+#' hex_pop <- tracts_to_h3(
+#'   code_muni = 2304400,
+#'   vars = c("pop_ph", "pop_ch")
+#' )
+#' }
 #'
 #' @export
 tracts_to_h3 <- function(
@@ -138,8 +145,6 @@ tracts_to_h3 <- function(
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
 
   # timing container ----------------------------------------------------------
-  # step_times <- numeric(0)
-
   if (verbose) {
     cli::cli_alert_info("Processing code {code_muni}")
   }

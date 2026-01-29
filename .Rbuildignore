@@ -8,6 +8,7 @@
 ^docs$
 ^pkgdown$
 ^CLAUDE\.md$
+^\.claude$
 ^vignettes/articles$
 \.Rmd\.orig$
 _build\.R$
