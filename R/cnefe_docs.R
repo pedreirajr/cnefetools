@@ -6,6 +6,12 @@
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'
 #' @return Invisibly, the path to the Excel file inside the installed package.
+#'
+#' @examples
+#' \dontrun{
+#' cnefe_dictionary()
+#' }
+#'
 #' @export
 cnefe_dictionary <- function(year = 2022) {
   year <- .validate_year(year)
@@ -35,6 +41,12 @@ cnefe_dictionary <- function(year = 2022) {
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'
 #' @return Invisibly, the path to the PDF file inside the installed package.
+#'
+#' @examples
+#' \dontrun{
+#' cnefe_doc()
+#' }
+#'
 #' @export
 cnefe_doc <- function(year = 2022) {
   year <- .validate_year(year)

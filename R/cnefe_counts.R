@@ -46,6 +46,19 @@
 #' - `addr_type7`: Building under construction or renovation (Edificação em construção ou reforma)
 #' - `addr_type8`: Religious establishment (Estabelecimento religioso)
 #'
+#' @examples
+#' \dontrun{
+#' # Count addresses per H3 hexagon (resolution 9)
+#' hex_counts <- cnefe_counts(code_muni = 2304400)
+#'
+#' # Count addresses per user-provided polygon
+#' hex_counts <- cnefe_counts(
+#'   code_muni = 2304400,
+#'   polygon_type = "user",
+#'   polygon = my_polygons
+#' )
+#' }
+#'
 #' @export
 cnefe_counts <- function(
   code_muni,

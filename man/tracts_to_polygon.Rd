@@ -63,10 +63,6 @@ the original CRS of the \code{polygon} argument. Can be an EPSG code (e.g., 4326
 An \code{sf} object with the user-provided polygons and the requested
 interpolated variables. The output CRS matches the original \code{polygon} CRS
 (or \code{crs_output} if specified).
-Attributes:
-\itemize{
-\item \code{attr(x, "timing")}: named numeric vector with step timings (seconds).
-}
 }
 \description{
 \code{tracts_to_polygon()} performs a dasymetric interpolation with the following steps:
@@ -77,4 +73,15 @@ administrative divisions, custom areas, etc.).
 }
 
 The function uses DuckDB with spatial extensions for the heavy work.
+}
+\examples{
+\dontrun{
+# Interpolate population to user-provided polygons
+poly_pop <- tracts_to_polygon(
+  code_muni = 2304400,
+  polygon = my_polygons,
+  vars = c("pop_ph", "pop_ch")
+)
+}
+
 }

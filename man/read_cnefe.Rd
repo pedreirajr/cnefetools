@@ -61,3 +61,13 @@ When \code{cache = FALSE}, the ZIP file is stored in a temporary location and
 removed when the function exits.
 }
 
+\examples{
+\dontrun{
+# Read CNEFE data as an Arrow table
+cnefe <- read_cnefe(code_muni = 2304400)
+
+# Read as an sf spatial object
+cnefe_sf <- read_cnefe(code_muni = 2304400, output = "sf")
+}
+
+}

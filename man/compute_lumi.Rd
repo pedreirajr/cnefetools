@@ -73,6 +73,13 @@ the Balance Index (\code{bal}), the Index of Concentration at Extremes (\code{ic
 and the Bidirectional Global-centered Index (\code{bgbi}), following the methodology proposed in
 Pedreira Jr. et al. (2025).
 }
+\examples{
+\dontrun{
+# Compute land-use mix indices on H3 hexagons
+lumi <- compute_lumi(code_muni = 2304400)
+}
+
+}
 \references{
 Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 Measuring land use mix with address-level census data (2025).

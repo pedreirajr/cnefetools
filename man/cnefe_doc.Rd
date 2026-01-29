@@ -16,3 +16,9 @@ Invisibly, the path to the PDF file inside the installed package.
 Opens the bundled PDF methodological document in the system's
 default PDF viewer.
 }
+\examples{
+\dontrun{
+cnefe_doc()
+}
+
+}

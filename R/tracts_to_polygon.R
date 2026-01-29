@@ -46,8 +46,16 @@
 #' @return An `sf` object with the user-provided polygons and the requested
 #'   interpolated variables. The output CRS matches the original `polygon` CRS
 #'   (or `crs_output` if specified).
-#'   Attributes:
-#'   - `attr(x, "timing")`: named numeric vector with step timings (seconds).
+#'
+#' @examples
+#' \dontrun{
+#' # Interpolate population to user-provided polygons
+#' poly_pop <- tracts_to_polygon(
+#'   code_muni = 2304400,
+#'   polygon = my_polygons,
+#'   vars = c("pop_ph", "pop_ch")
+#' )
+#' }
 #'
 #' @export
 tracts_to_polygon <- function(
@@ -175,8 +183,6 @@ cnefe_index <- .get_cnefe_index(year)
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
 
   # timing container ----------------------------------------------------------
-  step_times <- numeric(0)
-
   if (verbose) {
     cli::cli_alert_info("Processing municipality code {.val {code_muni}}...")
   }
