@@ -22,9 +22,13 @@ Useful links:
 \author{
 \strong{Maintainer}: Jorge Ubirajara Pedreira Junior \email{jorge.ubirajara@ufba.br} (\href{https://orcid.org/0000-0002-8243-5395}{ORCID})
 
+Authors:
+\itemize{
+  \item Bruno Mioto \email{brunomioto97@gmail.com}
+}
+
 Other contributors:
 \itemize{
-  \item Bruno Mioto \email{brunomioto97@gmail.com} [contributor]
   \item Kaio Cunha Pedreira \email{kaiocp7@gmail.com} [contributor]
 }
 
