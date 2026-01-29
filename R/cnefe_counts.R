@@ -415,9 +415,11 @@ g., 4674, 31983) or a CRS object."
     output_crs <- sf::st_crs(crs_output)
   }
 
+  # Fix invalid geometries before any spatial operation
+  polygon <- sf::st_make_valid(polygon)
+
   # Transform polygon to WGS84 internally for spatial join with CNEFE points
   polygon_4326 <- sf::st_transform(polygon, 4326)
-  polygon_4326 <- sf::st_make_valid(polygon_4326)
 
   # Add row ID for joining
   polygon_4326 <- polygon_4326 |>
