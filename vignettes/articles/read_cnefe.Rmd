@@ -1,5 +1,5 @@
 ---
-title: "Exploring CNEFE address data"
+title: "Reading and exploring CNEFE data"
 editor_options:
   markdown:
     wrap: 72
