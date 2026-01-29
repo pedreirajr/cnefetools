@@ -225,7 +225,6 @@ directly with `mapview`:
 library(mapview)
 
 mapview(ssa_hospitals, layer.name = "Health facilities with 'hospital' term in their description column in Salvador")
-#> Error in path.expand(path): argumento 'path' inválido
 ```
 
 ## Working with Arrow tables for better performance

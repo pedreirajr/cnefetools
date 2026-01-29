@@ -138,10 +138,7 @@ ggplot(df_ind, aes(x = p, y = Value, color = Index)) +
   theme(legend.position = "bottom")
 ```
 
-![plot of chunk
-unnamed-chunk-3](compute_lumi_files/figure-html/unnamed-chunk-3-1.png)
-
-plot of chunk unnamed-chunk-3
+![](compute_lumi_files/figure-html/unnamed-chunk-3-1.png)
 
 Notice that EI peaks at $p_{i} = 0.5$ (the 50/50 split) and is symmetric
 around that point, whereas BAL peaks at $p_{i} = P = 0.75$ (the citywide
@@ -159,28 +156,16 @@ spo_lumi <- compute_lumi(
   h3_resolution = 8
 )
 #> ℹ Processing municipality code 3550308...
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+✔ Step 1/3 (CNEFE ZIP ready) [169ms]
 #> 
-ℹ Step 1/3: ensuring ZIP and inspecting archive...
-
-                                                   
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
-#> ℹ Step 1/3: ensuring ZIP and inspecting archive...
-
-✔ Step 1/3 (ZIP ready) [386ms]                    
-
-
+#> ℹ Step 2/3: Counting addresses per H3 cell...
+#> ✔ Step 2/3 (Addresses counted) [9.9s]
 #> 
-ℹ Step 2/3: aggregating CNEFE counts per H3 cell...
-
-✔ Step 2/3 (counts per hex) [20.3s]                
-
-
-#> 
-ℹ Step 3/3: building grid and computing LUMI indices...
-
-✔ Step 3/3 (indices) [1.3s]                            
-
-
+#> ℹ Step 3/3: Building grid and computing LUMI...
+#> ✔ Step 3/3 (Land use mix indices computed) [491ms]
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields
@@ -280,7 +265,6 @@ mga_lumi <- compute_lumi(
   polygon_type = "user",
   polygon = mga_nei
 )
-#> Error in compute_lumi(code_muni = 4115200, polygon_type = "user", polygon = mga_nei): unused arguments (polygon_type = "user", polygon = mga_nei)
 
 mapview(
   mga_lumi,
@@ -288,7 +272,6 @@ mapview(
   col.regions = colorRampPalette(c("red", "white", "blue")),
   layer.name = "BGBI"
 )
-#> Error: objeto 'mga_lumi' não encontrado
 ```
 
 ### Notes on user-supplied polygons

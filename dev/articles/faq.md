@@ -32,51 +32,20 @@ tracts_to_h3(
   )
 ```
 
-    #> Error in `dbSendQuery()`:
-    #> ! Binder Error: Values list "s" does not have a column named "n_inhab_p"
-    #> 
-    #> LINE 11:            AND s.n_inhab_p IS NOT NULL
-    #>                         ^
-    #> ℹ Context: rapi_prepare
-    #> ℹ Error type: BINDER
-    #> ℹ Raw message: Values list "s" does not have a column named "n_inhab_p"
-    #> 
-    #> LINE 11:            AND s.n_inhab_p IS NOT NULL
-    #>                         ^
-    #> Error: objeto 'hex_by_res' não encontrado
-
 ### H3 resolution = 1 (Average Hexagon Area = 609,788 km²)
-
-    #> Error: objeto 'hex_by_res' não encontrado
 
 ### H3 resolution = 2 (Average Hexagon Area = 86,802 km²)
 
-    #> Error: objeto 'hex_by_res' não encontrado
-
 ### H3 resolution = 3 (Average Hexagon Area = 12,393 km²)
-
-    #> Error: objeto 'hex_by_res' não encontrado
 
 ### H3 resolution = 4 (Average Hexagon Area = 1,770 km²)
 
-    #> Error: objeto 'hex_by_res' não encontrado
-
 ### H3 resolution = 5 (Average Hexagon Area = 253 km²)
-
-    #> Error: objeto 'hex_by_res' não encontrado
 
 ### H3 resolution = 6 (Average Hexagon Area = 36 km²)
 
-    #> Error: objeto 'hex_by_res' não encontrado
-
 ### H3 resolution = 7 (Average Hexagon Area = 5 km²)
-
-    #> Error: objeto 'hex_by_res' não encontrado
 
 ### H3 resolution = 8 (Average Hexagon Area = 0.7 km²)
 
-    #> Error: objeto 'hex_by_res' não encontrado
-
 ### H3 resolution = 9 (Average Hexagon Area = 0.1 km²)
-
-    #> Error: objeto 'hex_by_res' não encontrado

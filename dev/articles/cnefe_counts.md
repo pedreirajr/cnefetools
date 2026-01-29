@@ -58,7 +58,6 @@ mapview(
   cex = 2,
   burst = T
 )   
-#> Error in path.expand(path): argumento 'path' inválido
 ```
 
 ## The Index of Concentration at the Extremes (ICE)
@@ -90,28 +89,16 @@ poa_hex_counts <- cnefe_counts(
   polygon_type = "hex",
   h3_resolution = 8
 )
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+✔ Step 1/3 (CNEFE ZIP ready) [192ms]
 #> 
-ℹ Step 1/3: ensuring ZIP and inspecting archive...
-
-                                                   
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
-#> ℹ Step 1/3: ensuring ZIP and inspecting archive...
-
-✔ Step 1/3 (ZIP ready) [178ms]                    
-
-
+#> ℹ Step 2/3: Building full H3 grid over municipality boundary...
+#> ✔ Step 2/3 (H3 grid built) [3.4s]
 #> 
-ℹ Step 2/3: building full H3 grid over municipality boundary...
-
-✔ Step 2/3 (H3 grid) [3.2s]                                    
-
-
-#> 
-ℹ Step 3/3: counting address species per hexagon...
-
-✔ Step 3/3 (count computation) [1.9s]              
-
-
+#> ℹ Step 3/3: Counting address species per hexagon...
+#> ✔ Step 3/3 (Addresses counted) [1.8s]
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -171,7 +158,6 @@ mapview(
   col.regions = colorRampPalette(c("red", "white", "blue")),
   layer.name = "ICE (H3 res. 8)"
 )
-#> Error in path.expand(path): argumento 'path' inválido
 ```
 
 ## Aggregating counts to neighborhoods
@@ -196,40 +182,16 @@ poa_neigh_counts <- cnefe_counts(
   polygon_type = "user",
   polygon = poa_neighborhoods
 )
+#> ℹ Step 1/2: Ensuring data and preparing polygon...
+#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
+#> ℹ Step 1/2: Ensuring data and preparing polygon...
+✔ Step 1/2 (Data and polygon ready) [230ms]
 #> 
-ℹ Step 1/4: ensuring ZIP and inspecting archive...
-
-                                                   
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
-#> ℹ Step 1/4: ensuring ZIP and inspecting archive...
-
-✔ Step 1/4 (ZIP ready) [161ms]                    
-
-
-#> 
-ℹ Step 2/4: preparing polygon for spatial join...
-  Input CRS: EPSG:4674 | Output CRS: EPSG:4674
-#> 
-✔ Step 2/4 (CRS alignment) [275ms]               
-
-
-#> 
-ℹ Step 3/4: reading CNEFE points and performing spatial join...
-
-✔ Step 3/4 (spatial join) [42s]                                
-
-
-#> 
-ℹ Step 4/4: aggregating counts per polygon...
-
-
+#> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
-#> 
-✔ Step 4/4 (aggregation) [799ms]             
-
-
+#> ✔ Step 2/2 (Addresses counted) [3.4s]
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 26 fields
@@ -304,7 +266,6 @@ mapview(
   col.regions = colorRampPalette(c("red", "white", "blue")),
   layer.name = "ICE (Neighborhoods)"
 )
-#> Error in path.expand(path): argumento 'path' inválido
 ```
 
 ## Comparing spatial resolutions
