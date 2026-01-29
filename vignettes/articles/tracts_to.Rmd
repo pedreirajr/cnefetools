@@ -5,14 +5,7 @@ editor_options:
     wrap: 72
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  message = FALSE,
-  warning = FALSE
-)
-```
+
 
 Census data in Brazil are published at the census tract level. However,
 many research and planning applications require data at different
@@ -49,16 +42,19 @@ The currently supported variables (and their respective IBGE census
 tract codes) can be found using the `tracts_variables_ref` dataframe
 that accompanies the package:
 
-```{r}
+
+``` r
 library(cnefetools)
 
 tracts_variables_ref |>
   knitr::kable()
+#> Error: objeto 'tracts_variables_ref' não encontrado
 ```
 
 ## Setup
 
-```{r}
+
+``` r
 library(dplyr) 
 library(ggplot2)
 library(sf)
@@ -75,40 +71,50 @@ Fortaleza (IBGE code 2304400):
 -   `avg_inc_resp`: average income of household heads
 -   `race_preta`: population self-identified as Black (*preta*)
 
-```{r, warning = TRUE, message = TRUE}
+
+``` r
 ftl_h3 <- tracts_to_h3(
   code_muni = 2304400,
   h3_resolution = 8,
   vars = c("pop_ph", "avg_inc_resp", "race_preta")
 )
+#> Error in `tracts_to_h3()`:
+#> ! Unknown `vars`: pop_ph and race_preta. See `?tracts_to_h3` for
+#>   available variables.
 
 head(ftl_h3)
+#> Error: objeto 'ftl_h3' não encontrado
 ```
 
 ### Mapping the results
 
 We use `leafsync::sync()` to display the three variables side by side:
 
-```{r}
+
+``` r
 map_pop <- mapview(
   ftl_h3,
   zcol = "pop_ph",
   layer.name = "Population"
 )
+#> Error: objeto 'ftl_h3' não encontrado
 
 map_inc <- mapview(
   ftl_h3,
   zcol = "avg_inc_resp",
   layer.name = "Avg. income"
 )
+#> Error: objeto 'ftl_h3' não encontrado
 
 map_race <- mapview(
   ftl_h3,
   zcol = "race_preta",
   layer.name = "Black pop."
 )
+#> Error: objeto 'ftl_h3' não encontrado
 
 sync(map_pop, map_inc, map_race, ncol = 3)
+#> Error: objeto 'map_pop' não encontrado
 ```
 
 ### Exploring the relationship between income and racial composition
@@ -116,11 +122,13 @@ sync(map_pop, map_inc, map_race, ncol = 3)
 We can examine the relationship between average household head income
 and the proportion of Black population in each hexagon:
 
-```{r, fig.width = 7, fig.height = 5}
+
+``` r
 ftl_h3_plot <- ftl_h3 |>
   st_drop_geometry() |>
   filter(pop_ph > 0) |>
   mutate(pct_preta = race_preta / pop_ph)
+#> Error: objeto 'ftl_h3' não encontrado
 
 ggplot(ftl_h3_plot, aes(x = avg_inc_resp, y = pct_preta)) +
   geom_point(alpha = 0.3, size = 3) +
@@ -131,6 +139,7 @@ ggplot(ftl_h3_plot, aes(x = avg_inc_resp, y = pct_preta)) +
     y = "Black population share (race_preta / pop_ph)"
   ) +
   theme_minimal()
+#> Error: objeto 'ftl_h3_plot' não encontrado
 ```
 
 As expected, the plot reveals a strong negative correlation between
@@ -149,7 +158,8 @@ metropolitan areas. Since the OD survey for São Paulo covers the entire
 metropolitan region (39 municipalities), we filter only the traffic
 zones within the municipality of São Paulo.
 
-```{r}
+
+``` r
 library(odbr)
 
 # Load traffic zones for the São Paulo metropolitan region
@@ -165,6 +175,7 @@ sp_zones_muni <- sp_zones |>
   sf::st_make_valid() # Correcting invalid geometries in advance
 
 nrow(sp_zones_muni)
+#> [1] 342
 ```
 
 We interpolate two variables:
@@ -172,14 +183,19 @@ We interpolate two variables:
 -   `pop_ph`: population in private households
 -   `age_70m`: population aged 70 years or older
 
-```{r, warning = TRUE, message = TRUE}
+
+``` r
 sp_zones_census <- tracts_to_polygon(
   code_muni = 3550308,
   polygon = sp_zones_muni, 
   vars = c("pop_ph", "age_70m")
 )
+#> Error in `tracts_to_polygon()`:
+#> ! Unknown `vars`: "pop_ph".
+#> ℹ See `?tracts_to_polygon` for available variables.
 
 head(sp_zones_census)
+#> Error: objeto 'sp_zones_census' não encontrado
 ```
 
 ### Mapping the elderly population share
@@ -190,16 +206,19 @@ should prioritize accessibility for people with reduced mobility, such
 as low-floor buses, accessible sidewalks, and demand-responsive transit
 services.
 
-```{r}
+
+``` r
 sp_zones_ratio <- sp_zones_census |>
   filter(pop_ph > 0) |>
   mutate(pct_70m = age_70m / pop_ph)
+#> Error: objeto 'sp_zones_census' não encontrado
 
 mapview(
   sp_zones_ratio,
   zcol = "pct_70m",
   layer.name = "Share of pop. aged 70+"
 )
+#> Error: objeto 'sp_zones_ratio' não encontrado
 ```
 
 ## Notes
