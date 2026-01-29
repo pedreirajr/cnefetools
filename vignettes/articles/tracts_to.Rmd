@@ -40,25 +40,26 @@ This approach preserves the heterogeneous distribution of dwellings
 within each tract, yielding more accurate estimates than simple areal
 interpolation.
 
-The currently supported variables (and their respective IBGE census
-tract codes) can be found using the `tracts_variables_ref` dataframe
-that accompanies the package:
-
-```{r}
-tracts_variables_ref |> 
-  knitr::kable()
-```
-
 This article demonstrates both functions: `tracts_to_h3()` for
 transferring census variables to an H3 hexagonal grid in Fortaleza, and
 `tracts_to_polygon()` for transferring census variables to traffic zones
 in São Paulo.
 
-## Setup
+The currently supported variables (and their respective IBGE census
+tract codes) can be found using the `tracts_variables_ref` dataframe
+that accompanies the package:
 
 ```{r}
 library(cnefetools)
-library(dplyr)
+
+tracts_variables_ref |>
+  knitr::kable()
+```
+
+## Setup
+
+```{r}
+library(dplyr) 
 library(ggplot2)
 library(sf)
 library(mapview)
