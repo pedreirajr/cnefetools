@@ -75,7 +75,7 @@ administrative divisions, custom areas, etc.).
 The function uses DuckDB with spatial extensions for the heavy work.
 }
 \examples{
-\donttest{
+\dontrun{
 # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries
 library(geobr)

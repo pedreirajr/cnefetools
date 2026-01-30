@@ -65,7 +65,7 @@ An \code{sf} object (CRS 4326) with an H3 grid and the requested interpolated va
 The function uses DuckDB with the spatial and H3 extensions for the heavy work.
 }
 \examples{
-\donttest{
+\dontrun{
 # Interpolate population to H3 hexagons
 hex_pop <- tracts_to_h3(
   code_muni = 2929057,

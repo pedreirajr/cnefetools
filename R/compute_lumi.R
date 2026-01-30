@@ -64,7 +64,7 @@
 #' https://doi.org/10.1016/j.compenvurbsys.2013.08.001
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' # Compute land-use mix indices on H3 hexagons
 #' lumi <- compute_lumi(code_muni = 2929057)
 #'

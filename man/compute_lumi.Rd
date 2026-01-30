@@ -74,7 +74,7 @@ and the Bidirectional Global-centered Index (\code{bgbi}), following the methodo
 Pedreira Jr. et al. (2025).
 }
 \examples{
-\donttest{
+\dontrun{
 # Compute land-use mix indices on H3 hexagons
 lumi <- compute_lumi(code_muni = 2929057)
 

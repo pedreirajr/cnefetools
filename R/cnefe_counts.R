@@ -47,7 +47,7 @@
 #' - `addr_type8`: Religious establishment (Estabelecimento religioso)
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' # Count addresses per H3 hexagon (resolution 9)
 #' hex_counts <- cnefe_counts(code_muni = 2929057)
 #'

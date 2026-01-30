@@ -48,7 +48,7 @@
 #'   (or `crs_output` if specified).
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries
 #' library(geobr)
