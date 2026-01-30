@@ -44,12 +44,12 @@
 #' EPSG:4674 (SIRGAS 2000), using the `LONGITUDE` and `LATITUDE` columns.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Read CNEFE data as an Arrow table
-#' cnefe <- read_cnefe(code_muni = 2304400)
+#' cnefe <- read_cnefe(code_muni = 2929057)
 #'
 #' # Read as an sf spatial object
-#' cnefe_sf <- read_cnefe(code_muni = 2304400, output = "sf")
+#' cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
 #' }
 #'
 #' @export

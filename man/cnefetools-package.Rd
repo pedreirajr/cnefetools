@@ -20,7 +20,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Jorge Ubirajara Pedreira Junior \email{jorge.ubirajara@ufba.br} (\href{https://orcid.org/0000-0002-8243-5395}{ORCID})
+\strong{Maintainer}: Jorge Ubirajara Pedreira Junior \email{jorge.ubirajara@ufba.br} (\href{https://orcid.org/0000-0002-8243-5395}{ORCID}) [copyright holder]
 
 Authors:
 \itemize{

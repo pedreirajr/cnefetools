@@ -62,12 +62,12 @@ removed when the function exits.
 }
 
 \examples{
-\dontrun{
+\donttest{
 # Read CNEFE data as an Arrow table
-cnefe <- read_cnefe(code_muni = 2304400)
+cnefe <- read_cnefe(code_muni = 2929057)
 
 # Read as an sf spatial object
-cnefe_sf <- read_cnefe(code_muni = 2304400, output = "sf")
+cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
 }
 
 }

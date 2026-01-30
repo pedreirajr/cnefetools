@@ -47,15 +47,21 @@
 #' - `addr_type8`: Religious establishment (Estabelecimento religioso)
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Count addresses per H3 hexagon (resolution 9)
-#' hex_counts <- cnefe_counts(code_muni = 2304400)
+#' hex_counts <- cnefe_counts(code_muni = 2929057)
 #'
-#' # Count addresses per user-provided polygon
+#' # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
+#' # Using geobr to download neighborhood boundaries
+#' library(geobr)
+#' nei_ldf <- subset(
+#'   read_neighborhood(year = 2022),
+#'   code_muni == 2919207
+#' )
 #' hex_counts <- cnefe_counts(
-#'   code_muni = 2304400,
+#'   code_muni = 2919207,
 #'   polygon_type = "user",
-#'   polygon = my_polygons
+#'   polygon = nei_ldf
 #' )
 #' }
 #'
