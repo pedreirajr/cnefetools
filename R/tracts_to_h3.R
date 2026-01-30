@@ -40,10 +40,10 @@
 #' @return An `sf` object (CRS 4326) with an H3 grid and the requested interpolated variables.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Interpolate population to H3 hexagons
 #' hex_pop <- tracts_to_h3(
-#'   code_muni = 2304400,
+#'   code_muni = 2929057,
 #'   vars = c("pop_ph", "pop_ch")
 #' )
 #' }
