@@ -17,6 +17,16 @@ knitr::opts_chunk$set(
 )
 ```
 
+```{r, echo = FALSE, results = 'asis'}
+# Emit a hidden chunk so pkgdown registers htmlwidget JS/CSS dependencies
+cat('```{r include=FALSE}\n')
+cat('# Hidden chunk to ensure pkgdown includes htmlwidget dependencies\n')
+cat('library(mapview)\n')
+cat('library(leafsync)\n')
+cat('mapview::mapview()\n')
+cat('```\n')
+```
+
 The 2022 Brazilian CNEFE (*Cadastro Nacional de Endereços para Fins
 Estatísticos*) is an address-level dataset released by IBGE containing
 over 100 million geocoded records across all Brazilian municipalities.
