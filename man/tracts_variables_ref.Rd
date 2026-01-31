@@ -5,13 +5,13 @@
 \alias{tracts_variables_ref}
 \title{Reference table for tracts_to_* function variables}
 \format{
-A data frame with 20 rows and 4 columns:
+A data frame with 22 rows and 4 columns:
 \describe{
 \item{var_cnefetools}{Variable name used in cnefetools functions.}
 \item{code_var_ibge}{Official IBGE variable code from the census tract aggregates.}
 \item{desc_var_ibge}{Official IBGE variable description in Portuguese.}
 \item{table_ibge}{Name of the IBGE census tract table where the variable is found
-(Domicilios or Pessoas).}
+(Domicilios, Pessoas, or ResponsavelRenda).}
 }
 }
 \source{
