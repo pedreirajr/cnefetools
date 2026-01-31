@@ -228,9 +228,9 @@ mapview(ssa_hospitals, layer.name = "Health facilities with 'hospital' term in t
 ```
 
 ![plot of chunk
-unnamed-chunk-7](read_cnefe_files/figure-html/unnamed-chunk-7-1.png)
+unnamed-chunk-8](read_cnefe_files/figure-html/unnamed-chunk-8-1.png)
 
-plot of chunk unnamed-chunk-7
+plot of chunk unnamed-chunk-8
 
 ## Working with Arrow tables for better performance
 

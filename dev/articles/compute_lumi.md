@@ -139,9 +139,9 @@ ggplot(df_ind, aes(x = p, y = Value, color = Index)) +
 ```
 
 ![plot of chunk
-unnamed-chunk-3](compute_lumi_files/figure-html/unnamed-chunk-3-1.png)
+unnamed-chunk-4](compute_lumi_files/figure-html/unnamed-chunk-4-1.png)
 
-plot of chunk unnamed-chunk-3
+plot of chunk unnamed-chunk-4
 
 Notice that EI peaks at $p_{i} = 0.5$ (the 50/50 split) and is symmetric
 around that point, whereas BAL peaks at $p_{i} = P = 0.75$ (the citywide
@@ -166,19 +166,19 @@ spo_lumi <- compute_lumi(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
 
-✔ Step 1/3 (CNEFE ZIP ready) [498ms]              
+✔ Step 1/3 (CNEFE ZIP ready) [245ms]              
 
 
 #> 
 ℹ Step 2/3: Counting addresses per H3 cell...
 
-✔ Step 2/3 (Addresses counted) [16.1s]       
+✔ Step 2/3 (Addresses counted) [12.8s]       
 
 
 #> 
 ℹ Step 3/3: Building grid and computing LUMI...
 
-✔ Step 3/3 (Land use mix indices computed) [876ms]
+✔ Step 3/3 (Land use mix indices computed) [2.2s]
 
 
 
@@ -290,9 +290,9 @@ mapview(
 ```
 
 ![plot of chunk
-unnamed-chunk-6](compute_lumi_files/figure-html/unnamed-chunk-6-1.png)
+unnamed-chunk-7](compute_lumi_files/figure-html/unnamed-chunk-7-1.png)
 
-plot of chunk unnamed-chunk-6
+plot of chunk unnamed-chunk-7
 
 ### Notes on user-supplied polygons
 

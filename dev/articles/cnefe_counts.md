@@ -61,9 +61,9 @@ mapview(
 ```
 
 ![plot of chunk
-unnamed-chunk-3](cnefe_counts_files/figure-html/unnamed-chunk-3-1.png)
+unnamed-chunk-4](cnefe_counts_files/figure-html/unnamed-chunk-4-1.png)
 
-plot of chunk unnamed-chunk-3
+plot of chunk unnamed-chunk-4
 
 ## The Index of Concentration at the Extremes (ICE)
 
@@ -101,19 +101,19 @@ poa_hex_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
 
-✔ Step 1/3 (CNEFE ZIP ready) [278ms]              
+✔ Step 1/3 (CNEFE ZIP ready) [392ms]              
 
 
 #> 
 ℹ Step 2/3: Building full H3 grid over municipality boundary...
 
-✔ Step 2/3 (H3 grid built) [4.7s]                              
+✔ Step 2/3 (H3 grid built) [4.4s]                              
 
 
 #> 
 ℹ Step 3/3: Counting address species per hexagon...
 
-✔ Step 3/3 (Addresses counted) [5.1s]              
+✔ Step 3/3 (Addresses counted) [2.7s]              
 
 
 
@@ -178,9 +178,9 @@ mapview(
 ```
 
 ![plot of chunk
-unnamed-chunk-6](cnefe_counts_files/figure-html/unnamed-chunk-6-1.png)
+unnamed-chunk-7](cnefe_counts_files/figure-html/unnamed-chunk-7-1.png)
 
-plot of chunk unnamed-chunk-6
+plot of chunk unnamed-chunk-7
 
 ## Aggregating counts to neighborhoods
 
@@ -211,7 +211,7 @@ poa_neigh_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-✔ Step 1/2 (Data and polygon ready) [293ms]       
+✔ Step 1/2 (Data and polygon ready) [625ms]       
 
 
 #> 
@@ -222,7 +222,7 @@ poa_neigh_counts <- cnefe_counts(
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
 #> 
-✔ Step 2/2 (Addresses counted) [4.6s]        
+✔ Step 2/2 (Addresses counted) [21.9s]       
 
 
 
@@ -302,9 +302,9 @@ mapview(
 ```
 
 ![plot of chunk
-unnamed-chunk-10](cnefe_counts_files/figure-html/unnamed-chunk-10-1.png)
+unnamed-chunk-11](cnefe_counts_files/figure-html/unnamed-chunk-11-1.png)
 
-plot of chunk unnamed-chunk-10
+plot of chunk unnamed-chunk-11
 
 ## Comparing spatial resolutions
 

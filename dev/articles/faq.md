@@ -37,62 +37,62 @@ tracts_to_h3(
 ### H3 resolution = 1 (Average Hexagon Area = 609,788 km²)
 
 ![plot of chunk
-unnamed-chunk-5](faq_files/figure-html/unnamed-chunk-5-1.png)
-
-plot of chunk unnamed-chunk-5
-
-### H3 resolution = 2 (Average Hexagon Area = 86,802 km²)
-
-![plot of chunk
 unnamed-chunk-6](faq_files/figure-html/unnamed-chunk-6-1.png)
 
 plot of chunk unnamed-chunk-6
 
-### H3 resolution = 3 (Average Hexagon Area = 12,393 km²)
+### H3 resolution = 2 (Average Hexagon Area = 86,802 km²)
 
 ![plot of chunk
 unnamed-chunk-7](faq_files/figure-html/unnamed-chunk-7-1.png)
 
 plot of chunk unnamed-chunk-7
 
-### H3 resolution = 4 (Average Hexagon Area = 1,770 km²)
+### H3 resolution = 3 (Average Hexagon Area = 12,393 km²)
 
 ![plot of chunk
 unnamed-chunk-8](faq_files/figure-html/unnamed-chunk-8-1.png)
 
 plot of chunk unnamed-chunk-8
 
-### H3 resolution = 5 (Average Hexagon Area = 253 km²)
+### H3 resolution = 4 (Average Hexagon Area = 1,770 km²)
 
 ![plot of chunk
 unnamed-chunk-9](faq_files/figure-html/unnamed-chunk-9-1.png)
 
 plot of chunk unnamed-chunk-9
 
-### H3 resolution = 6 (Average Hexagon Area = 36 km²)
+### H3 resolution = 5 (Average Hexagon Area = 253 km²)
 
 ![plot of chunk
 unnamed-chunk-10](faq_files/figure-html/unnamed-chunk-10-1.png)
 
 plot of chunk unnamed-chunk-10
 
-### H3 resolution = 7 (Average Hexagon Area = 5 km²)
+### H3 resolution = 6 (Average Hexagon Area = 36 km²)
 
 ![plot of chunk
 unnamed-chunk-11](faq_files/figure-html/unnamed-chunk-11-1.png)
 
 plot of chunk unnamed-chunk-11
 
-### H3 resolution = 8 (Average Hexagon Area = 0.7 km²)
+### H3 resolution = 7 (Average Hexagon Area = 5 km²)
 
 ![plot of chunk
 unnamed-chunk-12](faq_files/figure-html/unnamed-chunk-12-1.png)
 
 plot of chunk unnamed-chunk-12
 
-### H3 resolution = 9 (Average Hexagon Area = 0.1 km²)
+### H3 resolution = 8 (Average Hexagon Area = 0.7 km²)
 
 ![plot of chunk
 unnamed-chunk-13](faq_files/figure-html/unnamed-chunk-13-1.png)
 
 plot of chunk unnamed-chunk-13
+
+### H3 resolution = 9 (Average Hexagon Area = 0.1 km²)
+
+![plot of chunk
+unnamed-chunk-14](faq_files/figure-html/unnamed-chunk-14-1.png)
+
+plot of chunk unnamed-chunk-14

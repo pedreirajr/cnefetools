@@ -102,7 +102,7 @@ ftl_h3 <- tracts_to_h3(
 ✔ Spatial extension loaded
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
 
-✔ Step 1/6 (DuckDB ready) [2s]                            
+✔ Step 1/6 (DuckDB ready) [914ms]                         
 
 
 #> 
@@ -112,7 +112,7 @@ ftl_h3 <- tracts_to_h3(
 ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 
-✔ Step 2/6 (Tracts ready) [1.4s]                
+✔ Step 2/6 (Tracts ready) [685ms]               
 
 
 #> 
@@ -120,25 +120,25 @@ ftl_h3 <- tracts_to_h3(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
 
-✔ Step 3/6 (CNEFE points ready) [11.8s]        
+✔ Step 3/6 (CNEFE points ready) [4.7s]         
 
 
 #> 
 ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
 
-✔ Step 4/6 (Join and allocation) [4.9s]                           
+✔ Step 4/6 (Join and allocation) [1.9s]                           
 
 
 #> 
 ℹ Step 5/6: aggregating allocated values to H3 cells...
 
-✔ Step 5/6 (Hex aggregation) [523ms]                   
+✔ Step 5/6 (Hex aggregation) [240ms]                   
 
 
 #> 
 ℹ Step 6/6: building H3 grid and joining results...
 
-✔ Step 6/6 (sf output) [2.6s]                      
+✔ Step 6/6 (sf output) [1.1s]                      
 
 
 #> 
@@ -166,22 +166,22 @@ head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -38.62609 ymin: -3.830407 xmax: -38.49076 ymax: -3.727607
+#> Bounding box:  xmin: -38.5506 ymin: -3.83579 xmax: -38.45458 ymax: -3.718422
 #> Geodetic CRS:  WGS 84
-#>            id_hex    pop_ph avg_inc_resp race_preta
-#> 1 88801045c1fffff  7715.195     1398.057   771.7898
-#> 2 8880104e5dfffff  3731.538     1513.929   252.5342
-#> 3 8880104ee5fffff  5389.605     1646.740   449.1905
-#> 4 88801045e9fffff 13455.626     1327.092  1205.8042
-#> 5 8880104c15fffff  9961.776    10439.848   251.4346
-#> 6 8880104c41fffff  8045.937     6156.211   346.1665
+#>            id_hex     pop_ph avg_inc_resp race_preta
+#> 1 8880104d53fffff  2893.7029     4694.778  149.05350
+#> 2 8880104ccbfffff 10186.8409     3574.527  716.67447
+#> 3 8880104e6bfffff  4914.4058     2223.291  398.46764
+#> 4 8880104e2dfffff  4296.6136     7564.216  128.79724
+#> 5 8880104e41fffff 11858.8355     1597.952  968.23912
+#> 6 8880104c69fffff   422.2976     1595.322   34.44212
 #>                         geometry
-#> 1 POLYGON ((-38.62023 -3.7981...
-#> 2 POLYGON ((-38.53131 -3.8304...
-#> 3 POLYGON ((-38.52752 -3.7737...
-#> 4 POLYGON ((-38.60231 -3.7949...
-#> 5 POLYGON ((-38.50615 -3.7379...
-#> 6 POLYGON ((-38.49478 -3.7759...
+#> 1 POLYGON ((-38.4586 -3.74555...
+#> 2 POLYGON ((-38.54474 -3.7287...
+#> 3 POLYGON ((-38.50443 -3.8256...
+#> 4 POLYGON ((-38.48927 -3.8069...
+#> 5 POLYGON ((-38.5165 -3.83579...
+#> 6 POLYGON ((-38.47686 -3.7727...
 ```
 
 ### Mapping the results
@@ -235,9 +235,9 @@ ggplot(ftl_h3_plot, aes(x = avg_inc_resp, y = pct_preta)) +
 ```
 
 ![plot of chunk
-unnamed-chunk-6](tracts_to_files/figure-html/unnamed-chunk-6-1.png)
+unnamed-chunk-7](tracts_to_files/figure-html/unnamed-chunk-7-1.png)
 
-plot of chunk unnamed-chunk-6
+plot of chunk unnamed-chunk-7
 
 As expected, the plot reveals a strong negative correlation between
 these two variables: hexagons with lower average household income tend
@@ -293,7 +293,7 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
 
-✔ Step 1/6 (CRS alignment) [1.4s]
+✔ Step 1/6 (CRS alignment) [800ms]
 
 
 #> 
@@ -301,7 +301,7 @@ sp_zones_census <- tracts_to_polygon(
 ✔ Spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
 
-✔ Step 2/6 (DuckDB ready) [1.7s]                          
+✔ Step 2/6 (DuckDB ready) [1.5s]                          
 
 
 #> 
@@ -311,7 +311,7 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 
-✔ Step 3/6 (Tracts ready) [17.1s]               
+✔ Step 3/6 (Tracts ready) [7.7s]                
 
 
 #> 
@@ -321,19 +321,19 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-✔ Step 4/6 (CNEFE points ready) [54.8s]        
+✔ Step 4/6 (CNEFE points ready) [24.3s]        
 
 
 #> 
 ℹ Step 5/6: spatial join (points to tracts) and allocation...
 
-✔ Step 5/6 (Join and allocation) [53.6s]                     
+✔ Step 5/6 (Join and allocation) [37.7s]                     
 
 
 #> 
 ℹ Step 6/6: aggregating allocated values to polygons...
 
-✔ Step 6/6 (Polygon aggregation) [893ms]               
+✔ Step 6/6 (Polygon aggregation) [2.3s]                
 
 
 #> 
@@ -393,9 +393,9 @@ mapview(
 ```
 
 ![plot of chunk
-unnamed-chunk-9](tracts_to_files/figure-html/unnamed-chunk-9-1.png)
+unnamed-chunk-10](tracts_to_files/figure-html/unnamed-chunk-10-1.png)
 
-plot of chunk unnamed-chunk-9
+plot of chunk unnamed-chunk-10
 
 ## Notes
 
