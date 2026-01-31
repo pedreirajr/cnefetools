@@ -1,5 +1,5 @@
 
-# cnefetools: Tools for working with Brazilian CNEFE address data <img src="man/figures/logo.png" alt="logo" align="right" width="190"/>
+# cnefetools: Tools for working with Brazilian CNEFE address data <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.svg" align="right" height="138" alt="cnefetools website" /></a>
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
@@ -34,15 +34,15 @@ remotes::install_github("pedreirajr/cnefetools")
 
 ## Overview
 
-| Function | Description |
-|----|----|
-| `read_cnefe()` | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object |
-| `cnefe_counts()` | Aggregates address counts to H3 hexagons or user-provided polygons |
-| `compute_lumi()` | Computes land-use mix indices on H3 hexagons or user-provided polygons |
-| `tracts_to_h3()` | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points |
+| Function              | Description                                                                                            |
+|-----------------------|--------------------------------------------------------------------------------------------------------|
+| `read_cnefe()`        | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object               |
+| `cnefe_counts()`      | Aggregates address counts to H3 hexagons or user-provided polygons                                     |
+| `compute_lumi()`      | Computes land-use mix indices on H3 hexagons or user-provided polygons                                 |
+| `tracts_to_h3()`      | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points             |
 | `tracts_to_polygon()` | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
-| `cnefe_doc()` | Opens the official CNEFE methodological note (PDF) |
-| `cnefe_dictionary()` | Opens the official CNEFE variable dictionary (Excel) |
+| `cnefe_doc()`         | Opens the official CNEFE methodological note (PDF)                                                     |
+| `cnefe_dictionary()`  | Opens the official CNEFE variable dictionary (Excel)                                                   |
 
 ## Reading CNEFE data
 
@@ -171,7 +171,10 @@ ggplot(hex_sp) +
     title = "Private households (addr_type1)",
     subtitle = "São Paulo (IBGE 3550308), H3 resolution 9"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 <img src="man/figures/README-unnamed-chunk-9-1.png" width="100%" />
@@ -214,12 +217,9 @@ indicate non-residential dominance:
 # Plotting the BGBI index
 ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
-  scale_fill_gradient2(
-    low = "red",
-    mid = "white",
-    high = "blue",
-    midpoint = 0,
-    limits = c(-1, 1)
+  scale_fill_distiller(
+    type = "div",
+    palette = "RdBu"
   ) +
   coord_sf() +
   labs(
@@ -227,7 +227,10 @@ ggplot(lumi_ftl) +
     title = "Bidirectional Global-centered Balance Index (BGBI)",
     subtitle = "Fortaleza (IBGE 2304400), H3 resolution 8"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 <img src="man/figures/README-unnamed-chunk-11-1.png" width="100%" />
@@ -274,7 +277,10 @@ ggplot(rec_hex) +
     subtitle = "Private-household population (pop_ph), H3 resolution 9",
     fill = "Population"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 <img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
@@ -291,7 +297,10 @@ ggplot(rec_hex) +
     subtitle = "Average income of the responsible person (avg_inc_resp), H3 resolution 9",
     fill = "Income"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 <img src="man/figures/README-unnamed-chunk-14-1.png" width="100%" />
@@ -340,7 +349,10 @@ ggplot(rec_poly) +
     subtitle = "Average income of the responsible person (avg_inc_resp)",
     fill = "Income"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 <img src="man/figures/README-unnamed-chunk-16-1.png" width="100%" />
