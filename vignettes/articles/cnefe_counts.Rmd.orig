@@ -17,6 +17,16 @@ knitr::opts_chunk$set(
 )
 ```
 
+```{r, echo = FALSE, results = 'asis'}
+# Emit a hidden chunk so pkgdown registers htmlwidget JS/CSS dependencies
+cat('```{r include=FALSE}\n')
+cat('# Hidden chunk to ensure pkgdown includes htmlwidget dependencies\n')
+cat('library(mapview)\n')
+cat('library(leafsync)\n')
+cat('mapview::mapview()\n')
+cat('```\n')
+```
+
 In February 2024, IBGE released CNEFE data from the 2022 Census showing
 that Brazil has more religious temples (579,800) than educational
 establishments (264,400) and health facilities (247,500) combined. This
