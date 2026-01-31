@@ -1,5 +1,5 @@
 
-# cnefetools: Tools for working with Brazilian CNEFE address data <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.png" align="right" height="138" alt="cnefetools website" /></a>
+# cnefetools: Tools for working with Brazilian CNEFE address data <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.svg" align="right" height="138" alt="cnefetools website" /></a>
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
@@ -164,7 +164,7 @@ hexagon:
 # Plotting private households (addr_type1) for São Paulo
 ggplot(hex_sp) +
   geom_sf(aes(fill = addr_type1), color = NA) +
-  scale_fill_viridis_c(option = "magma", trans = "sqrt") +
+  scale_fill_viridis_c(option = "magma") +
   coord_sf() +
   labs(
     fill = "Count",
