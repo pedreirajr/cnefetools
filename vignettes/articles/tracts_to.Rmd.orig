@@ -12,6 +12,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
   fig.path = "tracts_to_files/figure-html/",
+  fig.dpi = 600,
   error = FALSE
 )
 ```
@@ -136,10 +137,10 @@ ggplot(ftl_h3_plot, aes(x = avg_inc_resp, y = pct_preta)) +
 ```
 
 As expected, the plot reveals a strong negative correlation between
-these two variables: hexagons with a higher share of Black population
-tend to have substantially lower average household income. This pattern
-reflects deep-rooted racial income inequality, a persistent feature of
-the Brazilian social landscape.
+these two variables: hexagons with lower average household income
+tend to have a substantially higher share of Black population. This
+pattern reflects deep-rooted racial income inequality, a persistent
+feature of the Brazilian social landscape.
 
 ## Part 2: Census variables on traffic zones (São Paulo)
 
