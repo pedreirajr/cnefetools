@@ -38,8 +38,15 @@
 #' @param verbose Logical. Whether to print step messages and timing.
 #'
 #' @return An `sf` object (CRS 4326) with an H3 grid and the requested interpolated variables.
-#'   Attributes:
-#'   - `attr(x, "timing")`: named numeric vector with step timings (seconds).
+#'
+#' @examples
+#' \dontrun{
+#' # Interpolate population to H3 hexagons
+#' hex_pop <- tracts_to_h3(
+#'   code_muni = 2929057,
+#'   vars = c("pop_ph", "pop_ch")
+#' )
+#' }
 #'
 #' @export
 tracts_to_h3 <- function(
@@ -138,8 +145,6 @@ tracts_to_h3 <- function(
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
 
   # timing container ----------------------------------------------------------
-  # step_times <- numeric(0)
-
   if (verbose) {
     cli::cli_alert_info("Processing code {code_muni}")
   }
@@ -180,7 +185,7 @@ tracts_to_h3 <- function(
 
   if (verbose) {
     cli::cli_progress_step("Step 2/6: preparing census tracts in DuckDB...",
-                           msg_done = "Step 2/6 (tracts ready)")
+                           msg_done = "Step 2/6 (Tracts ready)")
 
   }
 
@@ -250,7 +255,7 @@ tracts_to_h3 <- function(
 
   if (verbose) {
     cli::cli_progress_step("Step 4/6: spatial join (points to tracts) and allocation prep...",
-                           msg_done = "Step 4/6 (join and allocation prep)")
+                           msg_done = "Step 4/6 (Join and allocation)")
 
   }
 
@@ -416,7 +421,7 @@ tracts_to_h3 <- function(
 
   if (verbose) {
     cli::cli_progress_step("Step 5/6: aggregating allocated values to H3 cells...",
-                           msg_done = "Step 5/6 (hex aggregation)")
+                           msg_done = "Step 5/6 (Hex aggregation)")
 
   }
 
@@ -481,6 +486,10 @@ tracts_to_h3 <- function(
   # diagnostics and warning ----------------------------------------------------
   warn_lines <- character(0)
 
+  n_tracts <- suppressMessages(
+    DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM sc_muni_tbl;")$n[1]
+  )
+
   totals_vars <- setdiff(vars, "avg_inc_resp")
 
   for (v in totals_vars) {
@@ -532,7 +541,7 @@ tracts_to_h3 <- function(
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "Unallocated total for {label} ({.field {v}}): {.val {sprintf('%.0f', unalloc)}} ({.val {sprintf('%.2f%%', pct)}} of total)"
+        "Unallocated total for {label} ({.field {v}}): {.strong {sprintf('%.0f', unalloc)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.2f%%', pct)}})"
       )
     )
   }
@@ -566,10 +575,11 @@ tracts_to_h3 <- function(
     )$n[1]
     )
 
+    assigned_pct <- if (eligible_avg > 0) 100 * assigned_avg / eligible_avg else 0
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "{.field avg_inc_resp} assigned to {.val {assigned_avg}} of {.val {eligible_avg}} eligible points"
+        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
       )
     )
 
@@ -585,20 +595,22 @@ tracts_to_h3 <- function(
     )
 
     if (na_avg_tracts > 0) {
+      na_avg_pct <- if (n_tracts > 0) 100 * na_avg_tracts / n_tracts else 0
       warn_lines <- c(
         warn_lines,
         cli::format_inline(
-          "{.field avg_inc_resp} is {.val NA} in {.val {na_avg_tracts}} tracts"
+          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
         )
       )
     }
   }
 
   if (unmatched_pts > 0) {
+    unmatched_pct <- if (total_pts > 0) 100 * unmatched_pts / total_pts else 0
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "Unmatched CNEFE points (no tract): {.val {unmatched_pts}}"
+        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
       )
     )
   }
@@ -616,9 +628,10 @@ tracts_to_h3 <- function(
     )
 
     if (n_na > 0) {
+      na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
       na_totals <- c(
         na_totals,
-        cli::format_inline("{.field {v}} {.val NA} in {.val {n_na}}")
+        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
       )
     }
   }
@@ -627,7 +640,7 @@ tracts_to_h3 <- function(
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "Tracts with {.val NA} totals: {paste(na_totals, collapse = '; ')}"
+        "Tracts with {.strong NA} totals: {paste(na_totals, collapse = '; ')}"
       )
     )
   }
@@ -681,9 +694,10 @@ tracts_to_h3 <- function(
     }
 
     if (n0 > 0) {
+      n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
       no_elig <- c(
         no_elig,
-        cli::format_inline("{.field {v}} in {.val {n0}} tracts")
+        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
       )
     }
   }
@@ -697,12 +711,44 @@ tracts_to_h3 <- function(
     )
   }
 
+  # --- emit diagnostics ---
+  cli::cli_h2("Dasymetric interpolation diagnostics")
+
+  # Stage 1
+  cli::cli_h3("Stage 1: Tracts \u2192 CNEFE points")
   if (length(warn_lines) > 0) {
-    cli::cli_h2("Dasymetric interpolation diagnostics")
     cli::cli_bullets(
       stats::setNames(warn_lines, rep("!", length(warn_lines)))
     )
+  } else {
+    cli::cli_alert_success("All tract values fully allocated to CNEFE points.")
   }
+
+  # Stage 2
+  cli::cli_h3("Stage 2: CNEFE points \u2192 H3 hexagons")
+  pts_with_hex <- suppressMessages(
+    DBI::dbGetQuery(
+      con,
+      "SELECT COUNT(*) AS n FROM cnefe_alloc WHERE id_hex IS NOT NULL;"
+    )$n[1]
+  )
+  total_alloc_pts <- suppressMessages(
+    DBI::dbGetQuery(
+      con,
+      "SELECT COUNT(*) AS n FROM cnefe_alloc;"
+    )$n[1]
+  )
+
+  pts_pct <- if (total_alloc_pts > 0) 100 * pts_with_hex / total_alloc_pts else 0
+
+  stage2_lines <- c(
+    cli::format_inline(
+      "CNEFE points mapped to H3 cells: {.strong {pts_with_hex}} of {.strong {total_alloc_pts}} allocated points ({.strong {sprintf('%.2f%%', pts_pct)}})"
+    )
+  )
+  cli::cli_bullets(
+    stats::setNames(stage2_lines, rep("i", length(stage2_lines)))
+  )
 
   return(out)
 

@@ -73,6 +73,26 @@ the Balance Index (\code{bal}), the Index of Concentration at Extremes (\code{ic
 and the Bidirectional Global-centered Index (\code{bgbi}), following the methodology proposed in
 Pedreira Jr. et al. (2025).
 }
+\examples{
+\dontrun{
+# Compute land-use mix indices on H3 hexagons
+lumi <- compute_lumi(code_muni = 2929057)
+
+# Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
+# Using geobr to download neighborhood boundaries
+library(geobr)
+nei_ldf <- subset(
+  read_neighborhood(year = 2022),
+  code_muni == 2919207
+)
+lumi_poly <- compute_lumi(
+  code_muni = 2919207,
+  polygon_type = "user",
+  polygon = nei_ldf
+)
+}
+
+}
 \references{
 Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 Measuring land use mix with address-level census data (2025).

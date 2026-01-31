@@ -39,11 +39,30 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
     }
   )
 
+  ok_spatial <- tryCatch(
+    {
+      DBI::dbExecute(con_check, "LOAD spatial;")
+      TRUE
+    },
+    error = function(e) {
+      tryCatch(
+        {
+          DBI::dbExecute(con_check, "INSTALL spatial; LOAD spatial;")
+          TRUE
+        },
+        error = function(e2) FALSE
+      )
+    }
+  )
+
   if (!ok_zipfs) {
     testthat::skip("DuckDB zipfs extension not available.")
   }
   if (!ok_h3) {
     testthat::skip("DuckDB h3 extension not available.")
+  }
+  if (!ok_spatial) {
+    testthat::skip("DuckDB spatial extension not available.")
   }
 
   res <- NULL
