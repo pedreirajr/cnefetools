@@ -4,3 +4,14 @@ template:
 development:
   mode: auto
 
+articles:
+- title: Articles
+  navbar: ~
+  contents:
+  - articles/read_cnefe
+  - articles/cnefe_counts
+  - articles/compute_lumi
+  - articles/tracts_to
+- title: FAQ
+  contents:
+  - articles/faq

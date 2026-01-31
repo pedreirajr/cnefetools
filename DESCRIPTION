@@ -5,11 +5,11 @@ Authors@R:
     c(
       person(given = "Jorge Ubirajara", family = "Pedreira Junior",
              email = "jorge.ubirajara@ufba.br",
-             role = c("aut", "cre"),
+             role = c("aut", "cre", "cph"),
              comment = c(ORCID = "0000-0002-8243-5395")),
       person(given = "Bruno", family = "Mioto",
              email = "brunomioto97@gmail.com",
-             role = "ctb"),
+             role = "aut"),
       person(given = "Kaio Cunha", family = "Pedreira",
              email = "kaiocp7@gmail.com",
              role = "ctb")

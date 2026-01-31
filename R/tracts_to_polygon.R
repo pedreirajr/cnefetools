@@ -46,8 +46,22 @@
 #' @return An `sf` object with the user-provided polygons and the requested
 #'   interpolated variables. The output CRS matches the original `polygon` CRS
 #'   (or `crs_output` if specified).
-#'   Attributes:
-#'   - `attr(x, "timing")`: named numeric vector with step timings (seconds).
+#'
+#' @examples
+#' \dontrun{
+#' # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
+#' # Using geobr to download neighborhood boundaries
+#' library(geobr)
+#' nei_ldf <- subset(
+#'   read_neighborhood(year = 2022),
+#'   code_muni == 2919207
+#' )
+#' poly_pop <- tracts_to_polygon(
+#'   code_muni = 2919207,
+#'   polygon = nei_ldf,
+#'   vars = c("pop_ph", "pop_ch")
+#' )
+#' }
 #'
 #' @export
 tracts_to_polygon <- function(
@@ -175,8 +189,6 @@ cnefe_index <- .get_cnefe_index(year)
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
 
   # timing container ----------------------------------------------------------
-  step_times <- numeric(0)
-
   if (verbose) {
     cli::cli_alert_info("Processing municipality code {.val {code_muni}}...")
   }
@@ -216,9 +228,11 @@ cnefe_index <- .get_cnefe_index(year)
     cli::cli_alert_info("Input CRS: {.val {crs_input_label}} | Output CRS: {.val {crs_output_label}}")
   }
 
+  # Fix invalid geometries before any spatial operation
+  polygon <- sf::st_make_valid(polygon)
+
   # Transform polygon to WGS84 internally for spatial join with CNEFE points
   polygon_4326 <- sf::st_transform(polygon, 4326)
-  polygon_4326 <- sf::st_make_valid(polygon_4326)
 
   # Add row ID for joining
   polygon_4326 <- polygon_4326 |>
@@ -264,7 +278,7 @@ cnefe_index <- .get_cnefe_index(year)
   # Step 3/6: Prepare census tracts -------------------------------------------
   if (verbose) {
     cli::cli_progress_step("Step 3/6: preparing census tracts in DuckDB...",
-                           msg_done = "Step 3/6 (tracts ready)")
+                           msg_done = "Step 3/6 (Tracts ready)")
 
   }
 
@@ -321,13 +335,6 @@ cnefe_index <- .get_cnefe_index(year)
     outside_area <- total_area - inside_area
     outside_pct <- (outside_area / total_area) * 100
 
-    if (outside_pct > 0.01) {
-      outside_pct_fmt <- .fmt_pct(outside_pct)
-      cli::cli_warn(c(
-        "{.val {outside_pct_fmt}} of polygon area falls outside census tracts of municipality {.val {code_muni}}.",
-        "i" = "Only CNEFE points within census tracts will be used for interpolation."
-      ))
-    }
   }
 
   if (verbose) {
@@ -374,7 +381,7 @@ cnefe_index <- .get_cnefe_index(year)
   # Step 5/6: Spatial join and allocation -------------------------------------
   if (verbose) {
     cli::cli_progress_step("Step 5/6: spatial join (points to tracts) and allocation...",
-                           msg_done = "Step 5/6 (join and allocation)")
+                           msg_done = "Step 5/6 (Join and allocation)")
 
   }
 
@@ -602,19 +609,8 @@ cnefe_index <- .get_cnefe_index(year)
     ))
   }
 
-  # Report coverage
+  # Coverage stats saved for Stage 2 diagnostics
   coverage_pct <- (points_inside / total_alloc_pts) * 100
-  if (points_outside > 0) {
-    # Use 2 decimal places to avoid showing 100% when some points are outside
-    coverage_pct_fmt <- sprintf("%.2f", coverage_pct)
-    cli::cli_warn(c(
-      "Polygon coverage: {.val {coverage_pct_fmt}%} of CNEFE dwelling points captured.",
-      "i" = "{.val {points_inside}} of {.val {total_alloc_pts}} points are within the provided polygon.",
-      "i" = "{.val {points_outside}} points fell outside the polygon and were not counted."
-    ))
-  } else if (verbose) {
-    cli::cli_alert_success("All {.val {total_alloc_pts}} CNEFE dwelling points were captured within the provided polygon.")
-  }
 
   if (verbose) {
     cli::cli_progress_done("Step 5/6: spatial join (points to tracts) and allocation...")
@@ -623,7 +619,7 @@ cnefe_index <- .get_cnefe_index(year)
   # Step 6/6: Aggregate to polygons -------------------------------------------
   if (verbose) {
     cli::cli_progress_step("Step 6/6: aggregating allocated values to polygons...",
-                           msg_done = "Step 6/6 (polygon aggregation)")
+                           msg_done = "Step 6/6 (Polygon aggregation)")
 
   }
 
@@ -685,6 +681,8 @@ cnefe_index <- .get_cnefe_index(year)
   # diagnostics and warning ----------------------------------------------------
   warn_lines <- character(0)
 
+  n_tracts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM sc_muni_tbl;")$n[1]
+
   totals_vars <- setdiff(vars, "avg_inc_resp")
 
   for (v in totals_vars) {
@@ -731,7 +729,7 @@ cnefe_index <- .get_cnefe_index(year)
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "Unallocated total for {label} ({.field {v}}): {.val {sprintf('%.0f', unalloc)}} ({.val {sprintf('%.2f%%', pct)}} of total)"
+        "Unallocated total for {label} ({.field {v}}): {.strong {sprintf('%.0f', unalloc)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.2f%%', pct)}})"
       )
     )
   }
@@ -761,12 +759,11 @@ cnefe_index <- .get_cnefe_index(year)
     "
     )$n[1]
 
+    assigned_pct <- if (eligible_avg > 0) 100 * assigned_avg / eligible_avg else 0
     warn_lines <- c(
       warn_lines,
-      sprintf(
-        "avg_inc_resp assigned to %d of %d eligible points.",
-        assigned_avg,
-        eligible_avg
+      cli::format_inline(
+        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
       )
     )
 
@@ -780,17 +777,23 @@ cnefe_index <- .get_cnefe_index(year)
     )$n[1]
 
     if (na_avg_tracts > 0) {
+      na_avg_pct <- if (n_tracts > 0) 100 * na_avg_tracts / n_tracts else 0
       warn_lines <- c(
         warn_lines,
-        sprintf("avg_inc_resp NA in %d tracts.", na_avg_tracts)
+        cli::format_inline(
+          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
+        )
       )
     }
   }
 
   if (unmatched_pts > 0) {
+    unmatched_pct <- if (total_cnefe_pts > 0) 100 * unmatched_pts / total_cnefe_pts else 0
     warn_lines <- c(
       warn_lines,
-      "Unmatched CNEFE points (no tract) = {.val {unmatched_pts}}"
+      cli::format_inline(
+        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_cnefe_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
+      )
     )
   }
 
@@ -804,9 +807,10 @@ cnefe_index <- .get_cnefe_index(year)
       )
     )$n[1]
     if (n_na > 0) {
+      na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
       na_totals <- c(
         na_totals,
-        cli::format_inline("{.field {v}} {.val NA} in {.val {n_na}}")
+        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
       )
     }
   }
@@ -815,7 +819,7 @@ cnefe_index <- .get_cnefe_index(year)
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "Tracts with {.val NA} totals: {paste(na_totals, collapse = '; ')}."
+        "Tracts with {.strong NA} totals: {paste(na_totals, collapse = '; ')}."
       )
     )
   }
@@ -861,9 +865,10 @@ cnefe_index <- .get_cnefe_index(year)
     }
 
     if (n0 > 0) {
+      n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
       no_elig <- c(
         no_elig,
-        cli::format_inline("{.field {v}} in {.val {n0}} tracts")
+        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
       )
     }
   }
@@ -878,19 +883,44 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
 
+  # --- emit diagnostics ---
+  cli::cli_h2("Dasymetric interpolation diagnostics")
+
+  # Stage 1
+  cli::cli_h3("Stage 1: Tracts \u2192 CNEFE points")
   if (length(warn_lines) > 0) {
-    cli::cli_h2("Dasymetric interpolation diagnostics")
     cli::cli_bullets(
       stats::setNames(warn_lines, rep("!", length(warn_lines)))
     )
-    # warning(
-    #   paste(
-    #     c("Dasymetric interpolation diagnostics:", warn_lines),
-    #     collapse = "\n"
-    #   ),
-    #   call. = FALSE
-    # )
+  } else {
+    cli::cli_alert_success("All tract values fully allocated to CNEFE points.")
   }
+
+  # Stage 2
+  cli::cli_h3("Stage 2: CNEFE points \u2192 Polygons")
+  total_polygons <- nrow(polygon_4326)
+  polygons_with_values <- nrow(poly_vals)
+  polygons_empty <- total_polygons - polygons_with_values
+
+  stage2_lines <- character(0)
+  stage2_lines <- c(
+    stage2_lines,
+    cli::format_inline(
+      "Polygon coverage: {.strong {points_inside}} of {.strong {total_alloc_pts}} allocated points captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+    )
+  )
+  if (polygons_empty > 0) {
+    polygons_empty_pct <- 100 * polygons_empty / total_polygons
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Polygons with no CNEFE points: {.strong {polygons_empty}} of {.strong {total_polygons}} total polygons ({.strong {sprintf('%.2f%%', polygons_empty_pct)}})"
+      )
+    )
+  }
+  cli::cli_bullets(
+    stats::setNames(stage2_lines, rep("i", length(stage2_lines)))
+  )
 
   return(out)
 }

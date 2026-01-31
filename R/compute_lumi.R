@@ -63,6 +63,25 @@
 #' *Computers, Environment and Urban Systems*, 42, 1--13.
 #' https://doi.org/10.1016/j.compenvurbsys.2013.08.001
 #'
+#' @examples
+#' \dontrun{
+#' # Compute land-use mix indices on H3 hexagons
+#' lumi <- compute_lumi(code_muni = 2929057)
+#'
+#' # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
+#' # Using geobr to download neighborhood boundaries
+#' library(geobr)
+#' nei_ldf <- subset(
+#'   read_neighborhood(year = 2022),
+#'   code_muni == 2919207
+#' )
+#' lumi_poly <- compute_lumi(
+#'   code_muni = 2919207,
+#'   polygon_type = "user",
+#'   polygon = nei_ldf
+#' )
+#' }
+#'
 #' @export
 compute_lumi <- function(
   code_muni,
@@ -540,9 +559,11 @@ compute_lumi <- function(
     output_crs <- sf::st_crs(crs_output)
   }
 
+  # Fix invalid geometries before any spatial operation
+  polygon <- sf::st_make_valid(polygon)
+
   # Transform polygon to WGS84 internally for spatial join with CNEFE points
   polygon_4326 <- sf::st_transform(polygon, 4326)
-  polygon_4326 <- sf::st_make_valid(polygon_4326)
 
   # Add row ID for joining
   polygon_4326 <- polygon_4326 |>

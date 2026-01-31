@@ -43,6 +43,15 @@
 #' If `output = "sf"`, an [sf][sf::st_as_sf] object with point geometry in
 #' EPSG:4674 (SIRGAS 2000), using the `LONGITUDE` and `LATITUDE` columns.
 #'
+#' @examples
+#' \dontrun{
+#' # Read CNEFE data as an Arrow table
+#' cnefe <- read_cnefe(code_muni = 2929057)
+#'
+#' # Read as an sf spatial object
+#' cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
+#' }
+#'
 #' @export
 read_cnefe <- function(
   code_muni,
