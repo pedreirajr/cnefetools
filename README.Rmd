@@ -40,7 +40,7 @@ remotes::install_github("pedreirajr/cnefetools")
 ## Overview
 
 | Function | Description |
-|----|----|
+|------------------------------------|------------------------------------|
 | `read_cnefe()` | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object |
 | `cnefe_counts()` | Aggregates address counts to H3 hexagons or user-provided polygons |
 | `compute_lumi()` | Computes land-use mix indices on H3 hexagons or user-provided polygons |
@@ -137,7 +137,7 @@ Below we plot the count of private households (`addr_type1`) per hexagon:
 # Plotting private households (addr_type1) for São Paulo
 ggplot(hex_sp) +
   geom_sf(aes(fill = addr_type1), color = NA) +
-  scale_fill_viridis_c(option = "magma", trans = "sqrt") +
+  scale_fill_viridis_c(option = "magma") +
   coord_sf() +
   labs(
     fill = "Count",
