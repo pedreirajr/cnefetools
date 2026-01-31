@@ -14,7 +14,7 @@ tracts_variables_ref
 
 ## Format
 
-A data frame with 20 rows and 4 columns:
+A data frame with 22 rows and 4 columns:
 
 - var_cnefetools:
 
@@ -31,7 +31,7 @@ A data frame with 20 rows and 4 columns:
 - table_ibge:
 
   Name of the IBGE census tract table where the variable is found
-  (Domicilios or Pessoas).
+  (Domicilios, Pessoas, or ResponsavelRenda).
 
 ## Source
 

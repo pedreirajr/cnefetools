@@ -1,4 +1,4 @@
-# Computing land-use mix indices with CNEFE data
+# Comparing land use mix indices with compute_lumi()
 
 Land use mix (LUM) indices quantify how different types of activities
 are distributed within a spatial unit. They are widely used in urban
@@ -138,7 +138,10 @@ ggplot(df_ind, aes(x = p, y = Value, color = Index)) +
   theme(legend.position = "bottom")
 ```
 
-![](compute_lumi_files/figure-html/unnamed-chunk-3-1.png)
+![plot of chunk
+unnamed-chunk-3](compute_lumi_files/figure-html/unnamed-chunk-3-1.png)
+
+plot of chunk unnamed-chunk-3
 
 Notice that EI peaks at $p_{i} = 0.5$ (the 50/50 split) and is symmetric
 around that point, whereas BAL peaks at $p_{i} = P = 0.75$ (the citywide
@@ -156,16 +159,28 @@ spo_lumi <- compute_lumi(
   h3_resolution = 8
 )
 #> ℹ Processing municipality code 3550308...
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-✔ Step 1/3 (CNEFE ZIP ready) [169ms]
 #> 
-#> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [9.9s]
+ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+
+                                                   
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+
+✔ Step 1/3 (CNEFE ZIP ready) [498ms]              
+
+
 #> 
-#> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [491ms]
+ℹ Step 2/3: Counting addresses per H3 cell...
+
+✔ Step 2/3 (Addresses counted) [16.1s]       
+
+
+#> 
+ℹ Step 3/3: Building grid and computing LUMI...
+
+✔ Step 3/3 (Land use mix indices computed) [876ms]
+
+
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields
@@ -273,6 +288,11 @@ mapview(
   layer.name = "BGBI"
 )
 ```
+
+![plot of chunk
+unnamed-chunk-6](compute_lumi_files/figure-html/unnamed-chunk-6-1.png)
+
+plot of chunk unnamed-chunk-6
 
 ### Notes on user-supplied polygons
 

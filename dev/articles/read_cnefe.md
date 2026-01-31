@@ -1,4 +1,4 @@
-# Reading and exploring CNEFE data
+# Exploring CNEFE address data
 
 The 2022 Brazilian CNEFE (*Cadastro Nacional de Endereços para Fins
 Estatísticos*) is an address-level dataset released by IBGE containing
@@ -226,6 +226,11 @@ library(mapview)
 
 mapview(ssa_hospitals, layer.name = "Health facilities with 'hospital' term in their description column in Salvador")
 ```
+
+![plot of chunk
+unnamed-chunk-7](read_cnefe_files/figure-html/unnamed-chunk-7-1.png)
+
+plot of chunk unnamed-chunk-7
 
 ## Working with Arrow tables for better performance
 

@@ -1,4 +1,4 @@
-# Aggregating CNEFE address counts
+# Intra-urban analysis with cnefe_counts()
 
 In February 2024, IBGE released CNEFE data from the 2022 Census showing
 that Brazil has more religious temples (579,800) than educational
@@ -60,6 +60,11 @@ mapview(
 )   
 ```
 
+![plot of chunk
+unnamed-chunk-3](cnefe_counts_files/figure-html/unnamed-chunk-3-1.png)
+
+plot of chunk unnamed-chunk-3
+
 ## The Index of Concentration at the Extremes (ICE)
 
 ICE was originally proposed by Booth & Crouter (2001) to measure spatial
@@ -89,16 +94,28 @@ poa_hex_counts <- cnefe_counts(
   polygon_type = "hex",
   h3_resolution = 8
 )
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-✔ Step 1/3 (CNEFE ZIP ready) [192ms]
 #> 
-#> ℹ Step 2/3: Building full H3 grid over municipality boundary...
-#> ✔ Step 2/3 (H3 grid built) [3.4s]
+ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+
+                                                   
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+
+✔ Step 1/3 (CNEFE ZIP ready) [278ms]              
+
+
 #> 
-#> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [1.8s]
+ℹ Step 2/3: Building full H3 grid over municipality boundary...
+
+✔ Step 2/3 (H3 grid built) [4.7s]                              
+
+
+#> 
+ℹ Step 3/3: Counting address species per hexagon...
+
+✔ Step 3/3 (Addresses counted) [5.1s]              
+
+
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -160,6 +177,11 @@ mapview(
 )
 ```
 
+![plot of chunk
+unnamed-chunk-6](cnefe_counts_files/figure-html/unnamed-chunk-6-1.png)
+
+plot of chunk unnamed-chunk-6
+
 ## Aggregating counts to neighborhoods
 
 Now we use official neighborhood boundaries from the [`geobr`
@@ -182,16 +204,27 @@ poa_neigh_counts <- cnefe_counts(
   polygon_type = "user",
   polygon = poa_neighborhoods
 )
-#> ℹ Step 1/2: Ensuring data and preparing polygon...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
-#> ℹ Step 1/2: Ensuring data and preparing polygon...
-✔ Step 1/2 (Data and polygon ready) [230ms]
 #> 
-#> ℹ Step 2/2: Counting addresses per polygon...
+ℹ Step 1/2: Ensuring data and preparing polygon...
+
+                                                   
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
+#> ℹ Step 1/2: Ensuring data and preparing polygon...
+
+✔ Step 1/2 (Data and polygon ready) [293ms]       
+
+
+#> 
+ℹ Step 2/2: Counting addresses per polygon...
+
+
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
-#> ✔ Step 2/2 (Addresses counted) [3.4s]
+#> 
+✔ Step 2/2 (Addresses counted) [4.6s]        
+
+
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 26 fields
@@ -267,6 +300,11 @@ mapview(
   layer.name = "ICE (Neighborhoods)"
 )
 ```
+
+![plot of chunk
+unnamed-chunk-10](cnefe_counts_files/figure-html/unnamed-chunk-10-1.png)
+
+plot of chunk unnamed-chunk-10
 
 ## Comparing spatial resolutions
 

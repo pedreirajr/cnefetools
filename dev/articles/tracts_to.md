@@ -1,4 +1,4 @@
-# Dasymetric interpolation using CNEFE addresses
+# Dasymetric interpolation with tracts_to\_\* functions
 
 Census data in Brazil are published at the census tract level. However,
 many research and planning applications require data at different
@@ -46,28 +46,30 @@ tracts_variables_ref |>
   knitr::kable()
 ```
 
-| var_cnefetools | code_var_ibge | desc_var_ibge                                                         | table_ibge |
-|:---------------|:--------------|:----------------------------------------------------------------------|:-----------|
-| pop_ph         | V00005        | Domicilios Particulares Permanentes Ocupados, Quantidade de moradores | Domicilios |
-| pop_ch         | V00007        | Domicilios Coletivos Com Morador, Quantidade de moradores             | Domicilios |
-| male           | V01007        | Sexo masculino                                                        | Pessoas    |
-| female         | V01008        | Sexo feminino                                                         | Pessoas    |
-| age_0_4        | V01031        | 0 a 4 anos                                                            | Pessoas    |
-| age_5_9        | V01032        | 5 a 9 anos                                                            | Pessoas    |
-| age_10_14      | V01033        | 10 a 14 anos                                                          | Pessoas    |
-| age_15_19      | V01034        | 15 a 19 anos                                                          | Pessoas    |
-| age_20_24      | V01035        | 20 a 24 anos                                                          | Pessoas    |
-| age_25_29      | V01036        | 25 a 29 anos                                                          | Pessoas    |
-| age_30_39      | V01037        | 30 a 39 anos                                                          | Pessoas    |
-| age_40_49      | V01038        | 40 a 49 anos                                                          | Pessoas    |
-| age_50_59      | V01039        | 50 a 59 anos                                                          | Pessoas    |
-| age_60_69      | V01040        | 60 a 69 anos                                                          | Pessoas    |
-| age_70m        | V01041        | 70 anos ou mais                                                       | Pessoas    |
-| race_branca    | V01317        | Cor ou raca e branca                                                  | Pessoas    |
-| race_preta     | V01318        | Cor ou raca e preta                                                   | Pessoas    |
-| race_parda     | V01320        | Cor ou raca e parda                                                   | Pessoas    |
-| race_amarela   | V01319        | Cor ou raca e amarela                                                 | Pessoas    |
-| race_indigena  | V01321        | Cor ou raca e indigena                                                | Pessoas    |
+| var_cnefetools | code_var_ibge | desc_var_ibge                                                                                                                      | table_ibge       |
+|:---------------|:--------------|:-----------------------------------------------------------------------------------------------------------------------------------|:-----------------|
+| pop_ph         | V00005        | Domicilios Particulares Permanentes Ocupados, Quantidade de moradores                                                              | Domicilios       |
+| pop_ch         | V00007        | Domicilios Coletivos Com Morador, Quantidade de moradores                                                                          | Domicilios       |
+| male           | V01007        | Sexo masculino                                                                                                                     | Pessoas          |
+| female         | V01008        | Sexo feminino                                                                                                                      | Pessoas          |
+| age_0_4        | V01031        | 0 a 4 anos                                                                                                                         | Pessoas          |
+| age_5_9        | V01032        | 5 a 9 anos                                                                                                                         | Pessoas          |
+| age_10_14      | V01033        | 10 a 14 anos                                                                                                                       | Pessoas          |
+| age_15_19      | V01034        | 15 a 19 anos                                                                                                                       | Pessoas          |
+| age_20_24      | V01035        | 20 a 24 anos                                                                                                                       | Pessoas          |
+| age_25_29      | V01036        | 25 a 29 anos                                                                                                                       | Pessoas          |
+| age_30_39      | V01037        | 30 a 39 anos                                                                                                                       | Pessoas          |
+| age_40_49      | V01038        | 40 a 49 anos                                                                                                                       | Pessoas          |
+| age_50_59      | V01039        | 50 a 59 anos                                                                                                                       | Pessoas          |
+| age_60_69      | V01040        | 60 a 69 anos                                                                                                                       | Pessoas          |
+| age_70m        | V01041        | 70 anos ou mais                                                                                                                    | Pessoas          |
+| race_branca    | V01317        | Cor ou raca e branca                                                                                                               | Pessoas          |
+| race_preta     | V01318        | Cor ou raca e preta                                                                                                                | Pessoas          |
+| race_parda     | V01320        | Cor ou raca e parda                                                                                                                | Pessoas          |
+| race_amarela   | V01319        | Cor ou raca e amarela                                                                                                              | Pessoas          |
+| race_indigena  | V01321        | Cor ou raca e indigena                                                                                                             | Pessoas          |
+| n_resp         | V06001        | Pessoas responsaveis em domicilios particulares permanentes ocupados                                                               | ResponsavelRenda |
+| avg_inc_resp   | V06004        | Valor do rendimento nominal medio mensal das pessoas responsaveis com rendimentos por domicilios particulares permanentes ocupados | ResponsavelRenda |
 
 ## Setup
 
@@ -95,29 +97,54 @@ ftl_h3 <- tracts_to_h3(
   vars = c("pop_ph", "avg_inc_resp", "race_preta")
 )
 #> ℹ Processing code 2304400
+#> 
+ℹ Step 1/6: connecting to DuckDB and loading extensions...
+✔ Spatial extension loaded
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 1/6 (DuckDB ready) [443ms]
-#>
+
+✔ Step 1/6 (DuckDB ready) [2s]                            
+
+
+#> 
+ℹ Step 2/6: preparing census tracts in DuckDB...
+
+                                                 
+ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
-#> ℹ Using cached file: 'sc_23.parquet'
-#> ✔ Step 2/6 (Tracts ready) [429ms]
-#>
+
+✔ Step 2/6 (Tracts ready) [1.4s]                
+
+
+#> 
+ℹ Step 3/6: preparing CNEFE points in DuckDB...
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 3/6 (CNEFE points ready) [5.7s]
-#>
-#> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (Join and allocation) [4.4s]
-#>
-#> ℹ Step 5/6: aggregating allocated values to H3 cells...
-#> ✔ Step 5/6 (Hex aggregation) [782ms]
-#>
-#> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [2s]
-#>
-#>
+
+✔ Step 3/6 (CNEFE points ready) [11.8s]        
+
+
+#> 
+ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
+
+✔ Step 4/6 (Join and allocation) [4.9s]                           
+
+
+#> 
+ℹ Step 5/6: aggregating allocated values to H3 cells...
+
+✔ Step 5/6 (Hex aggregation) [523ms]                   
+
+
+#> 
+ℹ Step 6/6: building H3 grid and joining results...
+
+✔ Step 6/6 (sf output) [2.6s]                      
+
+
+#> 
 #> ── Dasymetric interpolation diagnostics ──
-#>
-#> ── Stage 1: Tracts → CNEFE points
+#> 
+#> ── Stage 1: Tracts → CNEFE points 
 #> ! Unallocated total for population from private households (pop_ph): 2169 of
 #>   2424722 (0.09%)
 #> ! Unallocated total for race_preta (race_preta): 74 of 170887 (0.04%)
@@ -130,8 +157,8 @@ ftl_h3 <- tracts_to_h3(
 #>   race_preta in 200 of 4408 tracts (4.54% of total tracts)
 #> ! Tracts with no eligible dwellings: pop_ph in 6 of 4408 tracts (0.14% of total
 #>   tracts); race_preta in 6 of 4408 tracts (0.14% of total tracts)
-#>
-#> ── Stage 2: CNEFE points → H3 hexagons
+#> 
+#> ── Stage 2: CNEFE points → H3 hexagons 
 #> ℹ CNEFE points mapped to H3 cells: 1034417 of 1034417 allocated points
 #>   (100.00%)
 
@@ -139,22 +166,22 @@ head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -38.58679 ymin: -3.87537 xmax: -38.46354 ymax: -3.699103
+#> Bounding box:  xmin: -38.62609 ymin: -3.830407 xmax: -38.49076 ymax: -3.727607
 #> Geodetic CRS:  WGS 84
 #>            id_hex    pop_ph avg_inc_resp race_preta
-#> 1 8880104e4bfffff  9150.592     1545.129   711.0133
-#> 2 8880104e99fffff 15536.179     1631.154  1218.6971
-#> 3 8880107b2dfffff 17212.677     1529.253  1383.9257
-#> 4 8880104e07fffff  5313.651     2340.135   410.9158
-#> 5 88801040e7fffff  4662.678     1317.024   335.7955
-#> 6 8880104c2dfffff  5116.131     5522.949   257.8724
+#> 1 88801045c1fffff  7715.195     1398.057   771.7898
+#> 2 8880104e5dfffff  3731.538     1513.929   252.5342
+#> 3 8880104ee5fffff  5389.605     1646.740   449.1905
+#> 4 88801045e9fffff 13455.626     1327.092  1205.8042
+#> 5 8880104c15fffff  9961.776    10439.848   251.4346
+#> 6 8880104c41fffff  8045.937     6156.211   346.1665
 #>                         geometry
-#> 1 POLYGON ((-38.52546 -3.8373...
-#> 2 POLYGON ((-38.58093 -3.7591...
-#> 3 POLYGON ((-38.57127 -3.7094...
-#> 4 POLYGON ((-38.51305 -3.8031...
-#> 5 POLYGON ((-38.51409 -3.8753...
-#> 6 POLYGON ((-38.46756 -3.7471...
+#> 1 POLYGON ((-38.62023 -3.7981...
+#> 2 POLYGON ((-38.53131 -3.8304...
+#> 3 POLYGON ((-38.52752 -3.7737...
+#> 4 POLYGON ((-38.60231 -3.7949...
+#> 5 POLYGON ((-38.50615 -3.7379...
+#> 6 POLYGON ((-38.49478 -3.7759...
 ```
 
 ### Mapping the results
@@ -207,11 +234,14 @@ ggplot(ftl_h3_plot, aes(x = avg_inc_resp, y = pct_preta)) +
   theme_minimal()
 ```
 
-![](tracts_to_files/figure-html/unnamed-chunk-6-1.png)
+![plot of chunk
+unnamed-chunk-6](tracts_to_files/figure-html/unnamed-chunk-6-1.png)
+
+plot of chunk unnamed-chunk-6
 
 As expected, the plot reveals a strong negative correlation between
-these two variables: hexagons with a higher share of Black population
-tend to have substantially lower average household income. This pattern
+these two variables: hexagons with lower average household income tend
+to have a substantially higher share of Black population. This pattern
 reflects deep-rooted racial income inequality, a persistent feature of
 the Brazilian social landscape.
 
@@ -256,30 +286,60 @@ sp_zones_census <- tracts_to_polygon(
   vars = c("pop_ph", "age_70m")
 )
 #> ℹ Processing municipality code 3550308...
+#> 
+ℹ Step 1/6: aligning CRS...
+
+                            
+ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
-#> ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
-#> ✔ Step 1/6 (CRS alignment) [1.2s]
-#>
+
+✔ Step 1/6 (CRS alignment) [1.4s]
+
+
+#> 
+ℹ Step 2/6: connecting to DuckDB and loading extensions...
+✔ Spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [1.8s]
-#>
+
+✔ Step 2/6 (DuckDB ready) [1.7s]                          
+
+
+#> 
+ℹ Step 3/6: preparing census tracts in DuckDB...
+
+                                                 
+ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ℹ Using cached file: 'sc_35.parquet'
-#> ✔ Step 3/6 (Tracts ready) [13.9s]
-#>
+
+✔ Step 3/6 (Tracts ready) [17.1s]               
+
+
+#> 
+ℹ Step 4/6: preparing CNEFE points in DuckDB...
+
+                                                
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 4/6 (CNEFE points ready) [40.2s]
-#>
-#> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [27.1s]
-#>
-#> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [1.1s]
-#>
-#>
+
+✔ Step 4/6 (CNEFE points ready) [54.8s]        
+
+
+#> 
+ℹ Step 5/6: spatial join (points to tracts) and allocation...
+
+✔ Step 5/6 (Join and allocation) [53.6s]                     
+
+
+#> 
+ℹ Step 6/6: aggregating allocated values to polygons...
+
+✔ Step 6/6 (Polygon aggregation) [893ms]               
+
+
+#> 
 #> ── Dasymetric interpolation diagnostics ──
-#>
-#> ── Stage 1: Tracts → CNEFE points
+#> 
+#> ── Stage 1: Tracts → CNEFE points 
 #> ! Unallocated total for population from private households (pop_ph): 86998 of
 #>   11394071 (0.76%)
 #> ! Unallocated total for age_70m (age_70m): 5397 of 923921 (0.58%)
@@ -289,8 +349,8 @@ sp_zones_census <- tracts_to_polygon(
 #>   age_70m in 1316 of 27301 tracts (4.82% of total tracts).
 #> ! Tracts with no eligible dwellings: pop_ph in 324 of 27301 tracts (1.19% of
 #>   total tracts); age_70m in 297 of 27301 tracts (1.09% of total tracts)
-#>
-#> ── Stage 2: CNEFE points → Polygons
+#> 
+#> ── Stage 2: CNEFE points → Polygons 
 #> ℹ Polygon coverage: 4993321 of 4993594 allocated points captured (99.99%)
 #> ℹ Polygons with no CNEFE points: 3 of 342 total polygons (0.88%)
 
@@ -332,6 +392,11 @@ mapview(
 )
 ```
 
+![plot of chunk
+unnamed-chunk-9](tracts_to_files/figure-html/unnamed-chunk-9-1.png)
+
+plot of chunk unnamed-chunk-9
+
 ## Notes
 
 Notice how
@@ -366,72 +431,38 @@ per-municipality iteration.
 
 ### Interpolation diagnostics
 
-Both functions print detailed diagnostics after each run, organized into
-two stages, so the user can assess the quality of the interpolation at
-each step:
-
-- **Stage 1 (Tracts → CNEFE points)**: reports how much of each census
-  variable was successfully allocated from tracts to dwelling points.
-  This includes unallocated totals, tracts with missing values, and
-  tracts with no eligible dwellings.
-- **Stage 2 (CNEFE points → target geometry)**: reports how many
-  allocated points were successfully mapped to the target spatial units
-  (H3 hexagons or user-provided polygons).
-
-For example, the
+Both functions print detailed diagnostics after each run, so the user
+can assess the quality of the interpolation. For example, the
 [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
 call for Fortaleza above produces:
 
     ── Dasymetric interpolation diagnostics ──
-
-    ── Stage 1: Tracts → CNEFE points
-    ! Unallocated total for population from private households (pop_ph): 2169 of
-      2424722 (0.09%)
-    ! Unallocated total for race_preta (race_preta): 74 of 170887 (0.04%)
-    ! avg_inc_resp assigned to 1032500 of 1033953 eligible points (99.86% of total
-      points)
-    ! avg_inc_resp is NA in 128 of 4408 tracts (2.90% of total tracts)
-    ! Unmatched CNEFE points (no tract): 194 of 1034611 points (0.02% of total
-      points)
-    ! Tracts with NA totals: pop_ph in 128 of 4408 tracts (2.90% of total tracts);
-      race_preta in 200 of 4408 tracts (4.54% of total tracts)
-    ! Tracts with no eligible dwellings: pop_ph in 6 of 4408 tracts (0.14% of total
-      tracts); race_preta in 6 of 4408 tracts (0.14% of total tracts)
-
-    ── Stage 2: CNEFE points → H3 hexagons
-    ℹ CNEFE points mapped to H3 cells: 1034417 of 1034417 allocated points
-      (100.00%)
+    ! Unallocated total for population from private households (pop_ph): "2169" ("0.09%" of total)
+    ! Unallocated total for race_preta (race_preta): "74" ("0.04%" of total)
+    ! avg_inc_resp assigned to 1032500 of 1033953 eligible points
+    ! avg_inc_resp is "NA" in 128 tracts
+    ! Unmatched CNEFE points (no tract): 194
+    ! Tracts with "NA" totals: pop_ph "NA" in 128; race_preta "NA" in 200
+    ! Tracts with no eligible dwellings: pop_ph in 6 tracts; race_preta in 6 tracts
 
 And the
 [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
 call for São Paulo:
 
     ── Dasymetric interpolation diagnostics ──
+    ! Unallocated total for population from private households (pop_ph): "86998" ("0.76%" of total)
+    ! Unallocated total for age_70m (age_70m): "5397" ("0.58%" of total)
+    ! Unmatched CNEFE points (no tract) = 2935
+    ! Tracts with "NA" totals: pop_ph "NA" in 622; age_70m "NA" in 1316
+    ! Tracts with no eligible dwellings: pop_ph in 324 tracts; age_70m in 297 tracts
 
-    ── Stage 1: Tracts → CNEFE points
-    ! Unallocated total for population from private households (pop_ph): 86998 of
-      11394071 (0.76%)
-    ! Unallocated total for age_70m (age_70m): 5397 of 923921 (0.58%)
-    ! Unmatched CNEFE points (no tract): 2935 of 4996529 points (0.06% of total
-      points)
-    ! Tracts with NA totals: pop_ph in 622 of 27301 tracts (2.28% of total tracts);
-      age_70m in 1316 of 27301 tracts (4.82% of total tracts).
-    ! Tracts with no eligible dwellings: pop_ph in 324 of 27301 tracts (1.19% of
-      total tracts); age_70m in 297 of 27301 tracts (1.09% of total tracts)
-
-    ── Stage 2: CNEFE points → Polygons
-    ℹ Polygon coverage: 4993321 of 4993594 allocated points captured (99.99%)
-    ℹ Polygons with no CNEFE points: 3 of 342 total polygons (0.88%)
-
-Stage 1 warnings report the amount of unallocated population (and its
+These warnings report the amount of unallocated population (and its
 percentage of the census total), the number of CNEFE points that could
 not be matched to a tract, and the number of tracts with missing values
-or no eligible dwellings. Stage 2 reports how many allocated points were
-captured by the target geometry. In both examples, the unallocated
-shares are small (below 1%), indicating that the interpolation preserves
-most of the original census totals. Users should inspect these
-diagnostics to decide whether the loss is acceptable for their
-application.
+or no eligible dwellings. In both examples, the unallocated shares are
+small (below 1%), indicating that the interpolation preserves most of
+the original census totals. Users should inspect these diagnostics to
+decide whether the loss is acceptable for their application.
 
 ### Ecological fallacy caveat
 
