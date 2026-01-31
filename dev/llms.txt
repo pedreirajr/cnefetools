@@ -171,7 +171,10 @@ ggplot(hex_sp) +
     title = "Private households (addr_type1)",
     subtitle = "São Paulo (IBGE 3550308), H3 resolution 9"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 ![](reference/figures/README-unnamed-chunk-9-1.png)
@@ -216,12 +219,9 @@ indicate non-residential dominance:
 # Plotting the BGBI index
 ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
-  scale_fill_gradient2(
-    low = "red",
-    mid = "white",
-    high = "blue",
-    midpoint = 0,
-    limits = c(-1, 1)
+  scale_fill_distiller(
+    type = "div",
+    palette = "RdBu"
   ) +
   coord_sf() +
   labs(
@@ -229,7 +229,10 @@ ggplot(lumi_ftl) +
     title = "Bidirectional Global-centered Balance Index (BGBI)",
     subtitle = "Fortaleza (IBGE 2304400), H3 resolution 8"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 ![](reference/figures/README-unnamed-chunk-11-1.png)
@@ -278,7 +281,10 @@ ggplot(rec_hex) +
     subtitle = "Private-household population (pop_ph), H3 resolution 9",
     fill = "Population"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 ![](reference/figures/README-unnamed-chunk-13-1.png)
@@ -295,7 +301,10 @@ ggplot(rec_hex) +
     subtitle = "Average income of the responsible person (avg_inc_resp), H3 resolution 9",
     fill = "Income"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 ![](reference/figures/README-unnamed-chunk-14-1.png)
@@ -348,7 +357,10 @@ ggplot(rec_poly) +
     subtitle = "Average income of the responsible person (avg_inc_resp)",
     fill = "Income"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 ![](reference/figures/README-unnamed-chunk-16-1.png)
