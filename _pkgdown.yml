@@ -13,5 +13,6 @@ articles:
   - articles/compute_lumi
   - articles/tracts_to
 - title: FAQ
+  navbar: ~
   contents:
   - articles/faq
