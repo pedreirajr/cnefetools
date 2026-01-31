@@ -96,61 +96,65 @@ ftl_h3 <- tracts_to_h3(
 )
 #> ℹ Processing code 2304400
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-#> ✔ Spatial extension loaded
-#> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-✔ Step 1/6 (DuckDB ready) [552ms]
-#> 
+#> ✔ Step 1/6 (DuckDB ready) [443ms]
+#>
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 #> ℹ Using cached file: 'sc_23.parquet'
-#> ℹ Step 2/6: preparing census tracts in DuckDB...
-✔ Step 2/6 (tracts ready) [308ms]
-#> 
+#> ✔ Step 2/6 (Tracts ready) [429ms]
+#>
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
-#> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-✔ Step 3/6 (CNEFE points ready) [3.8s]
-#> 
+#> ✔ Step 3/6 (CNEFE points ready) [5.7s]
+#>
 #> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (join and allocation prep) [2.5s]
-#> 
+#> ✔ Step 4/6 (Join and allocation) [4.4s]
+#>
 #> ℹ Step 5/6: aggregating allocated values to H3 cells...
-#> ✔ Step 5/6 (hex aggregation) [224ms]
-#> 
+#> ✔ Step 5/6 (Hex aggregation) [782ms]
+#>
 #> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [793ms]
-#> 
-#> 
+#> ✔ Step 6/6 (sf output) [2s]
+#>
+#>
 #> ── Dasymetric interpolation diagnostics ──
-#> 
-#> ! Unallocated total for population from private households (pop_ph): "2169"
-#>   ("0.09%" of total)
-#> ! Unallocated total for race_preta (race_preta): "74" ("0.04%" of total)
-#> ! avg_inc_resp assigned to 1032500 of 1033953 eligible points
-#> ! avg_inc_resp is "NA" in 128 tracts
-#> ! Unmatched CNEFE points (no tract): 194
-#> ! Tracts with "NA" totals: pop_ph "NA" in 128; race_preta "NA" in 200
-#> ! Tracts with no eligible dwellings: pop_ph in 6 tracts; race_preta in 6 tracts
+#>
+#> ── Stage 1: Tracts → CNEFE points
+#> ! Unallocated total for population from private households (pop_ph): 2169 of
+#>   2424722 (0.09%)
+#> ! Unallocated total for race_preta (race_preta): 74 of 170887 (0.04%)
+#> ! avg_inc_resp assigned to 1032500 of 1033953 eligible points (99.86% of total
+#>   points)
+#> ! avg_inc_resp is NA in 128 of 4408 tracts (2.90% of total tracts)
+#> ! Unmatched CNEFE points (no tract): 194 of 1034611 points (0.02% of total
+#>   points)
+#> ! Tracts with NA totals: pop_ph in 128 of 4408 tracts (2.90% of total tracts);
+#>   race_preta in 200 of 4408 tracts (4.54% of total tracts)
+#> ! Tracts with no eligible dwellings: pop_ph in 6 of 4408 tracts (0.14% of total
+#>   tracts); race_preta in 6 of 4408 tracts (0.14% of total tracts)
+#>
+#> ── Stage 2: CNEFE points → H3 hexagons
+#> ℹ CNEFE points mapped to H3 cells: 1034417 of 1034417 allocated points
+#>   (100.00%)
 
 head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -38.64091 ymin: -3.845923 xmax: -38.50523 ymax: -3.711455
+#> Bounding box:  xmin: -38.58679 ymin: -3.87537 xmax: -38.46354 ymax: -3.699103
 #> Geodetic CRS:  WGS 84
-#>            id_hex     pop_ph avg_inc_resp race_preta
-#> 1 8880104cddfffff 13321.3310     1911.185 1180.05315
-#> 2 88801045e5fffff 13383.8123     1590.995  897.03672
-#> 3 8880107b65fffff 13345.7094     2121.699 1061.31442
-#> 4 88801045ddfffff   890.9914     1467.918   89.11701
-#> 5 8880104c1dfffff  7417.4240     8685.882  257.48227
-#> 6 88801040b5fffff 11225.1574     1277.496 1048.97185
+#>            id_hex    pop_ph avg_inc_resp race_preta
+#> 1 8880104e4bfffff  9150.592     1545.129   711.0133
+#> 2 8880104e99fffff 15536.179     1631.154  1218.6971
+#> 3 8880107b2dfffff 17212.677     1529.253  1383.9257
+#> 4 8880104e07fffff  5313.651     2340.135   410.9158
+#> 5 88801040e7fffff  4662.678     1317.024   335.7955
+#> 6 8880104c2dfffff  5116.131     5522.949   257.8724
 #>                         geometry
-#> 1 POLYGON ((-38.5506 -3.72179...
-#> 2 POLYGON ((-38.59024 -3.7848...
-#> 3 POLYGON ((-38.56852 -3.7249...
-#> 4 POLYGON ((-38.63505 -3.7927...
-#> 5 POLYGON ((-38.50925 -3.7464...
-#> 6 POLYGON ((-38.52856 -3.8459...
+#> 1 POLYGON ((-38.52546 -3.8373...
+#> 2 POLYGON ((-38.58093 -3.7591...
+#> 3 POLYGON ((-38.57127 -3.7094...
+#> 4 POLYGON ((-38.51305 -3.8031...
+#> 5 POLYGON ((-38.51409 -3.8753...
+#> 6 POLYGON ((-38.46756 -3.7471...
 ```
 
 ### Mapping the results
@@ -254,49 +258,45 @@ sp_zones_census <- tracts_to_polygon(
 #> ℹ Processing municipality code 3550308...
 #> ℹ Step 1/6: aligning CRS...
 #> ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
-#> ℹ Step 1/6: aligning CRS...
-✔ Step 1/6 (CRS alignment) [660ms]
-#> 
+#> ✔ Step 1/6 (CRS alignment) [1.2s]
+#>
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Spatial extension loaded
-#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-✔ Step 2/6 (DuckDB ready) [504ms]
-#> 
+#> ✔ Step 2/6 (DuckDB ready) [1.8s]
+#>
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 #> ℹ Using cached file: 'sc_35.parquet'
-#> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> Warning: "0.02%" of polygon area falls outside census tracts of municipality 3550308.
-#> ℹ Only CNEFE points within census tracts will be used for interpolation.
-#> ✔ Step 3/6 (tracts ready) [5.2s]
-#> 
+#> ✔ Step 3/6 (Tracts ready) [13.9s]
+#>
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
-#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-✔ Step 4/6 (CNEFE points ready) [18s]
-#> 
+#> ✔ Step 4/6 (CNEFE points ready) [40.2s]
+#>
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> Warning: Polygon coverage: "99.99%" of CNEFE dwelling points captured.
-#> ℹ 4993321 of 4993594 points are within the provided polygon.
-#> ℹ 273 points fell outside the polygon and were not counted.
-#> ✔ Step 5/6 (join and allocation) [1m 7.6s]
-#> 
+#> ✔ Step 5/6 (Join and allocation) [27.1s]
+#>
 #> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (polygon aggregation) [474ms]
-#> 
-#> 
+#> ✔ Step 6/6 (Polygon aggregation) [1.1s]
+#>
+#>
 #> ── Dasymetric interpolation diagnostics ──
-#> 
-#> ! Unallocated total for population from private households (pop_ph): "86998"
-#>   ("0.76%" of total)
-#> ! Unallocated total for age_70m (age_70m): "5397" ("0.58%" of total)
-#> ! Unmatched CNEFE points (no tract) = 2935
-#> ! Tracts with "NA" totals: pop_ph "NA" in 622; age_70m "NA" in 1316.
-#> ! Tracts with no eligible dwellings: pop_ph in 324 tracts; age_70m in 297
-#>   tracts
+#>
+#> ── Stage 1: Tracts → CNEFE points
+#> ! Unallocated total for population from private households (pop_ph): 86998 of
+#>   11394071 (0.76%)
+#> ! Unallocated total for age_70m (age_70m): 5397 of 923921 (0.58%)
+#> ! Unmatched CNEFE points (no tract): 2935 of 4996529 points (0.06% of total
+#>   points)
+#> ! Tracts with NA totals: pop_ph in 622 of 27301 tracts (2.28% of total tracts);
+#>   age_70m in 1316 of 27301 tracts (4.82% of total tracts).
+#> ! Tracts with no eligible dwellings: pop_ph in 324 of 27301 tracts (1.19% of
+#>   total tracts); age_70m in 297 of 27301 tracts (1.09% of total tracts)
+#>
+#> ── Stage 2: CNEFE points → Polygons
+#> ℹ Polygon coverage: 4993321 of 4993594 allocated points captured (99.99%)
+#> ℹ Polygons with no CNEFE points: 3 of 342 total polygons (0.88%)
 
 head(sp_zones_census)
 #> Simple feature collection with 6 features and 9 fields
-#> Geometry type: MULTIPOLYGON
+#> Geometry type: POLYGON
 #> Dimension:     XY
 #> Bounding box:  xmin: 331820.5 ymin: 7393922 xmax: 334180.5 ymax: 7396311
 #> Projected CRS: Corrego Alegre 1970-72 / UTM zone 23S
@@ -309,7 +309,7 @@ head(sp_zones_census)
 #> 4          4 Ladeira da M…         36 São Paulo          67 República       75.1
 #> 5          5 República             36 São Paulo          67 República       75.0
 #> 6          6 Santa Ifigên…         36 São Paulo          67 República       82.9
-#> # ℹ 3 more variables: geom <MULTIPOLYGON [m]>, pop_ph <dbl>, age_70m <dbl>
+#> # ℹ 3 more variables: geom <POLYGON [m]>, pop_ph <dbl>, age_70m <dbl>
 ```
 
 ### Mapping the elderly population share
@@ -366,38 +366,72 @@ per-municipality iteration.
 
 ### Interpolation diagnostics
 
-Both functions print detailed diagnostics after each run, so the user
-can assess the quality of the interpolation. For example, the
+Both functions print detailed diagnostics after each run, organized into
+two stages, so the user can assess the quality of the interpolation at
+each step:
+
+- **Stage 1 (Tracts → CNEFE points)**: reports how much of each census
+  variable was successfully allocated from tracts to dwelling points.
+  This includes unallocated totals, tracts with missing values, and
+  tracts with no eligible dwellings.
+- **Stage 2 (CNEFE points → target geometry)**: reports how many
+  allocated points were successfully mapped to the target spatial units
+  (H3 hexagons or user-provided polygons).
+
+For example, the
 [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
 call for Fortaleza above produces:
 
     ── Dasymetric interpolation diagnostics ──
-    ! Unallocated total for population from private households (pop_ph): "2169" ("0.09%" of total)
-    ! Unallocated total for race_preta (race_preta): "74" ("0.04%" of total)
-    ! avg_inc_resp assigned to 1032500 of 1033953 eligible points
-    ! avg_inc_resp is "NA" in 128 tracts
-    ! Unmatched CNEFE points (no tract): 194
-    ! Tracts with "NA" totals: pop_ph "NA" in 128; race_preta "NA" in 200
-    ! Tracts with no eligible dwellings: pop_ph in 6 tracts; race_preta in 6 tracts
+
+    ── Stage 1: Tracts → CNEFE points
+    ! Unallocated total for population from private households (pop_ph): 2169 of
+      2424722 (0.09%)
+    ! Unallocated total for race_preta (race_preta): 74 of 170887 (0.04%)
+    ! avg_inc_resp assigned to 1032500 of 1033953 eligible points (99.86% of total
+      points)
+    ! avg_inc_resp is NA in 128 of 4408 tracts (2.90% of total tracts)
+    ! Unmatched CNEFE points (no tract): 194 of 1034611 points (0.02% of total
+      points)
+    ! Tracts with NA totals: pop_ph in 128 of 4408 tracts (2.90% of total tracts);
+      race_preta in 200 of 4408 tracts (4.54% of total tracts)
+    ! Tracts with no eligible dwellings: pop_ph in 6 of 4408 tracts (0.14% of total
+      tracts); race_preta in 6 of 4408 tracts (0.14% of total tracts)
+
+    ── Stage 2: CNEFE points → H3 hexagons
+    ℹ CNEFE points mapped to H3 cells: 1034417 of 1034417 allocated points
+      (100.00%)
 
 And the
 [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
 call for São Paulo:
 
     ── Dasymetric interpolation diagnostics ──
-    ! Unallocated total for population from private households (pop_ph): "86998" ("0.76%" of total)
-    ! Unallocated total for age_70m (age_70m): "5397" ("0.58%" of total)
-    ! Unmatched CNEFE points (no tract) = 2935
-    ! Tracts with "NA" totals: pop_ph "NA" in 622; age_70m "NA" in 1316
-    ! Tracts with no eligible dwellings: pop_ph in 324 tracts; age_70m in 297 tracts
 
-These warnings report the amount of unallocated population (and its
+    ── Stage 1: Tracts → CNEFE points
+    ! Unallocated total for population from private households (pop_ph): 86998 of
+      11394071 (0.76%)
+    ! Unallocated total for age_70m (age_70m): 5397 of 923921 (0.58%)
+    ! Unmatched CNEFE points (no tract): 2935 of 4996529 points (0.06% of total
+      points)
+    ! Tracts with NA totals: pop_ph in 622 of 27301 tracts (2.28% of total tracts);
+      age_70m in 1316 of 27301 tracts (4.82% of total tracts).
+    ! Tracts with no eligible dwellings: pop_ph in 324 of 27301 tracts (1.19% of
+      total tracts); age_70m in 297 of 27301 tracts (1.09% of total tracts)
+
+    ── Stage 2: CNEFE points → Polygons
+    ℹ Polygon coverage: 4993321 of 4993594 allocated points captured (99.99%)
+    ℹ Polygons with no CNEFE points: 3 of 342 total polygons (0.88%)
+
+Stage 1 warnings report the amount of unallocated population (and its
 percentage of the census total), the number of CNEFE points that could
 not be matched to a tract, and the number of tracts with missing values
-or no eligible dwellings. In both examples, the unallocated shares are
-small (below 1%), indicating that the interpolation preserves most of
-the original census totals. Users should inspect these diagnostics to
-decide whether the loss is acceptable for their application.
+or no eligible dwellings. Stage 2 reports how many allocated points were
+captured by the target geometry. In both examples, the unallocated
+shares are small (below 1%), indicating that the interpolation preserves
+most of the original census totals. Users should inspect these
+diagnostics to decide whether the loss is acceptable for their
+application.
 
 ### Ecological fallacy caveat
 
