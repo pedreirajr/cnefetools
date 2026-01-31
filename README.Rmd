@@ -42,7 +42,7 @@ remotes::install_github("pedreirajr/cnefetools")
 ## Overview
 
 | Function | Description |
-|----|----|
+|------------------------------------|------------------------------------|
 | `read_cnefe()` | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object |
 | `cnefe_counts()` | Aggregates address counts to H3 hexagons or user-provided polygons |
 | `compute_lumi()` | Computes land-use mix indices on H3 hexagons or user-provided polygons |
