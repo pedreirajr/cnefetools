@@ -1,4 +1,4 @@
-# Intra-urban analysis with cnefe_counts()
+# Aggregating CNEFE address counts
 
 In February 2024, IBGE released CNEFE data from the 2022 Census showing
 that Brazil has more religious temples (579,800) than educational
