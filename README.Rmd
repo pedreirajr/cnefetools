@@ -8,11 +8,13 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
-  out.width = "100%"
+  out.width = "100%",
+  dpi = 600
 )
 ```
 
-# cnefetools: Tools for working with Brazilian CNEFE address data <img src="man/figures/logo.png" alt="logo" align="right" width="190"/>
+# cnefetools: Tools for working with Brazilian CNEFE address data  <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.svg" align="right" height="138" alt="cnefetools website" /></a>
+
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
@@ -144,7 +146,10 @@ ggplot(hex_sp) +
     title = "Private households (addr_type1)",
     subtitle = "São Paulo (IBGE 3550308), H3 resolution 9"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 `cnefe_counts()` also supports `polygon_type = "user"` to aggregate counts to custom polygons instead of H3 hexagons. See the [cnefe_counts article](https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.html) for details.
@@ -174,12 +179,9 @@ Below we plot the Bidirectional Global-centered Balance Index (BGBI), where posi
 # Plotting the BGBI index
 ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
-  scale_fill_gradient2(
-    low = "red",
-    mid = "white",
-    high = "blue",
-    midpoint = 0,
-    limits = c(-1, 1)
+  scale_fill_distiller(
+    type = "div",
+    palette = "RdBu"
   ) +
   coord_sf() +
   labs(
@@ -187,7 +189,10 @@ ggplot(lumi_ftl) +
     title = "Bidirectional Global-centered Balance Index (BGBI)",
     subtitle = "Fortaleza (IBGE 2304400), H3 resolution 8"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 `compute_lumi()` also supports `polygon_type = "user"` to compute indices on custom polygons. See the [compute_lumi article](https://pedreirajr.github.io/cnefetools/articles/compute_lumi.html) for details.
@@ -222,7 +227,10 @@ ggplot(rec_hex) +
     subtitle = "Private-household population (pop_ph), H3 resolution 9",
     fill = "Population"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 And the average income of the household head (`avg_inc_resp`):
@@ -237,7 +245,10 @@ ggplot(rec_hex) +
     subtitle = "Average income of the responsible person (avg_inc_resp), H3 resolution 9",
     fill = "Income"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 The full list of available variables is documented in the `tracts_variables_ref` dataset (see `?tracts_variables_ref`). For allocation rules and diagnostic details, see the [tracts_to article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html).
@@ -275,7 +286,10 @@ ggplot(rec_poly) +
     subtitle = "Average income of the responsible person (avg_inc_resp)",
     fill = "Income"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot"
+  )
 ```
 
 See the [tracts_to article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html) for details.
