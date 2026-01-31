@@ -6,8 +6,8 @@ MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://pedreirajr.gi
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
-**{cnefetools}** provides helper functions to work with the 2022
-Brazilian National Address File for Statistical Purposes (*Cadastro
+**{cnefetools}** provides helper functions to efficiently work with the
+2022 Brazilian National Address File for Statistical Purposes (*Cadastro
 Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level
 dataset released by the Brazilian Institute of Geography and Statistics
 (*Instituto Brasileiro de Geografia e Estatística*, IBGE).
@@ -29,10 +29,6 @@ pak::pak("pedreirajr/cnefetools")
 # or
 # install.packages("remotes")
 remotes::install_github("pedreirajr/cnefetools")
-
-# or
-# install.packages("devtools")
-devtools::install_github("pedreirajr/cnefetools")
 ```
 
 ## Overview
@@ -62,7 +58,7 @@ tab_ssa <- read_cnefe(2927408, cache = TRUE)
 
 tab_ssa |>
   collect() |> # materialize the arrow table in R
-  dplyr::tibble() |>
+  tibble() |>
   head()
 #> # A tibble: 6 × 34
 #>   COD_UNICO_ENDERECO COD_UF COD_MUNICIPIO COD_DISTRITO COD_SUBDISTRITO COD_SETOR
@@ -90,11 +86,18 @@ below reads data for Salvador, filters religious facilities
 library(sf)
 library(ggplot2)
 
-tab_ssa_sf <- read_cnefe(code_muni = 2927408, output = "sf", cache = TRUE)
+# Reading CNEFE data
+tab_ssa_sf <- read_cnefe(
+  code_muni = 2927408, 
+  output = "sf", 
+  cache = TRUE
+  )
 
+# Filtering religious establishments
 temples_ssa <- tab_ssa_sf |>
-  dplyr::filter(COD_ESPECIE == 8)
+  filter(COD_ESPECIE == 8)
 
+# Ploting religious establishments points for Salvador
 ggplot() +
   geom_sf(data = temples_ssa, size = 0.3, alpha = 0.6) +
   coord_sf() +
@@ -146,11 +149,22 @@ library(cnefetools)
 library(sf)
 library(ggplot2)
 
-hex_sp <- cnefe_counts(code_muni = 3550308, h3_resolution = 9, verbose = TRUE)
+# Producing CNEFE counts
+hex_sp <- cnefe_counts(
+  code_muni = 3550308,
+  h3_resolution = 9,
+  verbose = TRUE
+  )
+```
 
+Below we plot the count of private households (`addr_type1`) per
+hexagon:
+
+``` r
+# Plotting private households (addr_type1) for São Paulo
 ggplot(hex_sp) +
   geom_sf(aes(fill = addr_type1), color = NA) +
-  scale_fill_viridis_c(option = "magma", trans = "sqrt") +
+  scale_fill_viridis_c(option = "magma") +
   coord_sf() +
   labs(
     fill = "Count",
@@ -160,12 +174,13 @@ ggplot(hex_sp) +
   theme_minimal()
 ```
 
-![](reference/figures/README-unnamed-chunk-8-1.png)
+![](reference/figures/README-unnamed-chunk-9-1.png)
 
 [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
 also supports `polygon_type = "user"` to aggregate counts to custom
-polygons instead of H3 hexagons. See `vignette("cnefe_counts")` for
-details.
+polygons instead of H3 hexagons. See the [cnefe_counts
+article](https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.html)
+for details.
 
 ## Land-use mix indices with `compute_lumi()`
 
@@ -173,10 +188,10 @@ details.
 computes land-use mix indicators on spatial units for any municipality
 covered by the 2022 CNEFE dataset ([Pedreira Junior et al.,
 2025](https://engrxiv.org/preprint/view/5975/version/7846)). Available
-indicators include the Entropy Index (`ei`), HHI (`hhi`), Balance Index
-(`bal`), the Index of Concentration at Extrems (`ice`), adapted HHI
-(`hhi_adp`), and the Bidirectional Global-centered Balance Index
-(`bgbi`).
+indicators include the Entropy Index (`ei`), the Herfindahl-Hirschman
+Index (`hhi`), the Balance Index (`bal`), the Index of Concentration at
+Extremes (`ice`), an adapted HHI (`hhi_adp`), and the Bidirectional
+Global-centered Balance Index (`bgbi`).
 
 Below is an example for Fortaleza at H3 resolution 8:
 
@@ -185,8 +200,20 @@ library(cnefetools)
 library(sf)
 library(ggplot2)
 
-lumi_ftl <- compute_lumi(code_muni = 2304400, h3_resolution = 8, verbose = TRUE)
+# Computing land use mix indices
+lumi_ftl <- compute_lumi(
+  code_muni = 2304400,
+  h3_resolution = 8,
+  verbose = TRUE
+  )
+```
 
+Below we plot the Bidirectional Global-centered Balance Index (BGBI),
+where positive values indicate residential dominance and negative values
+indicate non-residential dominance:
+
+``` r
+# Plotting the BGBI index
 ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
   scale_fill_gradient2(
@@ -205,11 +232,13 @@ ggplot(lumi_ftl) +
   theme_minimal()
 ```
 
-![](reference/figures/README-unnamed-chunk-9-1.png)
+![](reference/figures/README-unnamed-chunk-11-1.png)
 
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
 also supports `polygon_type = "user"` to compute indices on custom
-polygons. See `vignette("compute_lumi")` for details.
+polygons. See the [compute_lumi
+article](https://pedreirajr.github.io/cnefetools/articles/compute_lumi.html)
+for details.
 
 ## Dasymetric interpolation with `tracts_to_h3()`
 
@@ -225,6 +254,7 @@ estimates than simple areal weighting.
 library(cnefetools)
 library(ggplot2)
 
+# Performing dasymetric interpolation
 rec_hex <- tracts_to_h3(
   code_muni = 2611606,
   h3_resolution = 9,
@@ -233,6 +263,10 @@ rec_hex <- tracts_to_h3(
   verbose = TRUE
 )
 ```
+
+The resulting H3 grid can be mapped to visualize the spatial
+distribution of each variable. Below we plot the private-household
+population (`pop_ph`):
 
 ``` r
 ggplot(rec_hex) +
@@ -247,7 +281,9 @@ ggplot(rec_hex) +
   theme_minimal()
 ```
 
-![](reference/figures/README-unnamed-chunk-11-1.png)
+![](reference/figures/README-unnamed-chunk-13-1.png)
+
+And the average income of the household head (`avg_inc_resp`):
 
 ``` r
 ggplot(rec_hex) +
@@ -262,13 +298,13 @@ ggplot(rec_hex) +
   theme_minimal()
 ```
 
-![](reference/figures/README-unnamed-chunk-12-1.png)
+![](reference/figures/README-unnamed-chunk-14-1.png)
 
 The full list of available variables is documented in the
 `tracts_variables_ref` dataset (see
 [`?tracts_variables_ref`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_variables_ref.md)).
-For allocation rules and diagnostic details, see
-`vignette("tracts_to")`.
+For allocation rules and diagnostic details, see the [tracts_to
+article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html).
 
 ## Dasymetric interpolation with `tracts_to_polygon()`
 
@@ -284,17 +320,25 @@ household heads per neighborhood:
 
 ``` r
 library(geobr)
-# Example: interpolate population to neighborhood polygons
-rec_nei <- read_neighborhood(year = 2022, simplified = F, showProgress = F) |> 
+
+# Reading neighborhoods from geobr package
+rec_nei <- read_neighborhood(year = 2022, simplified = F, showProgress = F) |>
   filter(name_muni == 'Recife')
 
+# Dasymetric interpolation to neighborhoods
 rec_poly <- tracts_to_polygon(
   code_muni = 2611606,
   polygon = rec_nei,
   vars = c("pop_ph", "avg_inc_resp"),
   verbose = F
 )
+```
 
+Below we plot the interpolated average income of the household head
+(`avg_inc_resp`) at the neighborhood level:
+
+``` r
+# Plotting variables at the neighborhood level
 ggplot(rec_poly) +
   geom_sf(aes(fill = avg_inc_resp), color = NA) +
   scale_fill_viridis_c() +
@@ -307,9 +351,42 @@ ggplot(rec_poly) +
   theme_minimal()
 ```
 
-![](reference/figures/README-unnamed-chunk-13-1.png)
+![](reference/figures/README-unnamed-chunk-16-1.png)
 
-See `vignette("tracts_to")` for details.
+See the [tracts_to
+article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html)
+for details.
+
+## DuckDB-powered spatial operations
+
+Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as
+its default backend to perform spatial operations efficiently, with
+speedups of 5–40x over pure-R code depending on the number of address
+points and the size of the spatial units. This is made possible by three
+DuckDB extensions:
+
+- [**spatial**](https://duckdb.org/docs/extensions/spatial/overview.html):
+  performs spatial joins (e.g., point-in-polygon) in SQL, used when
+  aggregating to user-provided polygons or performing dasymetric
+  interpolation.
+- [**zipfs**](https://duckdb.org/docs/extensions/zipfs.html): reads CSV
+  files directly from cached ZIP archives, avoiding the need to extract
+  files to disk.
+- [**h3**](https://duckdb.org/docs/extensions/h3.html): assigns
+  geographic coordinates to [H3 hexagonal grid](https://h3geo.org/)
+  cells entirely inside DuckDB.
+
+The R package [**duckspatial**](https://cidree.github.io/duckspatial/)
+also bridges `sf` objects and DuckDB’s spatial extension, enabling
+seamless transfers between R and DuckDB.
+
+All extensions are installed and loaded automatically on first use. A
+pure-R fallback (`backend = "r"`) is also available, using `h3jsr` and
+`sf` for the same operations on
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
+and
+[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+functions (slower, but without the DuckDB dependency).
 
 ## Citation
 
