@@ -34,15 +34,15 @@ remotes::install_github("pedreirajr/cnefetools")
 
 ## Overview
 
-| Function              | Description                                                                                            |
-|-----------------------|--------------------------------------------------------------------------------------------------------|
-| `read_cnefe()`        | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object               |
-| `cnefe_counts()`      | Aggregates address counts to H3 hexagons or user-provided polygons                                     |
-| `compute_lumi()`      | Computes land-use mix indices on H3 hexagons or user-provided polygons                                 |
-| `tracts_to_h3()`      | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points             |
+| Function | Description |
+|----|----|
+| `read_cnefe()` | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object |
+| `cnefe_counts()` | Aggregates address counts to H3 hexagons or user-provided polygons |
+| `compute_lumi()` | Computes land-use mix indices on H3 hexagons or user-provided polygons |
+| `tracts_to_h3()` | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points |
 | `tracts_to_polygon()` | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
-| `cnefe_doc()`         | Opens the official CNEFE methodological note (PDF)                                                     |
-| `cnefe_dictionary()`  | Opens the official CNEFE variable dictionary (Excel)                                                   |
+| `cnefe_doc()` | Opens the official CNEFE methodological note (PDF) |
+| `cnefe_dictionary()` | Opens the official CNEFE variable dictionary (Excel) |
 
 ## Reading CNEFE data
 
@@ -219,7 +219,8 @@ ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
   scale_fill_distiller(
     type = "div",
-    palette = "RdBu"
+    palette = "RdBu",
+    direction = -1
   ) +
   coord_sf() +
   labs(

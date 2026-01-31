@@ -181,7 +181,8 @@ ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
   scale_fill_distiller(
     type = "div",
-    palette = "RdBu"
+    palette = "RdBu",
+    direction = -1
   ) +
   coord_sf() +
   labs(
