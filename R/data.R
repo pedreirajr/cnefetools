@@ -4,13 +4,13 @@
 #' [tracts_to_polygon()] to the official IBGE census tract dataset codes
 #' and descriptions.
 #'
-#' @format A data frame with 20 rows and 4 columns:
+#' @format A data frame with 22 rows and 4 columns:
 #' \describe{
 #'   \item{var_cnefetools}{Variable name used in cnefetools functions.}
 #'   \item{code_var_ibge}{Official IBGE variable code from the census tract aggregates.}
 #'   \item{desc_var_ibge}{Official IBGE variable description in Portuguese.}
 #'   \item{table_ibge}{Name of the IBGE census tract table where the variable is found
-#'     (Domicilios or Pessoas).}
+#'     (Domicilios, Pessoas, or ResponsavelRenda).}
 #' }
 #'
 #' @source IBGE - Censo Demografico 2022, Agregados por Setores Censitarios.
