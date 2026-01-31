@@ -1,5 +1,5 @@
 
-# cnefetools: Tools for working with Brazilian CNEFE address data <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.svg" align="right" height="138" alt="cnefetools website" /></a>
+# cnefetools: Tools for working with Brazilian CNEFE address data <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.svg" align="right" height="150" alt="cnefetools website" /></a>
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
