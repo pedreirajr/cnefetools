@@ -1,4 +1,4 @@
-# Dasymetric interpolation with tracts_to\_\* functions
+# Dasymetric interpolation using CNEFE addresses
 
 Census data in Brazil are published at the census tract level. However,
 many research and planning applications require data at different

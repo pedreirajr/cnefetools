@@ -1,4 +1,4 @@
-# Comparing land use mix indices with compute_lumi()
+# Computing land-use mix indices with CNEFE data
 
 Land use mix (LUM) indices quantify how different types of activities
 are distributed within a spatial unit. They are widely used in urban

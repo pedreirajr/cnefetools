@@ -96,6 +96,16 @@ tracts_to_h3(
 ## Value
 
 An `sf` object (CRS 4326) with an H3 grid and the requested interpolated
-variables. Attributes:
+variables.
 
-- `attr(x, "timing")`: named numeric vector with step timings (seconds).
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Interpolate population to H3 hexagons
+hex_pop <- tracts_to_h3(
+  code_muni = 2929057,
+  vars = c("pop_ph", "pop_ch")
+)
+} # }
+```

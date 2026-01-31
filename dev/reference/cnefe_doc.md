@@ -18,3 +18,11 @@ cnefe_doc(year = 2022)
 ## Value
 
 Invisibly, the path to the PDF file inside the installed package.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+cnefe_doc()
+} # }
+```
