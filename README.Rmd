@@ -182,7 +182,7 @@ ggplot(lumi_ftl) +
   scale_fill_distiller(
     type = "div",
     palette = "RdBu",
-    direction = -1
+    direction = 1
   ) +
   coord_sf() +
   labs(

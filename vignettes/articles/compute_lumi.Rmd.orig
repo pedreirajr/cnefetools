@@ -1,5 +1,5 @@
 ---
-title: "Comparing land use mix indices with compute_lumi()"
+title: "Computing land-use mix indices with CNEFE data"
 editor_options:
   markdown:
     wrap: 72

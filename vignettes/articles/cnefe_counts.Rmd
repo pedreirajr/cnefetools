@@ -1,5 +1,5 @@
 ---
-title: "Intra-urban analysis with cnefe_counts()"
+title: "Aggregating CNEFE address counts"
 editor_options:
   markdown:
     wrap: 72
