@@ -7,7 +7,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "faq_files/figure-html/",
-  error = FALSE
+  error = FALSE,
+  out.width = "100%"
 )
 ```
 

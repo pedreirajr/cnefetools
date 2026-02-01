@@ -12,7 +12,8 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
   fig.path = "cnefe_counts_files/figure-html/",
-  error = FALSE
+  error = FALSE,
+  out.width = "100%"
 )
 ```
 
