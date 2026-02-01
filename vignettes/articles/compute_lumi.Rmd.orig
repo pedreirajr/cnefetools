@@ -12,7 +12,6 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
   fig.path = "compute_lumi_files/figure-html/",
-  fig.dpi = 600,
   error = FALSE
 )
 ```
@@ -103,7 +102,7 @@ Before generating these indices with real data, let's examine how EI,
 BAL, and BGBI behave as a function of $p_{i}$ for a stylized city with
 $P = 0.75$, which is typical of Brazilian municipalities.
 
-```{r, fig.width = 8, fig.height = 4}
+```{r, fig.width = 8, fig.height = 4, fig.dpi = 600}
 P <- 0.75 # citywide residential proportion
 
 ## BGBI function:
