@@ -12,7 +12,6 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
   fig.path = "tracts_to_files/figure-html/",
-  fig.dpi = 600,
   error = FALSE
 )
 ```
@@ -119,7 +118,7 @@ sync(map_pop, map_inc, map_race, ncol = 3)
 We can examine the relationship between average household head income
 and the proportion of Black population in each hexagon:
 
-```{r, fig.width = 7, fig.height = 5}
+```{r, fig.width = 7, fig.height = 5, fig.dpi = 600}
 ftl_h3_plot <- ftl_h3 |>
   st_drop_geometry() |>
   filter(pop_ph > 0) |>

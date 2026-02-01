@@ -12,7 +12,6 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
   fig.path = "read_cnefe_files/figure-html/",
-  fig.dpi = 600,
   error = FALSE
 )
 ```

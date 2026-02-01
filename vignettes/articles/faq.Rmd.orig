@@ -7,7 +7,6 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "faq_files/figure-html/",
-  fig.dpi = 600,
   error = FALSE
 )
 ```
