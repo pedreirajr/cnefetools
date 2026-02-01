@@ -100,26 +100,26 @@ ftl_h3 <- tracts_to_h3(
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
 #> ✔ Spatial extension loaded
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-✔ Step 1/6 (DuckDB ready) [615ms]
+✔ Step 1/6 (DuckDB ready) [788ms]
 #> 
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 #> ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
-✔ Step 2/6 (Tracts ready) [344ms]
+✔ Step 2/6 (Tracts ready) [399ms]
 #> 
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
 #> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-✔ Step 3/6 (CNEFE points ready) [4.2s]
+✔ Step 3/6 (CNEFE points ready) [7.6s]
 #> 
 #> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (Join and allocation) [1.6s]
+#> ✔ Step 4/6 (Join and allocation) [1.7s]
 #> 
 #> ℹ Step 5/6: aggregating allocated values to H3 cells...
-#> ✔ Step 5/6 (Hex aggregation) [213ms]
+#> ✔ Step 5/6 (Hex aggregation) [205ms]
 #> 
 #> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [844ms]
+#> ✔ Step 6/6 (sf output) [806ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
@@ -146,22 +146,22 @@ head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -38.61713 ymin: -3.838324 xmax: -38.46457 ymax: -3.730135
+#> Bounding box:  xmin: -38.61162 ymin: -3.827556 xmax: -38.47009 ymax: -3.71684
 #> Geodetic CRS:  WGS 84
-#>            id_hex    pop_ph avg_inc_resp race_preta
-#> 1 8880104ebbfffff  7446.819     5195.173   324.2202
-#> 2 88801045c5fffff 11980.627     1294.864  1188.1398
-#> 3 8880104547fffff 11346.187     1362.530   950.9942
-#> 4 8880104f5dfffff  2921.453     3641.840   166.3934
-#> 5 8880104e81fffff 10386.040     2403.628   705.9433
-#> 6 8880104c19fffff 11626.837     4638.865   622.9570
+#>            id_hex     pop_ph avg_inc_resp race_preta
+#> 1 8880104f11fffff   547.6366     9501.404   27.97055
+#> 2 8880104c6bfffff  5130.2476    11917.039  151.67999
+#> 3 8880104e17fffff  2969.0585     1637.215  257.11403
+#> 4 8880104553fffff  8415.9331     1245.070  871.71422
+#> 5 8880104cc1fffff  6760.5683     2766.186  469.64049
+#> 6 8880107b6bfffff 15033.8448     1795.090  922.54085
 #>                         geometry
-#> 1 POLYGON ((-38.56577 -3.7404...
-#> 2 POLYGON ((-38.61127 -3.7965...
-#> 3 POLYGON ((-38.57612 -3.8383...
-#> 4 POLYGON ((-38.46859 -3.8193...
-#> 5 POLYGON ((-38.55715 -3.7629...
-#> 6 POLYGON ((-38.51821 -3.7480...
+#> 1 POLYGON ((-38.47411 -3.7882...
+#> 2 POLYGON ((-38.48272 -3.7658...
+#> 3 POLYGON ((-38.53372 -3.7908...
+#> 4 POLYGON ((-38.60576 -3.8275...
+#> 5 POLYGON ((-38.53578 -3.7271...
+#> 6 POLYGON ((-38.58644 -3.7281...
 ```
 
 ### Mapping the results
@@ -266,12 +266,12 @@ sp_zones_census <- tracts_to_polygon(
 #> ℹ Step 1/6: aligning CRS...
 #> ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
-✔ Step 1/6 (CRS alignment) [313ms]
+✔ Step 1/6 (CRS alignment) [273ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
 #> ✔ Spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-✔ Step 2/6 (DuckDB ready) [537ms]
+✔ Step 2/6 (DuckDB ready) [476ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 #> ℹ Using cached file: 'sc_35.parquet'
@@ -281,13 +281,13 @@ sp_zones_census <- tracts_to_polygon(
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-✔ Step 4/6 (CNEFE points ready) [16.1s]
+✔ Step 4/6 (CNEFE points ready) [15.4s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [50.8s]
+#> ✔ Step 5/6 (Join and allocation) [46.5s]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [323ms]
+#> ✔ Step 6/6 (Polygon aggregation) [310ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
