@@ -17,16 +17,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r, echo = FALSE, results = 'asis'}
-# Emit a hidden chunk so pkgdown registers htmlwidget JS/CSS dependencies
-cat('```{r include=FALSE}\n')
-cat('# Hidden chunk to ensure pkgdown includes htmlwidget dependencies\n')
-cat('library(mapview)\n')
-cat('library(leafsync)\n')
-cat('mapview::mapview()\n')
-cat('```\n')
-```
-
 Census data in Brazil are published at the census tract level. However,
 many research and planning applications require data at different
 spatial granularities, such as hexagonal grids for standardized spatial
