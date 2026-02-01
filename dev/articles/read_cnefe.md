@@ -227,11 +227,6 @@ library(mapview)
 mapview(ssa_hospitals, layer.name = "Health facilities with 'hospital' term in their description column in Salvador")
 ```
 
-![plot of chunk
-unnamed-chunk-8](read_cnefe_files/figure-html/unnamed-chunk-8-1.png)
-
-plot of chunk unnamed-chunk-8
-
 ## Working with Arrow tables for better performance
 
 By default,

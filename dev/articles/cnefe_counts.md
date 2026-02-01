@@ -60,11 +60,6 @@ mapview(
 )   
 ```
 
-![plot of chunk
-unnamed-chunk-4](cnefe_counts_files/figure-html/unnamed-chunk-4-1.png)
-
-plot of chunk unnamed-chunk-4
-
 ## The Index of Concentration at the Extremes (ICE)
 
 ICE was originally proposed by Booth & Crouter (2001) to measure spatial
@@ -94,28 +89,16 @@ poa_hex_counts <- cnefe_counts(
   polygon_type = "hex",
   h3_resolution = 8
 )
-#> 
-ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-
-                                                   
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-
-✔ Step 1/3 (CNEFE ZIP ready) [392ms]              
-
-
+#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+✔ Step 1/3 (CNEFE ZIP ready) [157ms]
 #> 
-ℹ Step 2/3: Building full H3 grid over municipality boundary...
-
-✔ Step 2/3 (H3 grid built) [4.4s]                              
-
-
+#> ℹ Step 2/3: Building full H3 grid over municipality boundary...
+#> ✔ Step 2/3 (H3 grid built) [3.9s]
 #> 
-ℹ Step 3/3: Counting address species per hexagon...
-
-✔ Step 3/3 (Addresses counted) [2.7s]              
-
-
+#> ℹ Step 3/3: Counting address species per hexagon...
+#> ✔ Step 3/3 (Addresses counted) [1.5s]
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -177,11 +160,6 @@ mapview(
 )
 ```
 
-![plot of chunk
-unnamed-chunk-7](cnefe_counts_files/figure-html/unnamed-chunk-7-1.png)
-
-plot of chunk unnamed-chunk-7
-
 ## Aggregating counts to neighborhoods
 
 Now we use official neighborhood boundaries from the [`geobr`
@@ -204,27 +182,16 @@ poa_neigh_counts <- cnefe_counts(
   polygon_type = "user",
   polygon = poa_neighborhoods
 )
-#> 
-ℹ Step 1/2: Ensuring data and preparing polygon...
-
-                                                   
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
-
-✔ Step 1/2 (Data and polygon ready) [625ms]       
-
-
+#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
+#> ℹ Step 1/2: Ensuring data and preparing polygon...
+✔ Step 1/2 (Data and polygon ready) [407ms]
 #> 
-ℹ Step 2/2: Counting addresses per polygon...
-
-
+#> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
-#> 
-✔ Step 2/2 (Addresses counted) [21.9s]       
-
-
+#> ✔ Step 2/2 (Addresses counted) [3s]
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 26 fields
@@ -300,11 +267,6 @@ mapview(
   layer.name = "ICE (Neighborhoods)"
 )
 ```
-
-![plot of chunk
-unnamed-chunk-11](cnefe_counts_files/figure-html/unnamed-chunk-11-1.png)
-
-plot of chunk unnamed-chunk-11
 
 ## Comparing spatial resolutions
 
