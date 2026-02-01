@@ -12,16 +12,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r, echo = FALSE, results = 'asis'}
-# Emit a hidden chunk so pkgdown registers htmlwidget JS/CSS dependencies
-cat('```{r include=FALSE}\n')
-cat('# Hidden chunk to ensure pkgdown includes htmlwidget dependencies\n')
-cat('library(mapview)\n')
-cat('library(leafsync)\n')
-cat('mapview::mapview()\n')
-cat('```\n')
-```
-
 ## What is H3 and how does resolution work?
 
 H3 is a geospatial indexing system developed by Uber that divides the world into hexagonal cells. Unlike traditional grids (squares), hexagons provide more uniform distances between neighboring cells and better represent spatial relationships.
