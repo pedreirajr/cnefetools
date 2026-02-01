@@ -17,16 +17,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r, echo = FALSE, results = 'asis'}
-# Emit a hidden chunk so pkgdown registers htmlwidget JS/CSS dependencies
-cat('```{r include=FALSE}\n')
-cat('# Hidden chunk to ensure pkgdown includes htmlwidget dependencies\n')
-cat('library(mapview)\n')
-cat('library(leafsync)\n')
-cat('mapview::mapview()\n')
-cat('```\n')
-```
-
 Land use mix (LUM) indices quantify how different types of activities
 are distributed within a spatial unit. They are widely used in urban
 planning to monitor mixed-use targets, inform zoning revisions, and
