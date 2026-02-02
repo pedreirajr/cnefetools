@@ -1,3 +1,54 @@
+# cnefetools 0.2.0
+
+## New functions
+
+- New `tracts_to_polygon()` for dasymetric interpolation from census
+  tracts to user-supplied polygons, using CNEFE dwelling points as
+  ancillary data.
+- New `tracts_variables_ref` reference table mapping cnefetools variable
+  names to official IBGE census tract codes.
+
+## Major changes
+
+- `hex_cnefe_counts()` has been renamed to `cnefe_counts()`. The
+  function now accepts user-supplied polygons via `polygon_type = "user"`
+  in addition to H3 hexagons (`polygon_type = "hex"`, default).
+- `compute_lumi()` gains support for user-supplied polygons via the same
+  `polygon_type` parameter, and a new land-use mix indicator: ICE (Index
+  of Concentration at Extremes).
+- `tracts_to_h3()` and `tracts_to_polygon()` gain five new interpolation
+  variables related to race: `race_branca`, `race_preta`, `race_parda`,
+  `race_amarela` and `race_indigena`.
+- `read_cnefe()`, `cnefe_counts()`, `compute_lumi()`, and
+  `tracts_to_h3()` gain a `year` argument (default `2022`) to prepare
+  for future CNEFE editions.
+
+## Improvements
+
+- All user-facing functions now use the cli package (>= 3.6.0) for
+  formatted console messages, replacing plain `message()` calls.
+- Improved diagnostic output in `tracts_to_h3()` and
+  `tracts_to_polygon()` with two-stage reporting structure.
+- Census tract Parquet assets are now downloaded via piggyback from
+  GitHub Releases, with on-demand caching.
+
+## Bug fixes
+
+- Removed inconsistencies in spatial join operations in `cnefe_counts()`,
+  `compute_lumi()`, and `tracts_to_polygon()` with DuckDB.
+- Fixed community extension loading failures in DuckDB.
+- Fixed temporary file path bugs in `tracts_to_h3()` and
+  `tracts_to_polygon()`.
+- Fixed invalid geometry handling when user-supplied polygons.
+
+## Documentation
+
+- Six pre-rendered pkgdown articles: reading CNEFE data, address counts,
+  land-use mix indices, dasymetric interpolation, FAQ, and a DuckDB
+  performance benchmark.
+- Pre-rendering workflow (`_build.R`) preserves interactive
+  mapview/leaflet widgets in GitHub Pages.
+
 # cnefetools 0.1.1
 
 - Adds Balance Index (BAL), `bal` to the `compute_lumi()` function.
