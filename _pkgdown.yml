@@ -6,7 +6,7 @@ development:
 
 articles:
 - title: Articles
-  navbar: Functions
+  navbar: 
   contents:
   - articles/read_cnefe
   - articles/cnefe_counts
