@@ -370,16 +370,16 @@ speedups of 5–40x over pure-R code depending on the number of address
 points and the size of the spatial units. This is made possible by three
 DuckDB extensions:
 
-- [**spatial**](https://duckdb.org/docs/extensions/spatial/overview.html):
+- [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
   performs spatial joins (e.g., point-in-polygon) in SQL, used when
   aggregating to user-provided polygons or performing dasymetric
   interpolation.
-- [**zipfs**](https://duckdb.org/docs/extensions/zipfs.html): reads CSV
-  files directly from cached ZIP archives, avoiding the need to extract
-  files to disk.
-- [**h3**](https://duckdb.org/docs/extensions/h3.html): assigns
-  geographic coordinates to [H3 hexagonal grid](https://h3geo.org/)
-  cells entirely inside DuckDB.
+- [**zipfs**](https://duckdb.org/community_extensions/extensions/zipfs):
+  reads CSV files directly from cached ZIP archives, avoiding the need
+  to extract files to disk.
+- [**h3**](https://duckdb.org/community_extensions/extensions/h3):
+  assigns geographic coordinates to [H3 hexagonal
+  grid](https://h3geo.org/) cells entirely inside DuckDB.
 
 The R package [**duckspatial**](https://cidree.github.io/duckspatial/)
 also bridges `sf` objects and DuckDB’s spatial extension, enabling
