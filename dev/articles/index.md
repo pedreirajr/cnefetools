@@ -10,8 +10,6 @@
   data](https://pedreirajr.github.io/cnefetools/dev/articles/compute_lumi.md):
 - [Dasymetric interpolation using CNEFE
   addresses](https://pedreirajr.github.io/cnefetools/dev/articles/tracts_to.md):
-- [Performance benchmark: DuckDB vs pure-R
-  backends](https://pedreirajr.github.io/cnefetools/dev/articles/bench_duckdb.md):
 
 ### Other
 
