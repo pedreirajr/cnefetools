@@ -9,6 +9,7 @@
 ^pkgdown$
 ^CLAUDE\.md$
 ^\.claude$
+^cran-comments\.md$
 ^vignettes/articles$
 \.Rmd\.orig$
 _build\.R$
