@@ -240,6 +240,16 @@ ggplot(benchmark_results_h3
     )
 ```
 
+> **Note:** At finer H3 resolutions the hexagons are much smaller, so
+> the H3 point-to-cell indexing — which both backends ultimately
+> delegate to the same underlying H3 C library — dominates the total
+> runtime. Because DuckDB still pays a fixed overhead to initialize the
+> connection, load extensions, and materialize data into its in-memory
+> store, the relative advantage shrinks as the actual computation
+> becomes lighter per cell. At resolution 11 this overhead can even
+> offset DuckDB's gains, making the pure-R backend competitive or
+> faster.
+
 ## Conclusions
 
 The DuckDB backend is consistently faster than the pure-R

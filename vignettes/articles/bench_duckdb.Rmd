@@ -246,6 +246,16 @@ ggplot(benchmark_results_h3
 
 <img src="bench_duckdb_files/figure-html/plot-benchmark-h3-1.png" width="100%" />
 
+> **Note:** At finer H3 resolutions the hexagons are much smaller, so
+> the H3 point-to-cell indexing — which both backends ultimately
+> delegate to the same underlying H3 C library — dominates the total
+> runtime. Because DuckDB still pays a fixed overhead to initialize the
+> connection, load extensions, and materialize data into its in-memory
+> store, the relative advantage shrinks as the actual computation
+> becomes lighter per cell. At resolution 11 this overhead can even
+> offset DuckDB's gains, making the pure-R backend competitive or
+> faster.
+
 ## Conclusions
 
 The DuckDB backend is consistently faster than the pure-R
@@ -291,12 +301,12 @@ speedups_cities |>
   <tr>
    <td style="text-align:left;"> São Paulo </td>
    <td style="text-align:left;"> ~5,700,000 </td>
-   <td style="text-align:right;"> 20.00 </td>
+   <td style="text-align:right;"> 12.72 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Vitória da Conquista </td>
    <td style="text-align:left;"> ~200,000 </td>
-   <td style="text-align:right;"> 1.72 </td>
+   <td style="text-align:right;"> 1.20 </td>
   </tr>
 </tbody>
 </table>
@@ -338,17 +348,17 @@ speedups_h3 |>
   <tr>
    <td style="text-align:right;"> 7 </td>
    <td style="text-align:right;"> 5161293.36 </td>
-   <td style="text-align:right;"> 2.02 </td>
+   <td style="text-align:right;"> 4.53 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 9 </td>
    <td style="text-align:right;"> 105332.51 </td>
-   <td style="text-align:right;"> 1.71 </td>
+   <td style="text-align:right;"> 3.72 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 11 </td>
    <td style="text-align:right;"> 2149.64 </td>
-   <td style="text-align:right;"> 0.64 </td>
+   <td style="text-align:right;"> 1.44 </td>
   </tr>
 </tbody>
 </table>
