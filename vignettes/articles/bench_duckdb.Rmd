@@ -212,8 +212,6 @@ benchmark_results_h3 <- data.frame(
 
 
 ``` r
-dodge <- position_dodge(width = 0.6)
-
 ggplot(benchmark_results_h3
        |> mutate(
          h3_res = as.factor(h3_res),
@@ -275,9 +273,11 @@ speedups_cities <- benchmark_results_cities |>
 # Formatting output table
 speedups_cities |>
   mutate(
+    city = factor(city, levels = c("Vitória da Conquista", "Curitiba", "São Paulo")),
     n_points = c("~900,000", "~5,700,000", "~200,000")[match(city, c("Curitiba", "São Paulo", "Vitória da Conquista"))],
     speedup = round(speedup, 2)
   ) |>
+  arrange(city) |>
   select(city, n_points, speedup) |>
   ## Improved table output with kableExtra package:
   kbl() |>
@@ -294,19 +294,19 @@ speedups_cities |>
  </thead>
 <tbody>
   <tr>
+   <td style="text-align:left;"> Vitória da Conquista </td>
+   <td style="text-align:left;"> ~200,000 </td>
+   <td style="text-align:right;"> 1.53 </td>
+  </tr>
+  <tr>
    <td style="text-align:left;"> Curitiba </td>
    <td style="text-align:left;"> ~900,000 </td>
-   <td style="text-align:right;"> 3.78 </td>
+   <td style="text-align:right;"> 4.40 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> São Paulo </td>
    <td style="text-align:left;"> ~5,700,000 </td>
-   <td style="text-align:right;"> 12.72 </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> Vitória da Conquista </td>
-   <td style="text-align:left;"> ~200,000 </td>
-   <td style="text-align:right;"> 1.20 </td>
+   <td style="text-align:right;"> 13.08 </td>
   </tr>
 </tbody>
 </table>
@@ -348,17 +348,17 @@ speedups_h3 |>
   <tr>
    <td style="text-align:right;"> 7 </td>
    <td style="text-align:right;"> 5161293.36 </td>
-   <td style="text-align:right;"> 4.53 </td>
+   <td style="text-align:right;"> 5.38 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 9 </td>
    <td style="text-align:right;"> 105332.51 </td>
-   <td style="text-align:right;"> 3.72 </td>
+   <td style="text-align:right;"> 3.46 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 11 </td>
    <td style="text-align:right;"> 2149.64 </td>
-   <td style="text-align:right;"> 1.44 </td>
+   <td style="text-align:right;"> 1.31 </td>
   </tr>
 </tbody>
 </table>
