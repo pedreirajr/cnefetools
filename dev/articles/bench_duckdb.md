@@ -199,8 +199,6 @@ benchmark_results_h3 <- data.frame(
 ### Visualization
 
 ``` r
-dodge <- position_dodge(width = 0.6)
-
 ggplot(benchmark_results_h3
        |> mutate(
          h3_res = as.factor(h3_res),
@@ -261,9 +259,11 @@ speedups_cities <- benchmark_results_cities |>
 # Formatting output table
 speedups_cities |>
   mutate(
+    city = factor(city, levels = c("Vitória da Conquista", "Curitiba", "São Paulo")),
     n_points = c("~900,000", "~5,700,000", "~200,000")[match(city, c("Curitiba", "São Paulo", "Vitória da Conquista"))],
     speedup = round(speedup, 2)
   ) |>
+  arrange(city) |>
   select(city, n_points, speedup) |>
   ## Improved table output with kableExtra package:
   kbl() |>
@@ -272,9 +272,9 @@ speedups_cities |>
 
 | city                 | n_points   | speedup |
 |:---------------------|:-----------|--------:|
-| Curitiba             | ~900,000   |    3.78 |
-| São Paulo            | ~5,700,000 |   12.72 |
-| Vitória da Conquista | ~200,000   |    1.20 |
+| Vitória da Conquista | ~200,000   |    1.53 |
+| Curitiba             | ~900,000   |    4.40 |
+| São Paulo            | ~5,700,000 |   13.08 |
 
 - Resolution of spatial units where CNEFE addresses are counted:
 
@@ -300,9 +300,9 @@ speedups_h3 |>
 
 | h3_res | avg_hex_area_m2 | speedup |
 |-------:|----------------:|--------:|
-|      7 |      5161293.36 |    4.53 |
-|      9 |       105332.51 |    3.72 |
-|     11 |         2149.64 |    1.44 |
+|      7 |      5161293.36 |    5.38 |
+|      9 |       105332.51 |    3.46 |
+|     11 |         2149.64 |    1.31 |
 
 **Recommendation**: Use the DuckDB backend (default) for best
 performance. The pure R backend (`backend = "r"`) is available only if

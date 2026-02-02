@@ -278,9 +278,7 @@ same city.</p>
 <h3 id="visualization-1">Visualization<a class="anchor" aria-label="anchor" href="#visualization-1"></a>
 </h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">dodge</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">benchmark_results_h3</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">benchmark_results_h3</span></span>
 <span>       <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>         h3_res <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">as.factor</a></span><span class="op">(</span><span class="va">h3_res</span><span class="op">)</span>,</span>
 <span>         backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">backend</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Pure R"</span>, <span class="st">"DuckDB"</span><span class="op">)</span><span class="op">)</span></span>
@@ -340,9 +338,11 @@ implementation, and the processing time depends on:</p>
 <span><span class="co"># Formatting output table</span></span>
 <span><span class="va">speedups_cities</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    city <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">city</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Vitória da Conquista"</span>, <span class="st">"Curitiba"</span>, <span class="st">"São Paulo"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    n_points <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"~900,000"</span>, <span class="st">"~5,700,000"</span>, <span class="st">"~200,000"</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">city</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Curitiba"</span>, <span class="st">"São Paulo"</span>, <span class="st">"Vitória da Conquista"</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>    speedup <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">speedup</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">city</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">city</span>, <span class="va">n_points</span>, <span class="va">speedup</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co">## Improved table output with kableExtra package:</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -362,13 +362,24 @@ speedup
 <tbody>
 <tr>
 <td style="text-align:left;">
+Vitória da Conquista
+</td>
+<td style="text-align:left;">
+~200,000
+</td>
+<td style="text-align:right;">
+1.53
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
 Curitiba
 </td>
 <td style="text-align:left;">
 ~900,000
 </td>
 <td style="text-align:right;">
-3.78
+4.40
 </td>
 </tr>
 <tr>
@@ -379,18 +390,7 @@ São Paulo
 ~5,700,000
 </td>
 <td style="text-align:right;">
-12.72
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Vitória da Conquista
-</td>
-<td style="text-align:left;">
-~200,000
-</td>
-<td style="text-align:right;">
-1.20
+13.08
 </td>
 </tr>
 </tbody>
@@ -437,7 +437,7 @@ speedup
 5161293.36
 </td>
 <td style="text-align:right;">
-4.53
+5.38
 </td>
 </tr>
 <tr>
@@ -448,7 +448,7 @@ speedup
 105332.51
 </td>
 <td style="text-align:right;">
-3.72
+3.46
 </td>
 </tr>
 <tr>
@@ -459,7 +459,7 @@ speedup
 2149.64
 </td>
 <td style="text-align:right;">
-1.44
+1.31
 </td>
 </tr>
 </tbody>
