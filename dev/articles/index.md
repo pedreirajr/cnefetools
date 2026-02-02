@@ -13,6 +13,8 @@
 - [Performance benchmark: DuckDB vs pure-R
   backends](https://pedreirajr.github.io/cnefetools/dev/articles/bench_duckdb.md):
 
-### FAQ
+### Other
 
+- [Performance benchmark: DuckDB vs pure-R
+  backends](https://pedreirajr.github.io/cnefetools/dev/articles/bench_duckdb.md):
 - [FAQ](https://pedreirajr.github.io/cnefetools/dev/articles/faq.md):
