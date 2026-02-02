@@ -233,6 +233,16 @@ ggplot(benchmark_results_h3
 
 ![](bench_duckdb_files/figure-html/plot-benchmark-h3-1.png)
 
+> **Note:** At finer H3 resolutions the hexagons are much smaller, so
+> the H3 point-to-cell indexing — which both backends ultimately
+> delegate to the same underlying H3 C library — dominates the total
+> runtime. Because DuckDB still pays a fixed overhead to initialize the
+> connection, load extensions, and materialize data into its in-memory
+> store, the relative advantage shrinks as the actual computation
+> becomes lighter per cell. At resolution 11 this overhead can even
+> offset DuckDB’s gains, making the pure-R backend competitive or
+> faster.
+
 ## Conclusions
 
 The DuckDB backend is consistently faster than the pure-R
@@ -263,8 +273,8 @@ speedups_cities |>
 | city                 | n_points   | speedup |
 |:---------------------|:-----------|--------:|
 | Curitiba             | ~900,000   |    3.78 |
-| São Paulo            | ~5,700,000 |   20.00 |
-| Vitória da Conquista | ~200,000   |    1.72 |
+| São Paulo            | ~5,700,000 |   12.72 |
+| Vitória da Conquista | ~200,000   |    1.20 |
 
 - Resolution of spatial units where CNEFE addresses are counted:
 
@@ -290,9 +300,9 @@ speedups_h3 |>
 
 | h3_res | avg_hex_area_m2 | speedup |
 |-------:|----------------:|--------:|
-|      7 |      5161293.36 |    2.02 |
-|      9 |       105332.51 |    1.71 |
-|     11 |         2149.64 |    0.64 |
+|      7 |      5161293.36 |    4.53 |
+|      9 |       105332.51 |    3.72 |
+|     11 |         2149.64 |    1.44 |
 
 **Recommendation**: Use the DuckDB backend (default) for best
 performance. The pure R backend (`backend = "r"`) is available only if

@@ -306,6 +306,16 @@ same city.</p>
 <span>    panel.grid.major.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    <span class="op">)</span></span></code></pre></div>
 <p><img src="bench_duckdb_files/figure-html/plot-benchmark-h3-1.png" width="100%"></p>
+<blockquote>
+<p><strong>Note:</strong> At finer H3 resolutions the hexagons are much
+smaller, so the H3 point-to-cell indexing — which both backends
+ultimately delegate to the same underlying H3 C library — dominates the
+total runtime. Because DuckDB still pays a fixed overhead to initialize
+the connection, load extensions, and materialize data into its in-memory
+store, the relative advantage shrinks as the actual computation becomes
+lighter per cell. At resolution 11 this overhead can even offset
+DuckDB’s gains, making the pure-R backend competitive or faster.</p>
+</blockquote>
 </div>
 </div>
 <div class="section level2">
@@ -366,7 +376,7 @@ São Paulo
 ~5,700,000
 </td>
 <td style="text-align:right;">
-20.00
+12.72
 </td>
 </tr>
 <tr>
@@ -377,7 +387,7 @@ Vitória da Conquista
 ~200,000
 </td>
 <td style="text-align:right;">
-1.72
+1.20
 </td>
 </tr>
 </tbody>
@@ -424,7 +434,7 @@ speedup
 5161293.36
 </td>
 <td style="text-align:right;">
-2.02
+4.53
 </td>
 </tr>
 <tr>
@@ -435,7 +445,7 @@ speedup
 105332.51
 </td>
 <td style="text-align:right;">
-1.71
+3.72
 </td>
 </tr>
 <tr>
@@ -446,7 +456,7 @@ speedup
 2149.64
 </td>
 <td style="text-align:right;">
-0.64
+1.44
 </td>
 </tr>
 </tbody>
