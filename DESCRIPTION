@@ -14,11 +14,12 @@ Authors@R:
              email = "kaiocp7@gmail.com",
              role = "ctb")
     )
-Description: Provides helper functions to work with the Cadastro Nacional de 
-    Endereços para Fins Estatísticos (CNEFE) from the 2022 Brazilian census. 
-    The initial version focuses on efficiently downloading, caching, and 
-    reading municipality-level CNEFE CSV files into Arrow tables for 
-    downstream analysis.
+Description: Download, cache and read municipality-level address data from the
+    Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) of the 2022
+    Brazilian census. Provides spatial aggregation of addresses to H3 hexagons
+    or user-supplied polygons, land-use mix indices (Entropy, HHI, BGBI,
+    Balance, ICE), and dasymetric interpolation of census tract variables to
+    finer spatial units using CNEFE dwelling points as ancillary data.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
