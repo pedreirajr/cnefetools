@@ -6,7 +6,7 @@ development:
 
 articles:
 - title: Articles
-  navbar: ~
+  navbar:
   contents:
   - articles/read_cnefe
   - articles/cnefe_counts
@@ -14,6 +14,6 @@ articles:
   - articles/tracts_to
   - articles/bench_duckdb
 - title: FAQ
-  navbar: ~
+  navbar:
   contents:
   - articles/faq
