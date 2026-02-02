@@ -46,8 +46,7 @@
 - Six pre-rendered pkgdown articles: reading CNEFE data, address counts,
   land-use mix indices, dasymetric interpolation, FAQ, and a DuckDB
   performance benchmark.
-- Pre-rendering workflow (`_build.R`) preserves interactive
-  mapview/leaflet widgets in GitHub Pages.
+- The package now features a new, more polished logo with improved visual quality.
 
 # cnefetools 0.1.1
 
