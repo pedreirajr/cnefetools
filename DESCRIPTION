@@ -1,5 +1,5 @@
 Package: cnefetools
-Title: Tools for Working with Brazilian CNEFE 2022 Address Data
+Title: Access and Analysis of Brazilian CNEFE Address Data
 Version: 0.2.0.9000
 Authors@R:
     c(
@@ -16,11 +16,12 @@ Authors@R:
     )
 Description: Download, cache and read municipality-level address data from the
     Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) of the 2022
-    Brazilian Census. Beyond data access, the package provides spatial aggregation of
-    addresses, computation of land-use mix indices, and dasymetric interpolation of census 
-    tract variables using CNEFE dwelling points as ancillary data. Results can be 
-    produced on H3 hexagonal grids or user-supplied polygons, and heavy operations leverage
-    a DuckDB backend with extensions for fast, in-process execution.
+    Brazilian Census. Beyond data access, provides spatial aggregation of
+    addresses, computation of land-use mix indices, and dasymetric
+    interpolation of census tract variables using CNEFE dwelling points as
+    ancillary data. Results can be produced on 'H3' hexagonal grids or
+    user-supplied polygons, and heavy operations leverage a 'DuckDB' backend
+    with extensions for fast, in-process execution.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

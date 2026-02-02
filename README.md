@@ -3,7 +3,7 @@
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
-MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
