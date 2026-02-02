@@ -6,14 +6,13 @@ development:
 
 articles:
 - title: Articles
-  navbar: 
+  navbar:
   contents:
   - articles/read_cnefe
   - articles/cnefe_counts
   - articles/compute_lumi
   - articles/tracts_to
-  - articles/bench_duckdb
-  
+
 - title: Other
   navbar: Other
   contents:
