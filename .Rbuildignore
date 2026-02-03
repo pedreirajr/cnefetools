@@ -13,3 +13,4 @@
 ^vignettes/articles$
 \.Rmd\.orig$
 _build\.R$
+^CRAN-SUBMISSION$
