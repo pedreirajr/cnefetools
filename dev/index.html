@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Tools for Working with Brazilian CNEFE 2022 Address Data • cnefetools</title>
+<title>Access and Analysis of Brazilian CNEFE Address Data • cnefetools</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -15,9 +15,9 @@
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Tools for Working with Brazilian CNEFE 2022 Address Data">
-<meta name="description" content="Provides helper functions to work with the Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) from the 2022 Brazilian census. The initial version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables for downstream analysis.">
-<meta property="og:description" content="Provides helper functions to work with the Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) from the 2022 Brazilian census. The initial version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables for downstream analysis.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Access and Analysis of Brazilian CNEFE Address Data">
+<meta name="description" content="Download, cache and read municipality-level address data from the Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) of the 2022 Brazilian Census. Beyond data access, provides spatial aggregation of addresses, computation of land-use mix indices, and dasymetric interpolation of census tract variables using CNEFE dwelling points as ancillary data. Results can be produced on H3 hexagonal grids or user-supplied polygons, and heavy operations leverage a DuckDB backend with extensions for fast, in-process execution.">
+<meta property="og:description" content="Download, cache and read municipality-level address data from the Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) of the 2022 Brazilian Census. Beyond data access, provides spatial aggregation of addresses, computation of land-use mix indices, and dasymetric interpolation of census tract variables using CNEFE dwelling points as ancillary data. Results can be produced on H3 hexagonal grids or user-supplied polygons, and heavy operations leverage a DuckDB backend with extensions for fast, in-process execution.">
 <meta property="og:image" content="https://pedreirajr.github.io/cnefetools/logo.svg">
 <meta name="robots" content="noindex">
 </head>
@@ -72,7 +72,7 @@
 <a class="anchor" aria-label="anchor" href="#cnefetools-tools-for-working-with-brazilian-cnefe-address-data-"></a>
 </h1>
 </div>
-<p><a href="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="LICENSE.html"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a> <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></p>
+<p><a href="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://opensource.org/licenses/MIT" class="external-link"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a> <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></p>
 <p><strong>{cnefetools}</strong> provides helper functions to efficiently work with the 2022 Brazilian National Address File for Statistical Purposes (<em>Cadastro Nacional de Endereços para Fins Estatísticos</em>, CNEFE), an address-level dataset released by the Brazilian Institute of Geography and Statistics (<em>Instituto Brasileiro de Geografia e Estatística</em>, IBGE).</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -377,11 +377,11 @@
 <p>Under the hood, <strong>{cnefetools}</strong> uses <a href="https://duckdb.org/" class="external-link">DuckDB</a> as its default backend to perform spatial operations efficiently, with speedups of 5–40x over pure-R code depending on the number of address points and the size of the spatial units. This is made possible by three DuckDB extensions:</p>
 <ul>
 <li>
-<a href="https://duckdb.org/docs/extensions/spatial/overview.html" class="external-link"><strong>spatial</strong></a>: performs spatial joins (e.g., point-in-polygon) in SQL, used when aggregating to user-provided polygons or performing dasymetric interpolation.</li>
+<a href="https://duckdb.org/docs/stable/core_extensions/spatial/overview" class="external-link"><strong>spatial</strong></a>: performs spatial joins (e.g., point-in-polygon) in SQL, used when aggregating to user-provided polygons or performing dasymetric interpolation.</li>
 <li>
-<a href="https://duckdb.org/docs/extensions/zipfs.html" class="external-link"><strong>zipfs</strong></a>: reads CSV files directly from cached ZIP archives, avoiding the need to extract files to disk.</li>
+<a href="https://duckdb.org/community_extensions/extensions/zipfs" class="external-link"><strong>zipfs</strong></a>: reads CSV files directly from cached ZIP archives, avoiding the need to extract files to disk.</li>
 <li>
-<a href="https://duckdb.org/docs/extensions/h3.html" class="external-link"><strong>h3</strong></a>: assigns geographic coordinates to <a href="https://h3geo.org/" class="external-link">H3 hexagonal grid</a> cells entirely inside DuckDB.</li>
+<a href="https://duckdb.org/community_extensions/extensions/h3" class="external-link"><strong>h3</strong></a>: assigns geographic coordinates to <a href="https://h3geo.org/" class="external-link">H3 hexagonal grid</a> cells entirely inside DuckDB.</li>
 </ul>
 <p>The R package <a href="https://cidree.github.io/duckspatial/" class="external-link"><strong>duckspatial</strong></a> also bridges <code>sf</code> objects and DuckDB’s spatial extension, enabling seamless transfers between R and DuckDB.</p>
 <p>All extensions are installed and loaded automatically on first use. A pure-R fallback (<code>backend = "r"</code>) is also available, using <code>h3jsr</code> and <code>sf</code> for the same operations on <code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> functions (slower, but without the DuckDB dependency).</p>

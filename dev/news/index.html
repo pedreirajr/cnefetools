@@ -43,6 +43,43 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="cnefetools-020">cnefetools 0.2.0<a class="anchor" aria-label="anchor" href="#cnefetools-020"></a></h2>
+<div class="section level3">
+<h3 id="new-functions-0-2-0">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-2-0"></a></h3>
+<ul><li>New <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> for dasymetric interpolation from census tracts to user-supplied polygons, using CNEFE dwelling points as ancillary data.</li>
+<li>New <code>tracts_variables_ref</code> reference table mapping cnefetools variable names to official IBGE census tract codes.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="major-changes-0-2-0">Major changes<a class="anchor" aria-label="anchor" href="#major-changes-0-2-0"></a></h3>
+<ul><li>
+<code>hex_cnefe_counts()</code> has been renamed to <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code>. The function now accepts user-supplied polygons via <code>polygon_type = "user"</code> in addition to H3 hexagons (<code>polygon_type = "hex"</code>, default).</li>
+<li>
+<code><a href="../reference/compute_lumi.html">compute_lumi()</a></code> gains support for user-supplied polygons via the same <code>polygon_type</code> parameter, and a new land-use mix indicator: ICE (Index of Concentration at Extremes).</li>
+<li>
+<code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> and <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> gain five new interpolation variables related to race: <code>race_branca</code>, <code>race_preta</code>, <code>race_parda</code>, <code>race_amarela</code> and <code>race_indigena</code>.</li>
+<li>
+<code><a href="../reference/read_cnefe.html">read_cnefe()</a></code>, <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code>, <code><a href="../reference/compute_lumi.html">compute_lumi()</a></code>, and <code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> gain a <code>year</code> argument (default <code>2022</code>) to prepare for future CNEFE editions.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="improvements-0-2-0">Improvements<a class="anchor" aria-label="anchor" href="#improvements-0-2-0"></a></h3>
+<ul><li>All user-facing functions now use the cli package (&gt;= 3.6.0) for formatted console messages, replacing plain <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> calls.</li>
+<li>Improved diagnostic output in <code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> and <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> with two-stage reporting structure.</li>
+<li>Census tract Parquet assets are now downloaded via piggyback from GitHub Releases, with on-demand caching.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
+<ul><li>Removed inconsistencies in spatial join operations in <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code>, <code><a href="../reference/compute_lumi.html">compute_lumi()</a></code>, and <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> with DuckDB.</li>
+<li>Fixed community extension loading failures in DuckDB.</li>
+<li>Fixed temporary file path bugs in <code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> and <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code>.</li>
+<li>Fixed invalid geometry handling when user-supplied polygons.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-0-2-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-2-0"></a></h3>
+<ul><li>Six pre-rendered pkgdown articles: reading CNEFE data, address counts, land-use mix indices, dasymetric interpolation, FAQ, and a DuckDB performance benchmark.</li>
+<li>The package now features a new, more polished logo with improved visual quality.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.1" id="cnefetools-011">cnefetools 0.1.1<a class="anchor" aria-label="anchor" href="#cnefetools-011"></a></h2>
 <ul><li>Adds Balance Index (BAL), <code>bal</code> to the <code><a href="../reference/compute_lumi.html">compute_lumi()</a></code> function.</li>
 </ul></div>
