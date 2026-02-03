@@ -174,8 +174,8 @@ ggplot(hex_sp) +
   theme_minimal()+
   theme(
     plot.title.position = "plot",
-    axis.text.x = element_text(size = 8),
-    axis.text.y = element_text(size = 8)
+    axis.text.x = element_text(size = 6),
+    axis.text.y = element_text(size = 6)
   )
 ```
 
@@ -235,8 +235,8 @@ ggplot(lumi_ftl) +
   theme_minimal()+
   theme(
     plot.title.position = "plot",
-    axis.text.x = element_text(size = 8),
-    axis.text.y = element_text(size = 8)
+    axis.text.x = element_text(size = 6),
+    axis.text.y = element_text(size = 6)
   )
 ```
 
@@ -289,8 +289,8 @@ ggplot(rec_hex) +
   theme_minimal() +
   theme(
     plot.title.position = "plot",
-    axis.text.x = element_text(size = 8),
-    axis.text.y = element_text(size = 8)
+    axis.text.x = element_text(size = 6),
+    axis.text.y = element_text(size = 6)
   )
 ```
 
@@ -311,8 +311,8 @@ ggplot(rec_hex) +
   theme_minimal() +
   theme(
     plot.title.position = "plot",
-    axis.text.x = element_text(size = 8),
-    axis.text.y = element_text(size = 8)
+    axis.text.x = element_text(size = 6),
+    axis.text.y = element_text(size = 6)
   )
 ```
 
@@ -369,8 +369,8 @@ ggplot(rec_poly) +
   theme_minimal() +
   theme(
     plot.title.position = "plot",
-    axis.text.x = element_text(size = 8),
-    axis.text.y = element_text(size = 8)
+    axis.text.x = element_text(size = 6),
+    axis.text.y = element_text(size = 6)
   )
 ```
 
