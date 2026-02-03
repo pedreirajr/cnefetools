@@ -107,3 +107,25 @@ Press.
 Song, Y.; Merlin, L.; Rodriguez, D. (2013). Comparing measures of urban
 land use mix. *Computers, Environment and Urban Systems*, 42, 1–13.
 https://doi.org/10.1016/j.compenvurbsys.2013.08.001
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Compute land-use mix indices on H3 hexagons
+lumi <- compute_lumi(code_muni = 2929057)
+
+# Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
+# Using geobr to download neighborhood boundaries
+library(geobr)
+nei_ldf <- subset(
+  read_neighborhood(year = 2022),
+  code_muni == 2919207
+)
+lumi_poly <- compute_lumi(
+  code_muni = 2919207,
+  polygon_type = "user",
+  polygon = nei_ldf
+)
+} # }
+```

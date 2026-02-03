@@ -1,4 +1,4 @@
-# Exploring CNEFE address data
+# Reading and exploring CNEFE data
 
 The 2022 Brazilian CNEFE (*Cadastro Nacional de Endereços para Fins
 Estatísticos*) is an address-level dataset released by IBGE containing

@@ -2,11 +2,11 @@
 
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
-MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://pedreirajr.github.io/cnefetools/LICENSE.md)
+MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
-**{cnefetools}** provides helper functions to work with the 2022
+**{cnefetools}** provides helper functions to efficiently work with the
 Brazilian National Address File for Statistical Purposes (*Cadastro
 Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level
 dataset released by the Brazilian Institute of Geography and Statistics
@@ -14,26 +14,52 @@ dataset released by the Brazilian Institute of Geography and Statistics
 
 ## Installation
 
+Install the stable version from CRAN:
+
+``` r
+install.packages("cnefetools")
+```
+
+To install the development version from GitHub:
+
 ``` r
 # install.packages("pak")
 pak::pak("pedreirajr/cnefetools")
+
+# or
+# install.packages("remotes")
+remotes::install_github("pedreirajr/cnefetools")
 ```
 
-## Basic usage
+## Overview
+
+| Function                                                                                        | Description                                                                                            |
+|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/reference/read_cnefe.md)               | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object               |
+| [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)           | Aggregates address counts to H3 hexagons or user-provided polygons                                     |
+| [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)           | Computes land-use mix indices on H3 hexagons or user-provided polygons                                 |
+| [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_h3.md)           | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points             |
+| [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_polygon.md) | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
+| [`cnefe_doc()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_doc.md)                 | Opens the official CNEFE methodological note (PDF)                                                     |
+| [`cnefe_dictionary()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_dictionary.md)   | Opens the official CNEFE variable dictionary (Excel)                                                   |
+
+## Reading CNEFE data
+
+[`read_cnefe()`](https://pedreirajr.github.io/cnefetools/reference/read_cnefe.md)
+downloads and reads the CNEFE CSV for a municipality, returning an Arrow
+table by default:
 
 ``` r
 library(cnefetools)
 library(dplyr)
 
-# Example: read CNEFE data for a municipality (Salvador) as an Arrow table
+# Read CNEFE data for Salvador as an Arrow table
 tab_ssa <- read_cnefe(2927408, cache = TRUE)
 
-# Convert to a data frame for inspection
-df_ssa <- tab_ssa |> 
-  as.data.frame() |> 
-  dplyr::tibble()
-
-head(df_ssa)
+tab_ssa |>
+  collect() |> # materialize the arrow table in R
+  tibble() |>
+  head()
 #> # A tibble: 6 × 34
 #>   COD_UNICO_ENDERECO COD_UF COD_MUNICIPIO COD_DISTRITO COD_SUBDISTRITO COD_SETOR
 #>                <int>  <int>         <int>        <int>         <int64> <chr>    
@@ -52,41 +78,38 @@ head(df_ssa)
 #> #   VAL_COMP_ELEM5 <chr>, LATITUDE <dbl>, LONGITUDE <dbl>, …
 ```
 
-## Spatial output and quick map
-
-If you prefer to work with spatial objects,
-[`read_cnefe()`](https://pedreirajr.github.io/cnefetools/reference/read_cnefe.md)
-can return an `sf` object by setting `output = "sf"`. The example below
-reads CNEFE data for Salvador, filters only religious facilities
-(`COD_ESPECIE == 8`), and plots them with `ggplot2`:
+Setting `output = "sf"` returns an `sf` object instead. The example
+below reads data for Salvador, filters religious facilities
+(`COD_ESPECIE == 8`), and plots them:
 
 ``` r
-library(cnefetools)
 library(sf)
 library(ggplot2)
-library(dplyr)
 
-# Read CNEFE data as sf (Salvador, IBGE code = 2927408)
-tab_ssa_sf <- read_cnefe(code_muni = 2927408, output = "sf", cache = TRUE)
+# Reading CNEFE data
+tab_ssa_sf <- read_cnefe(
+  code_muni = 2927408, 
+  output = "sf", 
+  cache = TRUE
+  )
 
-# Keep only religious facilities (COD_ESPECIE == 8)
-temples_ssa <- tab_ssa_sf |> 
-  dplyr::filter(COD_ESPECIE == 8)
+# Filtering religious establishments
+temples_ssa <- tab_ssa_sf |>
+  filter(COD_ESPECIE == 8)
 
+# Ploting religious establishments points for Salvador
 ggplot() +
   geom_sf(data = temples_ssa, size = 0.3, alpha = 0.6) +
   coord_sf() +
   theme_minimal()
 ```
 
-![](reference/figures/README-unnamed-chunk-4-1.png)
+![](reference/figures/README-unnamed-chunk-5-1.png)
 
-**Warning**
-
-For large municipalities, CNEFE may contain more than 1 million address
-points. Plotting all coordinates at once can be slow and memory
-intensive, so consider filtering by area of interest or sampling points
-before creating maps.
+**Warning:** For large municipalities, CNEFE may contain more than 1
+million address points. Plotting all coordinates at once can be slow and
+memory-intensive, so consider filtering or sampling before creating
+maps.
 
 ## Caching behavior
 
@@ -106,264 +129,176 @@ after reading.
 **{cnefetools}** includes local copies of the official methodological
 note and the variable dictionary for the 2022 CNEFE released by IBGE.
 
-You can open these documents in your default PDF and spreadsheet viewers
-with:
-
 ``` r
 # Open the official methodological note (PDF)
-cnefe_doc()
+cnefe_doc(year = 2022)
 
-# Open the official variable dictionary (Excel)
-cnefe_dictionary()
+# Open the official variable dictionary (.xls spreadsheet)
+cnefe_dictionary(year = 2022)
 ```
 
-## Hexagon-level address counts with `hex_cnefe_counts()`
+## Counting addresses with `cnefe_counts()`
 
-The `hex_cnefe_counts()` function aggregates CNEFE address points into
-an H3 hexagonal grid of any resolution and returns an `sf` object with
-one row per hexagon. It includes:
-
-- `id_hex`: H3 cell identifier.
-- `addr_type1` … `addr_type8`: counts by address category (see
-  `?hex_cnefe_counts` for the mapping).
-- `geometry`: hexagon geometry (CRS 4326).
-
-### Choosing a backend (performance)
-
-`hex_cnefe_counts()` supports two backends via the `backend` argument:
-
-- `backend = "duckdb"` (default): uses DuckDB with the community `h3`
-  extension to compute the H3 cell id and aggregate counts in SQL. This
-  is substantially faster for large municipalities because it avoids
-  materializing all points as an `sf` object in R.
-- `backend = "r"`: uses `sf` + `h3jsr` in R. This is useful when you
-  prefer a pure-R workflow, but it can be much slower for very large
-  cities.
-
-To use `backend = "duckdb"`, you need `duckdb` installed. On first use,
-DuckDB may download or install the `h3` and `zipfs` extensions (DuckDB
-community extensions). Subsequent runs reuse the installed extensions.
-
-Below is an example for São Paulo (IBGE code 3550308) at H3 resolution
-9:
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
+aggregates CNEFE address points into spatial units and returns an `sf`
+object with counts by address category (`addr_type1` to `addr_type8`).
+Below is an example using H3 hexagons for São Paulo at resolution 9:
 
 ``` r
 library(cnefetools)
 library(sf)
 library(ggplot2)
-library(dplyr)
 
-# Fast path (default): DuckDB backend
-hex_sp <- hex_cnefe_counts(code_muni = 3550308, h3_resolution = 9, backend = "duckdb", verbose = TRUE)
-
-# Pure-R path (can be slower for large cities)
-# hex_sp_r <- hex_cnefe_counts(code_muni = 3550308, h3_resolution = 9, backend = "r", verbose = TRUE)
+# Producing CNEFE counts
+hex_sp <- cnefe_counts(
+  code_muni = 3550308,
+  h3_resolution = 9,
+  verbose = TRUE
+  )
 ```
 
-You can visualize the spatial distribution of private households
-(`addr_type1`) with `ggplot2`:
+Below we plot the count of private households (`addr_type1`) per
+hexagon:
 
 ``` r
+# Plotting private households (addr_type1) for São Paulo
 ggplot(hex_sp) +
   geom_sf(aes(fill = addr_type1), color = NA) +
-  scale_fill_viridis_c(option = "magma", trans = "sqrt") +
+  scale_fill_viridis_c(option = "magma") +
   coord_sf() +
   labs(
     fill = "Count",
     title = "Private households (addr_type1)",
     subtitle = "São Paulo (IBGE 3550308), H3 resolution 9"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  )
 ```
 
-![](reference/figures/README-unnamed-chunk-8-1.png)
+![](reference/figures/README-unnamed-chunk-9-1.png)
 
-## Land-use mix indicators with `compute_lumi()`
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
+also supports `polygon_type = "user"` to aggregate counts to custom
+polygons instead of H3 hexagons. See the [cnefe_counts
+article](https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.html)
+for details.
 
-The
+## Land-use mix indices with `compute_lumi()`
+
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
-function computes land-use mix indicators on an H3 hexagonal grid at any
-user-defined resolution for any Brazilian municipality covered by the
-2022 CNEFE dataset ([Pedreira Junior et al.,
-2025](https://engrxiv.org/preprint/view/5975/version/7846)). Internally,
-it: (i) reads and preprocesses address points from CNEFE; (ii) assigns
-each point to an H3 cell; (iii) aggregates residential and
-non-residential addresses per hexagon; and (iv) computes the following
-indicators:
+computes land-use mix indicators on spatial units for any municipality
+covered by the 2022 CNEFE dataset ([Pedreira Junior et al.,
+2025](https://engrxiv.org/preprint/view/5975/version/7846)). Available
+indicators include the Entropy Index (`ei`), the Herfindahl-Hirschman
+Index (`hhi`), the Balance Index (`bal`), the Index of Concentration at
+Extremes (`ice`), an adapted HHI (`hhi_adp`), and the Bidirectional
+Global-centered Balance Index (`bgbi`).
 
-- `p_res`: proportion of residential addresses in each hexagon.
-- `ei`: Entropy Index (EI), ranging from 0 (single use) to 1 (maximum
-  mix), with the maximum attained at `p_res` = 0.5.
-- `hhi`: Herfindahl–Hirschman Index (HHI), ranging from 0.5 (maximum mix
-  at `p_res` = 0.5) to 1 (single use).
-- `bal`: Balance Index (BAL), ranging from 0 (single use) to 1 (maximum
-  balance), where balance is defined relative to the citywide
-  residential proportion (i.e., the maximum occurs when `p_res` equals
-  the citywide residential share).
-- `hhi_adp`: adapted HHI, which adds directionality and takes values in
-  \[-1, 1\], where negative values indicate non-residential dominance
-  and positive values indicate residential dominance (0 indicates a
-  50/50 split).
-- `bgbi`: Bidirectional Global-centered Balance Index (BGBI), which
-  measures the deviation of the local residential share (`p_res`) from
-  the citywide residential proportion, also in \[-1, 1\].
-
-### Choosing a backend (performance)
-
-Like `hex_cnefe_counts()`,
-[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
-supports a `backend` argument. Below is an example for Fortaleza (IBGE
-code 2304400) at H3 resolution 8:
+Below is an example for Fortaleza at H3 resolution 8:
 
 ``` r
 library(cnefetools)
 library(sf)
 library(ggplot2)
-library(dplyr)
 
-# Compute land use mix indicators (recommended for large cities)
-lumi_for <- compute_lumi(code_muni = 2304400, h3_resolution = 8, backend = "duckdb", verbose = TRUE)
+# Computing land use mix indices
+lumi_ftl <- compute_lumi(
+  code_muni = 2304400,
+  h3_resolution = 8,
+  verbose = TRUE
+  )
 ```
 
-You can visualize the spatial distribution of the BGBI indicator with
-`ggplot2`:
+Below we plot the Bidirectional Global-centered Balance Index (BGBI),
+where positive values indicate residential dominance and negative values
+indicate non-residential dominance:
 
 ``` r
-ggplot(lumi_for) +
+# Plotting the BGBI index
+ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
-  scale_fill_viridis_c(option = "plasma") +
+  scale_fill_distiller(
+    type = "div",
+    palette = "RdBu",
+    direction = 1
+  ) +
   coord_sf() +
   labs(
     fill = "BGBI",
     title = "Bidirectional Global-centered Balance Index (BGBI)",
     subtitle = "Fortaleza (IBGE 2304400), H3 resolution 8"
   ) +
-  theme_minimal()
+  theme_minimal()+
+  theme(
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  )
 ```
 
-![](reference/figures/README-unnamed-chunk-10-1.png)
+![](reference/figures/README-unnamed-chunk-11-1.png)
 
-## Dasymetric interpolation from census tracts to H3 with `tracts_to_h3()`
+[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
+also supports `polygon_type = "user"` to compute indices on custom
+polygons. See the [compute_lumi
+article](https://pedreirajr.github.io/cnefetools/articles/compute_lumi.html)
+for details.
 
-[`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_h3.md)
-implements a dasymetric interpolation workflow that transfers census
-tract totals to address-level points (CNEFE), and then aggregates the
-allocated values to an H3 grid.
-
-### What the function does
-
-1.  **Prepare inputs in DuckDB**
-    - Downloads (once) and caches a UF-specific Parquet file with 2022
-      census tract geometries and tract-level aggregates.
-    - Reads CNEFE points for the requested municipality (from the cached
-      municipal ZIP).
-    - Builds tract geometries (`MULTIPOLYGON`) and point geometries from
-      coordinates.
-2.  **Stage 1: census tracts to CNEFE points**
-    - Spatially assigns each CNEFE point to a census tract.
-    - For each tract and dwelling type, computes how many eligible
-      dwellings exist in the tract and allocates tract totals across
-      points.
-3.  **Stage 2: CNEFE points to H3**
-    - Assigns each point to an H3 cell at the chosen resolution and sums
-      allocated values per cell.
-    - Builds an H3 hexagon `sf` layer and joins the aggregated values.
-
-The output is an `sf` object (CRS 4326) with one row per H3 hexagon,
-`id_hex`, and the interpolated variables you requested.
-
-### Variables available for interpolation
-
-At the moment,
-[`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_h3.md)
-can interpolate the variables below (all sourced from tract-level
-aggregates), by choosing which ones to compute via the `vars` argument:
-
-- `n_inhab_p`: total population in **private households** (domicílios
-  particulares);
-
-- `n_inhab_c`: total population in **collective households** (domicílios
-  coletivos);
-
-- `n_resp`: number of household heads (*Pessoas responsáveis*);
-
-- Sex totals: `male` (total male population) and `female` (total female
-  population);
-
-- Age groups : `age_0_4`, `age_5_9`, `age_10_14`, `age_15_19` -
-  `age_20_24`, `age_25_29`, `age_30_39`, `age_40_49`, `age_50_59`,
-  `age_60_69` and `age_70m` (70+);
-
-- Income: `avg_inc_resp`: average income of the responsible person (mean
-  at tract level).
-
-#### Allocation rules (important)
-
-- For **count-type totals** (population by sex/age, `n_resp`, and the
-  population totals):
-  - values are allocated across **private household points** within each
-    tract when private dwellings exist;
-  - if a tract has **no private dwellings**, the value is allocated
-    across **collective household points** (if any);
-  - if a tract has **no eligible dwellings** (or the tract total is
-    `NA`), that tract total is **not allocated**, and it is reported in
-    the diagnostics.
-- For `avg_inc_resp`:
-  - the tract value is assigned directly to each eligible dwelling point
-    (private, or collective only when there are no private dwellings in
-    that tract);
-  - when `avg_inc_resp` is `NA`, the function reports how many tracts
-    had missing values.
-
-### Diagnostics and timing
+## Dasymetric interpolation with `tracts_to_h3()`
 
 [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_h3.md)
-prints an execution timing summary (when `verbose = TRUE`) and may emit
-a warning with a diagnostic report. The diagnostics report includes, for
-each requested variable:
-
-- unallocated tract totals (with the percentage relative to the tract
-  total for that municipality);
-- tracts with `NA` totals;
-- tracts with no eligible dwellings (so nothing could be allocated);
-- unmatched CNEFE points (points that did not fall in any tract).
-
-### Example: Recife (2611606)
+performs a dasymetric interpolation, considering two stages: first,
+census tract totals are allocated to individual CNEFE dwelling points
+inside each tract; then, the allocated values are aggregated to an H3
+grid at the chosen resolution. This leverages the fine-grained spatial
+distribution of addresses in CNEFE to produce more realistic sub-tract
+estimates than simple areal weighting.
 
 ``` r
 library(cnefetools)
-library(dplyr)
 library(ggplot2)
 
-# Interpolate to H3 for Recife at resolution 9
-# Example vars: private-household population and mean income of the responsible person
+# Performing dasymetric interpolation
 rec_hex <- tracts_to_h3(
   code_muni = 2611606,
   h3_resolution = 9,
-  vars = c("n_inhab_p", "avg_inc_resp"),
+  vars = c("pop_ph", "avg_inc_resp"),
   cache = TRUE,
   verbose = TRUE
 )
 ```
 
+The resulting H3 grid can be mapped to visualize the spatial
+distribution of each variable. Below we plot the private-household
+population (`pop_ph`):
+
 ``` r
-# Map private-household population
 ggplot(rec_hex) +
-  geom_sf(aes(fill = n_inhab_p), color = NA) +
-  scale_fill_viridis_c(trans = "sqrt") +
+  geom_sf(aes(fill = pop_ph), color = NA) +
+  scale_fill_viridis_c() +
   coord_sf() +
   labs(
     title = "Dasymetric interpolation to H3 using CNEFE (Recife)",
-    subtitle = "Private-household population (n_inhab_p), H3 resolution 9",
+    subtitle = "Private-household population (pop_ph), H3 resolution 9",
     fill = "Population"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  )
 ```
 
-![](reference/figures/README-unnamed-chunk-12-1.png)
+![](reference/figures/README-unnamed-chunk-13-1.png)
+
+And the average income of the household head (`avg_inc_resp`):
 
 ``` r
-# Map avg income of the household head
 ggplot(rec_hex) +
   geom_sf(aes(fill = avg_inc_resp), color = NA) +
   scale_fill_viridis_c() +
@@ -373,10 +308,108 @@ ggplot(rec_hex) +
     subtitle = "Average income of the responsible person (avg_inc_resp), H3 resolution 9",
     fill = "Income"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  )
 ```
 
-![](reference/figures/README-unnamed-chunk-13-1.png)
+![](reference/figures/README-unnamed-chunk-14-1.png)
+
+The full list of available variables is documented in the
+`tracts_variables_ref` dataset (see
+[`?tracts_variables_ref`](https://pedreirajr.github.io/cnefetools/reference/tracts_variables_ref.md)).
+For allocation rules and diagnostic details, see the [tracts_to
+article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html).
+
+## Dasymetric interpolation with `tracts_to_polygon()`
+
+[`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_polygon.md)
+follows the same two-stage workflow as
+[`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_h3.md),
+but aggregates the allocated values to user-provided polygons
+(e.g. neighborhoods, administrative divisions, or custom areas) instead
+of an H3 grid. Let’s generate the neighborhoods of Recife with the
+[`read_neighborhood()`](https://ipeagit.github.io/geobr/reference/read_neighborhood.html)
+function from the `geobr` package and interpolate the average income of
+household heads per neighborhood:
+
+``` r
+library(geobr)
+
+# Reading neighborhoods from geobr package
+rec_nei <- read_neighborhood(year = 2022, simplified = F, showProgress = F) |>
+  filter(name_muni == 'Recife')
+
+# Dasymetric interpolation to neighborhoods
+rec_poly <- tracts_to_polygon(
+  code_muni = 2611606,
+  polygon = rec_nei,
+  vars = c("pop_ph", "avg_inc_resp"),
+  verbose = F
+)
+```
+
+Below we plot the interpolated average income of the household head
+(`avg_inc_resp`) at the neighborhood level:
+
+``` r
+# Plotting variables at the neighborhood level
+ggplot(rec_poly) +
+  geom_sf(aes(fill = avg_inc_resp), color = NA) +
+  scale_fill_viridis_c() +
+  coord_sf() +
+  labs(
+    title = "Dasymetric interpolation to neighborhoods using CNEFE (Recife)",
+    subtitle = "Average income of the responsible person (avg_inc_resp)",
+    fill = "Income"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  )
+```
+
+![](reference/figures/README-unnamed-chunk-16-1.png)
+
+See the [tracts_to
+article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html)
+for details.
+
+## DuckDB-powered spatial operations
+
+Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as
+its default backend to perform spatial operations efficiently, with
+speedups of 5–40x over pure-R code depending on the number of address
+points and the size of the spatial units. This is made possible by three
+DuckDB extensions:
+
+- [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
+  performs spatial joins (e.g., point-in-polygon) in SQL, used when
+  aggregating to user-provided polygons or performing dasymetric
+  interpolation.
+- [**zipfs**](https://duckdb.org/community_extensions/extensions/zipfs):
+  reads CSV files directly from cached ZIP archives, avoiding the need
+  to extract files to disk.
+- [**h3**](https://duckdb.org/community_extensions/extensions/h3):
+  assigns geographic coordinates to [H3 hexagonal
+  grid](https://h3geo.org/) cells entirely inside DuckDB.
+
+The R package [**duckspatial**](https://cidree.github.io/duckspatial/)
+also bridges `sf` objects and DuckDB’s spatial extension, enabling
+seamless transfers between R and DuckDB.
+
+All extensions are installed and loaded automatically on first use. A
+pure-R fallback (`backend = "r"`) is also available, using `h3jsr` and
+`sf` for the same operations on
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
+and
+[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
+functions (slower, but without the DuckDB dependency).
 
 ## Citation
 
@@ -386,18 +419,3 @@ preprint:
 > Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 > *Measuring land use mix with address-level census data* (2025).
 > engrXiv. <https://engrxiv.org/preprint/view/5975>
-
-## Roadmap
-
-The current version focuses on efficient download, caching, and reading
-of municipality-level CNEFE files, plus scalable H3-based analytics
-(counts, land-use mix, and tract-to-hex dasymetric interpolation).
-
-Planned next steps include:
-
-- Expanding the set of tract-level variables available for dasymetric
-  interpolation.
-- More diagnostics and summary helpers (for example, returning a
-  diagnostics object as an attribute).
-- Support alternative aggregate data sources and target geographic
-  output (other than H3), when available.

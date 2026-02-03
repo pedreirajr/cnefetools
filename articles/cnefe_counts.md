@@ -1,4 +1,4 @@
-# Intra-urban analysis with cnefe_counts()
+# Aggregating CNEFE address counts
 
 In February 2024, IBGE released CNEFE data from the 2022 Census showing
 that Brazil has more religious temples (579,800) than educational
@@ -92,13 +92,13 @@ poa_hex_counts <- cnefe_counts(
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
 #> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-✔ Step 1/3 (CNEFE ZIP ready) [192ms]
+✔ Step 1/3 (CNEFE ZIP ready) [163ms]
 #> 
 #> ℹ Step 2/3: Building full H3 grid over municipality boundary...
-#> ✔ Step 2/3 (H3 grid built) [3.4s]
+#> ✔ Step 2/3 (H3 grid built) [4.6s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [1.8s]
+#> ✔ Step 3/3 (Addresses counted) [3.8s]
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -185,13 +185,13 @@ poa_neigh_counts <- cnefe_counts(
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 #> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
-✔ Step 1/2 (Data and polygon ready) [230ms]
+✔ Step 1/2 (Data and polygon ready) [694ms]
 #> 
 #> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
-#> ✔ Step 2/2 (Addresses counted) [3.4s]
+#> ✔ Step 2/2 (Addresses counted) [3.1s]
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 26 fields

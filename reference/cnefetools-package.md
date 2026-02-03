@@ -20,10 +20,12 @@ Useful links:
 
 **Maintainer**: Jorge Ubirajara Pedreira Junior
 <jorge.ubirajara@ufba.br>
-([ORCID](https://orcid.org/0000-0002-8243-5395))
+([ORCID](https://orcid.org/0000-0002-8243-5395)) \[copyright holder\]
+
+Authors:
+
+- Bruno Mioto <brunomioto97@gmail.com>
 
 Other contributors:
-
-- Bruno Mioto <brunomioto97@gmail.com> \[contributor\]
 
 - Kaio Cunha Pedreira <kaiocp7@gmail.com> \[contributor\]

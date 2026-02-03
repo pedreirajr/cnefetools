@@ -1,13 +1,18 @@
 # Articles
 
-### All vignettes
+### Articles
 
-- [Intra-urban analysis with
-  cnefe_counts()](https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.md):
-- [Comparing land use mix indices with
-  compute_lumi()](https://pedreirajr.github.io/cnefetools/articles/compute_lumi.md):
-- [FAQ](https://pedreirajr.github.io/cnefetools/articles/faq.md):
-- [Exploring CNEFE address
+- [Reading and exploring CNEFE
   data](https://pedreirajr.github.io/cnefetools/articles/read_cnefe.md):
-- [Dasymetric interpolation with tracts_to\_\*
-  functions](https://pedreirajr.github.io/cnefetools/articles/tracts_to.md):
+- [Aggregating CNEFE address
+  counts](https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.md):
+- [Computing land-use mix indices with CNEFE
+  data](https://pedreirajr.github.io/cnefetools/articles/compute_lumi.md):
+- [Dasymetric interpolation using CNEFE
+  addresses](https://pedreirajr.github.io/cnefetools/articles/tracts_to.md):
+
+### Other
+
+- [Performance benchmark: DuckDB vs pure-R
+  backends](https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.md):
+- [FAQ](https://pedreirajr.github.io/cnefetools/articles/faq.md):
