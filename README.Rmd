@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 # cnefetools: Tools for working with Brazilian CNEFE address data  <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.svg" align="right" height="150" alt="cnefetools website" /></a>
 
 
-[![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
 **{cnefetools}** provides helper functions to efficiently work with the 2022 Brazilian National Address File for Statistical Purposes (*Cadastro Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level dataset released by the Brazilian Institute of Geography and Statistics (*Instituto Brasileiro de Geografia e Estatística*, IBGE).
 
@@ -299,9 +299,9 @@ See the [tracts_to article](https://pedreirajr.github.io/cnefetools/articles/tra
 
 Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as its default backend to perform spatial operations efficiently, with speedups of 5--40x over pure-R code depending on the number of address points and the size of the spatial units. This is made possible by three DuckDB extensions:
 
--   [**spatial**](https://duckdb.org/docs/extensions/spatial/overview.html): performs spatial joins (e.g., point-in-polygon) in SQL, used when aggregating to user-provided polygons or performing dasymetric interpolation.
--   [**zipfs**](https://duckdb.org/docs/extensions/zipfs.html): reads CSV files directly from cached ZIP archives, avoiding the need to extract files to disk.
--   [**h3**](https://duckdb.org/docs/extensions/h3.html): assigns geographic coordinates to [H3 hexagonal grid](https://h3geo.org/) cells entirely inside DuckDB.
+-   [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview): performs spatial joins (e.g., point-in-polygon) in SQL, used when aggregating to user-provided polygons or performing dasymetric interpolation.
+-   [**zipfs**](https://duckdb.org/community_extensions/extensions/zipfs): reads CSV files directly from cached ZIP archives, avoiding the need to extract files to disk.
+-   [**h3**](https://duckdb.org/community_extensions/extensions/h3): assigns geographic coordinates to [H3 hexagonal grid](https://h3geo.org/) cells entirely inside DuckDB.
 
 The R package [**duckspatial**](https://cidree.github.io/duckspatial/) also bridges `sf` objects and DuckDB's spatial extension, enabling seamless transfers between R and DuckDB.
 
