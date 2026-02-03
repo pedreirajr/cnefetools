@@ -7,7 +7,7 @@ MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.or
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 
 **{cnefetools}** provides helper functions to efficiently work with the
-2022 Brazilian National Address File for Statistical Purposes (*Cadastro
+Brazilian National Address File for Statistical Purposes (*Cadastro
 Nacional de Endereços para Fins Estatísticos*, CNEFE), an address-level
 dataset released by the Brazilian Institute of Geography and Statistics
 (*Instituto Brasileiro de Geografia e Estatística*, IBGE).
@@ -173,7 +173,9 @@ ggplot(hex_sp) +
   ) +
   theme_minimal()+
   theme(
-    plot.title.position = "plot"
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8)
   )
 ```
 
@@ -232,7 +234,9 @@ ggplot(lumi_ftl) +
   ) +
   theme_minimal()+
   theme(
-    plot.title.position = "plot"
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8)
   )
 ```
 
@@ -284,7 +288,9 @@ ggplot(rec_hex) +
   ) +
   theme_minimal() +
   theme(
-    plot.title.position = "plot"
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8)
   )
 ```
 
@@ -304,7 +310,9 @@ ggplot(rec_hex) +
   ) +
   theme_minimal() +
   theme(
-    plot.title.position = "plot"
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8)
   )
 ```
 
@@ -360,7 +368,9 @@ ggplot(rec_poly) +
   ) +
   theme_minimal() +
   theme(
-    plot.title.position = "plot"
+    plot.title.position = "plot",
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8)
   )
 ```
 
