@@ -99,11 +99,7 @@
 #' @keywords internal
 #' @noRd
 .cnefe_cache_dir <- function() {
-  cache_dir <- tools::R_user_dir("cnefetools", which = "cache")
-  if (!dir.exists(cache_dir)) {
-    dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-  }
-  cache_dir
+  tools::R_user_dir("cnefetools", which = "cache")
 }
 
 
@@ -404,11 +400,7 @@
 #' @keywords internal
 #' @noRd
 .sc_cache_dir <- function() {
-  dir <- file.path(.cnefe_cache_dir(), "sc_assets")
-  if (!dir.exists(dir)) {
-    dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  }
-  dir
+  file.path(.cnefe_cache_dir(), "sc_assets")
 }
 
 #' @keywords internal
