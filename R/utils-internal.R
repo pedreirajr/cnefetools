@@ -141,6 +141,9 @@
 
   if (isTRUE(cache)) {
     cache_dir <- .cnefe_cache_dir()
+    if (!dir.exists(cache_dir)) {
+      dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+    }
     zip_path <- file.path(cache_dir, basename(url))
     cleanup_zip <- FALSE
   } else {
