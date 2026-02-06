@@ -168,7 +168,13 @@ tracts_to_h3 <- function(
                               'print_progress_bar' = FALSE
                             ))
 
-      duckspatial::ddbs_load(con)
+      tryCatch(
+        duckspatial::ddbs_load(con),
+        error = function(e) {
+          duckspatial::ddbs_install(con)
+          duckspatial::ddbs_load(con)
+        }
+      )
       .duckdb_load_ext(con, "zipfs")
       .duckdb_load_ext(con, "h3")
     }, type = "message"),
