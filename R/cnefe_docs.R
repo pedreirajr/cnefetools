@@ -7,10 +7,8 @@
 #'
 #' @return Invisibly, the path to the Excel file inside the installed package.
 #'
-#' @examples
-#' \dontrun{
+#' @examplesIf interactive()
 #' cnefe_dictionary()
-#' }
 #'
 #' @export
 cnefe_dictionary <- function(year = 2022) {
@@ -42,10 +40,8 @@ cnefe_dictionary <- function(year = 2022) {
 #'
 #' @return Invisibly, the path to the PDF file inside the installed package.
 #'
-#' @examples
-#' \dontrun{
+#' @examplesIf interactive()
 #' cnefe_doc()
-#' }
 #'
 #' @export
 cnefe_doc <- function(year = 2022) {
