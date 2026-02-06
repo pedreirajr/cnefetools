@@ -43,9 +43,12 @@ Allocation rules:
 \itemize{
 \item \code{pop_ph} is allocated only to private dwellings.
 \item \code{pop_ch} is allocated only to collective dwellings.
-\item All other sum-like variables are allocated to private dwellings when the tract has any;
-if the tract has zero private dwellings but has collective dwellings, they are allocated to collective.
-\item \code{avg_inc_resp} is assigned (not split) to each eligible dwelling point using the same eligibility rule.
+\item \code{n_resp} is allocated only to private dwellings (same rule as \code{pop_ph}).
+\item Demographic variables (\code{male}, \code{female}, \verb{age_*}, \verb{race_*}) are allocated
+to private dwellings when the tract has any; if the tract has zero private
+dwellings but has collective dwellings, they are allocated to collective.
+\item \code{avg_inc_resp} is assigned (not split) to each private dwelling point;
+tracts with no private dwellings receive no allocation.
 }}
 
 \item{cache}{Logical. Whether to use the existing package cache for assets and CNEFE zips.}
