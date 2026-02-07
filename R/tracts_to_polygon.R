@@ -54,18 +54,16 @@
 #' \donttest{
 #' # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries
-#' try({
-#'   library(geobr)
-#'   nei_ldf <- subset(
-#'     read_neighborhood(year = 2022),
-#'     code_muni == 2919207
-#'   )
-#'   poly_pop <- tracts_to_polygon(
-#'     code_muni = 2919207,
-#'     polygon = nei_ldf,
-#'     vars = c("pop_ph", "pop_ch")
-#'   )
-#' })
+#' library(geobr)
+#' nei_ldf <- subset(
+#'   read_neighborhood(year = 2022),
+#'   code_muni == 2919207
+#' )
+#' poly_pop <- tracts_to_polygon(
+#'   code_muni = 2919207,
+#'   polygon = nei_ldf,
+#'   vars = c("pop_ph", "pop_ch")
+#' )
 #' }
 #'
 #' @export

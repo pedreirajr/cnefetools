@@ -69,13 +69,11 @@ The function uses DuckDB with the spatial and H3 extensions for the heavy work.
 }
 \examples{
 \donttest{
-try({
-  # Interpolate population to H3 hexagons
-  hex_pop <- tracts_to_h3(
-    code_muni = 2929057,
-    vars = c("pop_ph", "pop_ch")
-  )
-})
+# Interpolate population to H3 hexagons
+hex_pop <- tracts_to_h3(
+  code_muni = 2929057,
+  vars = c("pop_ph", "pop_ch")
+)
 }
 
 }

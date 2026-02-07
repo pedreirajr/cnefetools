@@ -81,18 +81,16 @@ hex_counts <- cnefe_counts(code_muni = 2929057)
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries
-try({
-  library(geobr)
-  nei_ldf <- subset(
-    read_neighborhood(year = 2022),
-    code_muni == 2919207
-  )
-  hex_counts <- cnefe_counts(
-    code_muni = 2919207,
-    polygon_type = "user",
-    polygon = nei_ldf
-  )
-})
+library(geobr)
+nei_ldf <- subset(
+  read_neighborhood(year = 2022),
+  code_muni == 2919207
+)
+hex_counts <- cnefe_counts(
+  code_muni = 2919207,
+  polygon_type = "user",
+  polygon = nei_ldf
+)
 }
 
 }
