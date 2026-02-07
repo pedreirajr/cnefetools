@@ -66,20 +66,22 @@
 #' @examples
 #' \donttest{
 #' # Compute land-use mix indices on H3 hexagons
-#' lumi <- compute_lumi(code_muni = 2929057)
+#' try(lumi <- compute_lumi(code_muni = 2929057))
 #'
 #' # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries
-#' library(geobr)
-#' nei_ldf <- subset(
-#'   read_neighborhood(year = 2022),
-#'   code_muni == 2919207
-#' )
-#' lumi_poly <- compute_lumi(
-#'   code_muni = 2919207,
-#'   polygon_type = "user",
-#'   polygon = nei_ldf
-#' )
+#' try({
+#'   library(geobr)
+#'   nei_ldf <- subset(
+#'     read_neighborhood(year = 2022),
+#'     code_muni == 2919207
+#'   )
+#'   lumi_poly <- compute_lumi(
+#'     code_muni = 2919207,
+#'     polygon_type = "user",
+#'     polygon = nei_ldf
+#'   )
+#' })
 #' }
 #'
 #' @export
