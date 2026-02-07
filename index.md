@@ -384,9 +384,9 @@ for details.
 
 Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as
 its default backend to perform spatial operations efficiently, with
-speedups of 5–40x over pure-R code depending on the number of address
-points and the size of the spatial units. This is made possible by three
-DuckDB extensions:
+speedups of up to 20x over pure-R code depending on the number of
+address points and the size of the spatial units. This is made possible
+by three DuckDB extensions:
 
 - [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
   performs spatial joins (e.g., point-in-polygon) in SQL, used when

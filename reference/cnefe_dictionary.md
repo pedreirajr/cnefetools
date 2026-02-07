@@ -22,7 +22,7 @@ Invisibly, the path to the Excel file inside the installed package.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+if (FALSE) { # interactive()
 cnefe_dictionary()
-} # }
+}
 ```

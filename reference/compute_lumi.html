@@ -162,9 +162,21 @@ https://doi.org/10.1016/j.compenvurbsys.2013.08.001</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># Compute land-use mix indices on H3 hexagons</span></span></span>
 <span class="r-in"><span><span class="va">lumi</span> <span class="op">&lt;-</span> <span class="fu">compute_lumi</span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">2929057</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Processing municipality code <span style="color: #0000BB;">2929057</span>...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring ZIP and inspecting archive...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring ZIP and inspecting archive...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (CNEFE ZIP ready) <span style="color: #B2B2B2;">[10ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per H3 cell...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (Addresses counted) <span style="color: #B2B2B2;">[224ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Building grid and computing LUMI...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Land use mix indices computed) <span style="color: #B2B2B2;">[157ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)</span></span></span>
 <span class="r-in"><span><span class="co"># Using geobr to download neighborhood boundaries</span></span></span>
@@ -173,12 +185,32 @@ https://doi.org/10.1016/j.compenvurbsys.2013.08.001</p>
 <span class="r-in"><span>  <span class="fu"><a href="https://ipeagit.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  <span class="va">code_muni</span> <span class="op">==</span> <span class="fl">2919207</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Using year/date 2022</span>
 <span class="r-in"><span><span class="va">lumi_poly</span> <span class="op">&lt;-</span> <span class="fu">compute_lumi</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  code_muni <span class="op">=</span> <span class="fl">2919207</span>,</span></span>
 <span class="r-in"><span>  polygon_type <span class="op">=</span> <span class="st">"user"</span>,</span></span>
 <span class="r-in"><span>  polygon <span class="op">=</span> <span class="va">nei_ldf</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Processing municipality code <span style="color: #0000BB;">2919207</span>...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring data and preparing polygon...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring data and preparing polygon...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (Data and polygon ready) <span style="color: #B2B2B2;">[21ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per polygon...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Table &lt;user_polygons&gt; dropped</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per polygon...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Table user_polygons successfully imported</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per polygon...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (Addresses counted) <span style="color: #B2B2B2;">[1.1s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Computing land use mix indices...</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Polygon coverage: <span style="color: #0000BB;">"99.7%"</span> of CNEFE points captured.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">111103</span> of <span style="color: #0000BB;">111385</span> points are within the provided polygon.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">282</span> points fell outside the polygon and were not counted.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Land use mix indices computed) <span style="color: #B2B2B2;">[47ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
