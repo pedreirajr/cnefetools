@@ -4,9 +4,9 @@
 \name{cnefetools-package}
 \alias{cnefetools}
 \alias{cnefetools-package}
-\title{cnefetools: Tools for Working with Brazilian CNEFE 2022 Address Data}
+\title{cnefetools: Access and Analysis of Brazilian CNEFE Address Data}
 \description{
-Provides helper functions to work with the Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) from the 2022 Brazilian census. The initial version focuses on efficiently downloading, caching, and reading municipality-level CNEFE CSV files into Arrow tables for downstream analysis.
+Download, cache and read municipality-level address data from the Cadastro Nacional de Enderecos para Fins Estatisticos (CNEFE) of the 2022 Brazilian Census, published by the Instituto Brasileiro de Geografia e Estatistica (IBGE) \url{https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/}. Beyond data access, provides spatial aggregation of addresses, computation of land-use mix indices, and dasymetric interpolation of census tract variables using CNEFE dwelling points as ancillary data. Results can be produced on 'H3' hexagonal grids or user-supplied polygons, and heavy operations leverage a 'DuckDB' backend with extensions for fast, in-process execution.
 }
 \seealso{
 Useful links:

@@ -17,8 +17,7 @@ Opens the bundled PDF methodological document in the system's
 default PDF viewer.
 }
 \examples{
-\dontrun{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 cnefe_doc()
-}
-
+\dontshow{\}) # examplesIf}
 }

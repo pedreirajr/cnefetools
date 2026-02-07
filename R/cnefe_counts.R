@@ -47,7 +47,7 @@
 #' - `addr_type8`: Religious establishment (Estabelecimento religioso)
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Count addresses per H3 hexagon (resolution 9)
 #' hex_counts <- cnefe_counts(code_muni = 2929057)
 #'
@@ -596,7 +596,7 @@ g., 4674, 31983) or a CRS object."
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
   .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-  .duckdb_ensure_extension(con, "spatial", verbose = verbose)
+  .duckdb_ensure_extension(con, "spatial", repo = NULL, verbose = verbose)
 
   zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
   uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
@@ -797,6 +797,8 @@ g., 4674, 31983) or a CRS object."
   repo = "community",
   verbose = TRUE
 ) {
+  # repo = NULL means core extension (no FROM clause needed)
+
   info <- tryCatch(
     DBI::dbGetQuery(
       con,
@@ -842,10 +844,11 @@ g., 4674, 31983) or a CRS object."
   # if (verbose) {
   #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
   # }
-  DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-  # if (verbose) {
-  #   message("DuckDB: loading extension '", ext, "'...")
-  # }
+  if (is.null(repo)) {
+    DBI::dbExecute(con, sprintf("INSTALL %s;", ext))
+  } else {
+    DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
+  }
   DBI::dbExecute(con, sprintf("LOAD %s;", ext))
 
   invisible(TRUE)

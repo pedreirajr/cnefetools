@@ -75,7 +75,7 @@ The counts in the columns \code{addr_type1} to \code{addr_type8} correspond to:
 }
 }
 \examples{
-\dontrun{
+\donttest{
 # Count addresses per H3 hexagon (resolution 9)
 hex_counts <- cnefe_counts(code_muni = 2929057)
 

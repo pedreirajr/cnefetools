@@ -17,8 +17,7 @@ Opens the bundled Excel data dictionary in the system's default
 spreadsheet viewer (e.g., Excel, LibreOffice).
 }
 \examples{
-\dontrun{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 cnefe_dictionary()
-}
-
+\dontshow{\}) # examplesIf}
 }

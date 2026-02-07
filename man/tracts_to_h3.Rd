@@ -43,9 +43,12 @@ Allocation rules:
 \itemize{
 \item \code{pop_ph} is allocated only to private dwellings.
 \item \code{pop_ch} is allocated only to collective dwellings.
-\item All other sum-like variables are allocated to private dwellings when the tract has any;
-if the tract has zero private dwellings but has collective dwellings, they are allocated to collective.
-\item \code{avg_inc_resp} is assigned (not split) to each eligible dwelling point using the same eligibility rule.
+\item \code{n_resp} is allocated only to private dwellings (same rule as \code{pop_ph}).
+\item Demographic variables (\code{male}, \code{female}, \verb{age_*}, \verb{race_*}) are allocated
+to private dwellings when the tract has any; if the tract has zero private
+dwellings but has collective dwellings, they are allocated to collective.
+\item \code{avg_inc_resp} is assigned (not split) to each private dwelling point;
+tracts with no private dwellings receive no allocation.
 }}
 
 \item{cache}{Logical. Whether to use the existing package cache for assets and CNEFE zips.}
@@ -65,7 +68,7 @@ An \code{sf} object (CRS 4326) with an H3 grid and the requested interpolated va
 The function uses DuckDB with the spatial and H3 extensions for the heavy work.
 }
 \examples{
-\dontrun{
+\donttest{
 # Interpolate population to H3 hexagons
 hex_pop <- tracts_to_h3(
   code_muni = 2929057,

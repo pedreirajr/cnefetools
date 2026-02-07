@@ -64,7 +64,7 @@
 #' https://doi.org/10.1016/j.compenvurbsys.2013.08.001
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Compute land-use mix indices on H3 hexagons
 #' lumi <- compute_lumi(code_muni = 2929057)
 #'
@@ -721,7 +721,7 @@ compute_lumi <- function(
       )
 
       .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-      .duckdb_ensure_extension(con, "spatial", verbose = verbose)
+      .duckdb_ensure_extension(con, "spatial", repo = NULL, verbose = verbose)
 
       zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
       uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)

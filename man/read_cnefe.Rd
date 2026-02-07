@@ -62,7 +62,7 @@ removed when the function exits.
 }
 
 \examples{
-\dontrun{
+\donttest{
 # Read CNEFE data as an Arrow table
 cnefe <- read_cnefe(code_muni = 2929057)
 

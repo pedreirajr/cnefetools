@@ -33,9 +33,12 @@
 #'   Allocation rules:
 #'   - `pop_ph` is allocated only to private dwellings.
 #'   - `pop_ch` is allocated only to collective dwellings.
-#'   - All other sum-like variables are allocated to private dwellings when the tract has any;
-#'     if the tract has zero private dwellings but has collective dwellings, they are allocated to collective.
-#'   - `avg_inc_resp` is assigned (not split) to each eligible dwelling point using the same eligibility rule.
+#'   - `n_resp` is allocated only to private dwellings (same rule as `pop_ph`).
+#'   - Demographic variables (`male`, `female`, `age_*`, `race_*`) are allocated
+#'     to private dwellings when the tract has any; if the tract has zero private
+#'     dwellings but has collective dwellings, they are allocated to collective.
+#'   - `avg_inc_resp` is assigned (not split) to each private dwelling point;
+#'     tracts with no private dwellings receive no allocation.
 #'
 #' @param crs_output The CRS for the output object. Default is `NULL`, which uses
 #'   the original CRS of the `polygon` argument. Can be an EPSG code (e.g., 4326,
@@ -48,7 +51,7 @@
 #'   (or `crs_output` if specified).
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries
 #' library(geobr)
@@ -263,7 +266,13 @@ cnefe_index <- .get_cnefe_index(year)
         )
       )
 
-      duckspatial::ddbs_load(con)
+      tryCatch(
+        duckspatial::ddbs_load(con),
+        error = function(e) {
+          duckspatial::ddbs_install(con)
+          duckspatial::ddbs_load(con)
+        }
+      )
       .duckdb_load_ext(con, "zipfs")
     }, type = "message"),
     type = "output"
@@ -439,15 +448,25 @@ cnefe_index <- .get_cnefe_index(year)
         alloc_exprs,
         "
         CASE
-          WHEN (CASE
-                  WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
-                  WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
-                  ELSE FALSE
-                END)
+          WHEN p.COD_ESPECIE = 1
            AND s.avg_inc_resp IS NOT NULL
+           AND s.n_dom_p > 0
           THEN CAST(s.avg_inc_resp AS DOUBLE)
           ELSE NULL
         END AS avg_inc_resp_pt
+      "
+      )
+    } else if (v == "n_resp") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.n_resp IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.n_resp AS DOUBLE) / s.n_dom_p
+          ELSE NULL
+        END AS n_resp_pt
       "
       )
     } else if (v == "pop_ph") {
@@ -741,12 +760,7 @@ cnefe_index <- .get_cnefe_index(year)
       SELECT COUNT(*) AS n
       FROM cnefe_sc p
       JOIN sc_muni_w_dom s USING (code_tract)
-      WHERE
-        (CASE
-           WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
-           WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
-           ELSE FALSE
-         END);
+      WHERE p.COD_ESPECIE = 1 AND s.n_dom_p > 0;
     "
     )$n[1]
 
@@ -826,14 +840,18 @@ cnefe_index <- .get_cnefe_index(year)
 
   no_elig <- character(0)
   for (v in totals_vars) {
-    if (v == "pop_ph") {
+    if (v %in% c("pop_ph", "n_resp")) {
       n0 <- DBI::dbGetQuery(
         con,
-        "
+        sprintf(
+          "
       SELECT COUNT(*) AS n
       FROM sc_muni_w_dom
-      WHERE pop_ph IS NOT NULL AND pop_ph > 0 AND n_dom_p = 0;
-    "
+      WHERE %s IS NOT NULL AND %s > 0 AND n_dom_p = 0;
+    ",
+          v,
+          v
+        )
       )$n[1]
     } else if (v == "pop_ch") {
       n0 <- DBI::dbGetQuery(

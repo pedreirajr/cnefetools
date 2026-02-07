@@ -306,7 +306,7 @@ See the [tracts_to article](https://pedreirajr.github.io/cnefetools/articles/tra
 
 ## DuckDB-powered spatial operations
 
-Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as its default backend to perform spatial operations efficiently, with speedups of 5--40x over pure-R code depending on the number of address points and the size of the spatial units. This is made possible by three DuckDB extensions:
+Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as its default backend to perform spatial operations efficiently, with speedups of up to 20x over pure-R code depending on the number of address points and the size of the spatial units. This is made possible by three DuckDB extensions:
 
 -   [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview): performs spatial joins (e.g., point-in-polygon) in SQL, used when aggregating to user-provided polygons or performing dasymetric interpolation.
 -   [**zipfs**](https://duckdb.org/community_extensions/extensions/zipfs): reads CSV files directly from cached ZIP archives, avoiding the need to extract files to disk.
