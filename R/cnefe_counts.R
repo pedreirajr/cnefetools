@@ -49,7 +49,7 @@
 #' @examples
 #' \donttest{
 #' # Count addresses per H3 hexagon (resolution 9)
-#' try(hex_counts <- cnefe_counts(code_muni = 2929057))
+#' hex_counts <- cnefe_counts(code_muni = 2929057)
 #'
 #' # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries
