@@ -121,10 +121,10 @@ lumi <- compute_lumi(code_muni = 2929057)
 #> ✔ Step 1/3 (CNEFE ZIP ready) [10ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [224ms]
+#> ✔ Step 2/3 (Addresses counted) [222ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [157ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [153ms]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -157,7 +157,7 @@ lumi_poly <- compute_lumi(
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
 #> ℹ 111103 of 111385 points are within the provided polygon.
 #> ℹ 282 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [47ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [48ms]
 #> 
 # }
 ```

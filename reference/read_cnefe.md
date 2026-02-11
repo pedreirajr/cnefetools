@@ -95,7 +95,7 @@ cnefe <- read_cnefe(code_muni = 2929057)
 #> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [176ms]
+#> ✔ Reading CSV with arrow [178ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
@@ -107,14 +107,14 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
 #> ✔ Listing file contents [6ms]
 #> 
 #> ℹ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv
-#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [13ms]
+#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
 #> 
 #> ℹ Reading CSV with arrow
 #> ✔ Reading CSV with arrow [14ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object
-#> ✔ Converting to sf object [21ms]
+#> ✔ Converting to sf object [20ms]
 #> 
 #> ✔ Created <sf> object with 9354 points (CRS: EPSG:4674)
 # }
