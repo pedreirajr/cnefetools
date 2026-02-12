@@ -1,4 +1,5 @@
 testthat::test_that("tracts_to_h3 returns an sf object with requested variables", {
+  testthat::skip_on_cran()
   testthat::skip_if_not_installed("duckdb")
   testthat::skip_if_not_installed("duckspatial")
   testthat::skip_if_not_installed("h3jsr")
