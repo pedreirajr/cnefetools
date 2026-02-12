@@ -1,6 +1,6 @@
 Package: cnefetools
 Title: Access and Analysis of Brazilian CNEFE Address Data
-Version: 0.2.0
+Version: 0.2.1
 Authors@R:
     c(
       person(given = "Jorge Ubirajara", family = "Pedreira Junior",
@@ -45,7 +45,7 @@ Suggests:
 Config/testthat/edition: 3
 Depends: 
     R (>= 4.1.0)
-Imports: 
+Imports:
     arrow,
     dplyr,
     sf,
