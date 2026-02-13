@@ -134,28 +134,28 @@ poly_pop <- tracts_to_polygon(
 #> ℹ Step 1/6: aligning CRS...
 #> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
 #> ℹ Step 1/6: aligning CRS...
-#> ✔ Step 1/6 (CRS alignment) [36ms]
+#> ✔ Step 1/6 (CRS alignment) [41ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
 #> ✔ Spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [272ms]
+#> ✔ Step 2/6 (DuckDB ready) [267ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 #> ℹ Using cached file: sc_29.parquet
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ✔ Step 3/6 (Tracts ready) [180ms]
+#> ✔ Step 3/6 (Tracts ready) [204ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 4/6 (CNEFE points ready) [819ms]
+#> ✔ Step 4/6 (CNEFE points ready) [816ms]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [1s]
+#> ✔ Step 5/6 (Join and allocation) [1.1s]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [25ms]
+#> ✔ Step 6/6 (Polygon aggregation) [27ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
