@@ -77,16 +77,12 @@ tracts_to_h3(
 
   - `pop_ch` is allocated only to collective dwellings.
 
-  - `n_resp` is allocated only to private dwellings (same rule as
-    `pop_ph`).
+  - All other sum-like variables are allocated to private dwellings when
+    the tract has any; if the tract has zero private dwellings but has
+    collective dwellings, they are allocated to collective.
 
-  - Demographic variables (`male`, `female`, `age_*`, `race_*`) are
-    allocated to private dwellings when the tract has any; if the tract
-    has zero private dwellings but has collective dwellings, they are
-    allocated to collective.
-
-  - `avg_inc_resp` is assigned (not split) to each private dwelling
-    point; tracts with no private dwellings receive no allocation.
+  - `avg_inc_resp` is assigned (not split) to each eligible dwelling
+    point using the same eligibility rule.
 
 - cache:
 
@@ -105,54 +101,11 @@ variables.
 ## Examples
 
 ``` r
-# \donttest{
+if (FALSE) { # \dontrun{
 # Interpolate population to H3 hexagons
 hex_pop <- tracts_to_h3(
   code_muni = 2929057,
   vars = c("pop_ph", "pop_ch")
 )
-#> ℹ Processing code 2929057
-#> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-#> ✔ Spatial extension loaded
-#> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 1/6 (DuckDB ready) [267ms]
-#> 
-#> ℹ Step 2/6: preparing census tracts in DuckDB...
-#> ℹ Downloading sc_29.parquet from GitHub release
-#> ℹ Downloading "sc_29.parquet"...
-#> ℹ Downloading sc_29.parquet from GitHub release
-#>   |                                                                              |                                                                      |   0%  |                                                                              |                                                                      |   1%  |                                                                              |=                                                                     |   1%  |                                                                              |=                                                                     |   2%  |                                                                              |==                                                                    |   2%  |                                                                              |==                                                                    |   3%  |                                                                              |===                                                                   |   4%  |                                                                              |====                                                                  |   5%  |                                                                              |=====                                                                 |   7%  |                                                                              |======                                                                |   9%  |                                                                              |=======                                                               |  10%  |                                                                              |========                                                              |  11%  |                                                                              |=========                                                             |  12%  |                                                                              |==========                                                            |  14%  |                                                                              |==========                                                            |  15%  |                                                                              |===========                                                           |  16%  |                                                                              |=============                                                         |  18%  |                                                                              |==============                                                        |  20%  |                                                                              |===============                                                       |  21%  |                                                                              |================                                                      |  23%  |                                                                              |=================                                                     |  25%  |                                                                              |==================                                                    |  25%  |                                                                              |===================                                                   |  27%  |                                                                              |====================                                                  |  28%  |                                                                              |====================                                                  |  29%  |                                                                              |=====================                                                 |  31%  |                                                                              |======================                                                |  31%  |                                                                              |======================                                                |  32%  |                                                                              |=======================                                               |  32%  |                                                                              |=======================                                               |  33%  |                                                                              |========================                                              |  35%  |                                                                              |=========================                                             |  36%  |                                                                              |==========================                                            |  37%  |                                                                              |===========================                                           |  39%  |                                                                              |============================                                          |  40%  |                                                                              |=============================                                         |  41%  |                                                                              |==============================                                        |  43%  |                                                                              |===============================                                       |  45%  |                                                                              |=================================                                     |  47%  |                                                                              |==================================                                    |  48%  |                                                                              |===================================                                   |  50%  |                                                                              |===================================                                   |  51%  |                                                                              |=====================================                                 |  52%  |                                                                              |======================================                                |  54%  |                                                                              |=======================================                               |  55%  |                                                                              |========================================                              |  57%  |                                                                              |=========================================                             |  58%  |                                                                              |=========================================                             |  59%  |                                                                              |==========================================                            |  60%  |                                                                              |===========================================                           |  61%  |                                                                              |============================================                          |  62%  |                                                                              |=============================================                         |  64%  |                                                                              |=============================================                         |  65%  |                                                                              |==============================================                        |  66%  |                                                                              |================================================                      |  68%  |                                                                              |=================================================                     |  69%  |                                                                              |==================================================                    |  71%  |                                                                              |===================================================                   |  73%  |                                                                              |====================================================                  |  75%  |                                                                              |=====================================================                 |  75%  |                                                                              |======================================================                |  77%  |                                                                              |=======================================================               |  78%  |                                                                              |========================================================              |  79%  |                                                                              |========================================================              |  80%  |                                                                              |========================================================              |  81%  |                                                                              |==========================================================            |  82%  |                                                                              |===========================================================           |  84%  |                                                                              |===========================================================           |  85%  |                                                                              |============================================================          |  86%  |                                                                              |=============================================================         |  88%  |                                                                              |===============================================================       |  89%  |                                                                              |===============================================================       |  90%  |                                                                              |================================================================      |  92%  |                                                                              |=================================================================     |  93%  |                                                                              |==================================================================    |  95%  |                                                                              |====================================================================  |  96%  |                                                                              |====================================================================  |  97%  |                                                                              |===================================================================== |  98%  |                                                                              |======================================================================| 100%
-#> ✔ Downloading sc_29.parquet from GitHub release [1.6s]
-#> 
-#> ℹ Step 2/6: preparing census tracts in DuckDB...
-#> ✔ Step 2/6 (Tracts ready) [1.8s]
-#> 
-#> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip
-#> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 3/6 (CNEFE points ready) [280ms]
-#> 
-#> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (Join and allocation) [82ms]
-#> 
-#> ℹ Step 5/6: aggregating allocated values to H3 cells...
-#> ✔ Step 5/6 (Hex aggregation) [15ms]
-#> 
-#> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [159ms]
-#> 
-#> 
-#> ── Dasymetric interpolation diagnostics ──
-#> 
-#> ── Stage 1: Tracts → CNEFE points 
-#> ! Unallocated total for population from private households (pop_ph): 0 of 15183
-#>   (0.00%)
-#> ! Unallocated total for population from collective households (pop_ch): 0 of 0
-#>   (0.00%)
-#> ! Unmatched CNEFE points (no tract): 4 of 6949 points (0.06% of total points)
-#> ! Tracts with NA totals: pop_ch in 1 of 40 tracts (2.50% of total tracts)
-#> 
-#> ── Stage 2: CNEFE points → H3 hexagons 
-#> ℹ CNEFE points mapped to H3 cells: 6945 of 6945 allocated points (100.00%)
-# }
+} # }
 ```

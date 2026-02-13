@@ -80,16 +80,12 @@ tracts_to_polygon(
 
   - `pop_ch` is allocated only to collective dwellings.
 
-  - `n_resp` is allocated only to private dwellings (same rule as
-    `pop_ph`).
+  - All other sum-like variables are allocated to private dwellings when
+    the tract has any; if the tract has zero private dwellings but has
+    collective dwellings, they are allocated to collective.
 
-  - Demographic variables (`male`, `female`, `age_*`, `race_*`) are
-    allocated to private dwellings when the tract has any; if the tract
-    has zero private dwellings but has collective dwellings, they are
-    allocated to collective.
-
-  - `avg_inc_resp` is assigned (not split) to each private dwelling
-    point; tracts with no private dwellings receive no allocation.
+  - `avg_inc_resp` is assigned (not split) to each eligible dwelling
+    point using the same eligibility rule.
 
 - crs_output:
 
@@ -116,7 +112,7 @@ CRS (or `crs_output` if specified).
 ## Examples
 
 ``` r
-# \donttest{
+if (FALSE) { # \dontrun{
 # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries
 library(geobr)
@@ -124,53 +120,10 @@ nei_ldf <- subset(
   read_neighborhood(year = 2022),
   code_muni == 2919207
 )
-#> Using year/date 2022
 poly_pop <- tracts_to_polygon(
   code_muni = 2919207,
   polygon = nei_ldf,
   vars = c("pop_ph", "pop_ch")
 )
-#> ℹ Processing municipality code 2919207...
-#> ℹ Step 1/6: aligning CRS...
-#> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
-#> ℹ Step 1/6: aligning CRS...
-#> ✔ Step 1/6 (CRS alignment) [35ms]
-#> 
-#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Spatial extension loaded
-#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [257ms]
-#> 
-#> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ℹ Using cached file: sc_29.parquet
-#> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ✔ Step 3/6 (Tracts ready) [252ms]
-#> 
-#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
-#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 4/6 (CNEFE points ready) [820ms]
-#> 
-#> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [1s]
-#> 
-#> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [25ms]
-#> 
-#> 
-#> ── Dasymetric interpolation diagnostics ──
-#> 
-#> ── Stage 1: Tracts → CNEFE points 
-#> ! Unallocated total for population from private households (pop_ph): 0 of
-#>   202583 (0.00%)
-#> ! Unallocated total for population from collective households (pop_ch): 0 of
-#>   317 (0.00%)
-#> ! Unmatched CNEFE points (no tract): 186 of 95739 points (0.19% of total
-#>   points)
-#> ! Tracts with NA totals: pop_ph in 4 of 354 tracts (1.13% of total tracts);
-#>   pop_ch in 6 of 354 tracts (1.69% of total tracts).
-#> 
-#> ── Stage 2: CNEFE points → Polygons 
-#> ℹ Polygon coverage: 95488 of 95553 allocated points captured (99.93%)
-# }
+} # }
 ```
