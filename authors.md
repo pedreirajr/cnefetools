@@ -12,16 +12,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedreirajr/cnefetools/blob/v0.2.0/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedreirajr/cnefetools/blob/v0.2.1/DESCRIPTION)
 
 Pedreira Junior J, Mioto B (2026). *cnefetools: Access and Analysis of
-Brazilian CNEFE Address Data*. R package version 0.2.0,
+Brazilian CNEFE Address Data*. R package version 0.2.1,
 <https://github.com/pedreirajr/cnefetools>.
 
     @Manual{,
       title = {cnefetools: Access and Analysis of Brazilian CNEFE Address Data},
       author = {Jorge Ubirajara {Pedreira Junior} and Bruno Mioto},
       year = {2026},
-      note = {R package version 0.2.0},
+      note = {R package version 0.2.1},
       url = {https://github.com/pedreirajr/cnefetools},
     }

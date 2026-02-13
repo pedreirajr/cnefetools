@@ -1,5 +1,7 @@
 # cnefetools: Tools for working with Brazilian CNEFE address data
 
+[![CRAN
+downloads](https://cranlogs.r-pkg.org/badges/grand-total/cnefetools)](https://CRAN.R-project.org/package=cnefetools)
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -384,9 +386,9 @@ for details.
 
 Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as
 its default backend to perform spatial operations efficiently, with
-speedups of 5–40x over pure-R code depending on the number of address
-points and the size of the spatial units. This is made possible by three
-DuckDB extensions:
+speedups of up to 20x over pure-R code depending on the number of
+address points and the size of the spatial units. This is made possible
+by three DuckDB extensions:
 
 - [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
   performs spatial joins (e.g., point-in-polygon) in SQL, used when

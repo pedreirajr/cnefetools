@@ -83,11 +83,39 @@ removed when the function exits.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
 # Read CNEFE data as an Arrow table
 cnefe <- read_cnefe(code_muni = 2929057)
+#> ℹ Processing municipality code 2929057
+#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip
+#> ℹ Listing file contents
+#> ✔ Listing file contents [6ms]
+#> 
+#> ℹ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv
+#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
+#> 
+#> ℹ Reading CSV with arrow
+#> ✔ Reading CSV with arrow [170ms]
+#> 
+#> ✔ Read 9354 records from CNEFE
 
 # Read as an sf spatial object
 cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
-} # }
+#> ℹ Processing municipality code 2929057
+#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip
+#> ℹ Listing file contents
+#> ✔ Listing file contents [6ms]
+#> 
+#> ℹ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv
+#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
+#> 
+#> ℹ Reading CSV with arrow
+#> ✔ Reading CSV with arrow [13ms]
+#> 
+#> ✔ Read 9354 records from CNEFE
+#> ℹ Converting to sf object
+#> ✔ Converting to sf object [21ms]
+#> 
+#> ✔ Created <sf> object with 9354 points (CRS: EPSG:4674)
+# }
 ```
