@@ -1,8 +1,8 @@
 
 # cnefetools: Tools for working with Brazilian CNEFE address data <a href="https://pedreirajr.github.io/cnefetools/"><img src="man/figures/logo.svg" alt="cnefetools website" align="right" height="150"/></a>
 
-<!--[![CRAN status](https://www.r-pkg.org/badges/version/cnefetools)](https://CRAN.R-project.org/package=cnefetools) -->
-
+[![CRAN
+status](https://www.r-pkg.org/badges/version/cnefetools)](https://CRAN.R-project.org/package=cnefetools)
 [![CRAN
 downloads](https://cranlogs.r-pkg.org/badges/grand-total/cnefetools)](https://CRAN.R-project.org/package=cnefetools)
 [![R-CMD-check](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml)
