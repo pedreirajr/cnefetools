@@ -121,10 +121,10 @@ lumi <- compute_lumi(code_muni = 2929057)
 #> ✔ Step 1/3 (CNEFE ZIP ready) [10ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [221ms]
+#> ✔ Step 2/3 (Addresses counted) [222ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [154ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [158ms]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
