@@ -1,3 +1,15 @@
+# cnefetools 0.2.2
+
+* Resubmission to CRAN following package removal on 2026-02-26.
+* No functional changes. Retains the `skip_on_cran()` fix from v0.2.1 for the
+  DuckDB spatial extension segfault on r-devel-linux-x86_64-fedora-clang.
+
+# cnefetools 0.2.1
+
+* Adds `skip_on_cran()` to `test-tracts_to_h3.R` to prevent a segfault on
+  r-devel-linux-x86_64-fedora-clang caused by an ABI mismatch between the
+  clang-compiled DuckDB binary and GCC-built spatial extension (duckdb/duckdb-r#1107).
+
 # cnefetools 0.2.0
 
 ## New functions
