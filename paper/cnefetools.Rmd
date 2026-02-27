@@ -29,7 +29,10 @@ author:
     orcid: 0000-0002-8243-5395
     email: jorge.ubirajara@ufba.br
   - name: Bruno Mioto
-    affiliation: ~
+    affiliation: Universidade Estadual de Maringá
+    address:
+    - Departamento de Estatística
+    - Maringá, Paraná, Brazil
     email: brunomioto97@gmail.com
 date: "`r Sys.Date()`"
 date_received: ~
@@ -464,25 +467,26 @@ The DuckDB backend derives its performance advantage from three sources:
    SIMD-accelerated operations, making aggregation and joins over tens of
    millions of rows substantially faster than row-oriented R operations.
 
-Table \ref{tab:bench} summarises the results of a benchmark comparing the two
-backends for `cnefe_counts()` at H3 resolution 8, run on a machine with a
-14-core Intel Core i9-13900H (2.60 GHz), 32 GB RAM, Windows 11, R 4.3.2, and
-DuckDB 1.4.1. Results shown are wall-clock elapsed times in seconds and the
-corresponding speedup factor.
+Tables \ref{tab:bench-cities} and \ref{tab:bench-res} summarise the results
+of a benchmark run on a machine with a 14-core Intel Core i9-13900H (2.60 GHz),
+32 GB RAM, Windows 11, R 4.3.2, and DuckDB 1.4.1. Figure \ref{fig:bench}
+shows the same data as bar charts.
 
 \begin{table}[ht]
 \centering
-\caption{DuckDB speedup for \texttt{cnefe\_counts()} at H3 resolution 8.
+\caption{Elapsed time (s) and DuckDB speedup for \texttt{cnefe\_counts()} at
+         H3 resolution 8, by municipality size.
          Hardware: Intel Core i9-13900H (14 cores, 2.60 GHz), 32 GB RAM,
          Windows 11, R 4.3.2, DuckDB 1.4.1.}
-\label{tab:bench}
-\begin{tabular}{llr}
+\label{tab:bench-cities}
+\begin{tabular}{llrrr}
 \hline
-\textbf{Municipality} & \textbf{Approx.\ addresses} & \textbf{DuckDB speedup} \\
+\textbf{Municipality} & \textbf{Approx.\ addresses} &
+  \textbf{Pure-R (s)} & \textbf{DuckDB (s)} & \textbf{Speedup} \\
 \hline
-Vitória da Conquista-BA & 200,000 & 1.53$\times$ \\
-Curitiba-PR             & 900,000 & 4.40$\times$ \\
-São Paulo-SP            & 5,700,000 & 13.08$\times$ \\
+Vitória da Conquista-BA & 200,000   & \textit{TODO} & \textit{TODO} & 1.53$\times$ \\
+Curitiba-PR             & 900,000   & \textit{TODO} & \textit{TODO} & 4.40$\times$ \\
+São Paulo-SP            & 5,700,000 & \textit{TODO} & \textit{TODO} & 13.08$\times$ \\
 \hline
 \end{tabular}
 
@@ -490,20 +494,50 @@ São Paulo-SP            & 5,700,000 & 13.08$\times$ \\
 \footnotesize \textit{Note}: For small municipalities, DuckDB incurs a fixed
 initialisation overhead (connection setup, extension loading, data
 materialisation) that can offset its query-execution gains, making the
-pure-R backend competitive or faster.
+pure-R backend competitive or faster. Fill in elapsed times (s) from the
+bar chart labels in the \texttt{bench\_duckdb} vignette.
 \end{table}
 
+\begin{table}[ht]
+\centering
+\caption{Elapsed time (s) and DuckDB speedup for \texttt{cnefe\_counts()} on
+         Curitiba-PR, by H3 resolution.}
+\label{tab:bench-res}
+\begin{tabular}{lrrrr}
+\hline
+\textbf{H3 resolution} & \textbf{Avg.\ hex area (m²)} &
+  \textbf{Pure-R (s)} & \textbf{DuckDB (s)} & \textbf{Speedup} \\
+\hline
+7  & 5,161,293 & \textit{TODO} & \textit{TODO} & 5.38$\times$ \\
+9  &   105,333 & \textit{TODO} & \textit{TODO} & 3.46$\times$ \\
+11 &     2,150 & \textit{TODO} & \textit{TODO} & 1.31$\times$ \\
+\hline
+\end{tabular}
+
+\smallskip
+\footnotesize At finer resolutions, H3 indexing dominates both backends
+equally, reducing the relative DuckDB advantage. Fill in elapsed times (s)
+from the bar chart labels in the \texttt{bench\_duckdb} vignette.
+\end{table}
+
+```{r fig-bench, echo=FALSE, out.width="100%", fig.cap="Performance comparison between DuckDB and pure-R backends. Top: elapsed time by municipality (H3 resolution 8). Bottom: elapsed time by H3 resolution (Curitiba-PR). DuckDB speedup is highest for large municipalities at coarser resolutions.\\label{fig:bench}"}
+# TODO: Place the two benchmark bar charts (exported from the bench_duckdb
+# vignette) as a combined figure in paper/figures/bench-backends.png,
+# then change eval=FALSE to eval=TRUE below.
+
+# knitr::include_graphics("figures/bench-backends.png")
+```
+
 The speedup increases with the number of address points. For large cities such
-as São Paulo, the DuckDB backend reduces processing from minutes to seconds.
-For small municipalities (fewer than $\sim$50,000 addresses), the DuckDB
-initialisation overhead can dominate and the two backends are comparable in
-elapsed time.
+as São Paulo, the DuckDB backend reduces processing from several minutes to
+seconds. For small municipalities (fewer than $\sim$50,000 addresses), the
+DuckDB initialisation overhead can dominate and the two backends are comparable
+in elapsed time.
 
 The H3 resolution has a smaller effect on relative performance. At finer
 resolutions (e.g., resolution 11, average hexagon area $\approx$2,150 m²),
-more cells need to be indexed and joined, but the bottleneck shifts to the H3
-C library underlying both backends, so the relative DuckDB advantage
-diminishes.
+the H3 point-to-cell indexing step dominates total runtime in both backends
+equally, shrinking the relative DuckDB advantage.
 
 The pure-R backend (`backend = "r"`) remains available for environments where
 DuckDB extensions cannot be installed, such as some restricted computing
@@ -559,6 +593,13 @@ The result is an `sf` polygon object with one row per H3 hexagon that
 intersects the municipality boundary. Hexagons with no CNEFE points receive
 zero counts.
 
+```{r fig-hex-counts, echo=FALSE, out.width="100%", fig.cap="Address counts per H3 hexagon (resolution 9) for Vitória da Conquista-BA. Each cell is shaded by the number of private households (\\texttt{addr\\_type1}).\\label{fig:hex-counts}"}
+# TODO: Export the hex_counts map (e.g. using mapview or ggplot2) and save it
+# as paper/figures/hex-counts.png, then change eval=FALSE to eval=TRUE below.
+
+# knitr::include_graphics("figures/hex-counts.png")
+```
+
 ### Step 3 — Land-use Mix: BGBI Map
 
 ```{r worked-step3, cache=TRUE}
@@ -584,6 +625,13 @@ local residential share close to the citywide average; positive values
 (blue) indicate predominantly residential cells; negative values (red)
 indicate non-residential concentrations such as commercial districts,
 industrial zones, or institutional campuses.
+
+```{r fig-bgbi, echo=FALSE, out.width="100%", fig.cap="BGBI map for Vitória da Conquista-BA at H3 resolution 9. Blue cells have a local residential share above the citywide average; red cells are dominated by non-residential uses.\\label{fig:bgbi}"}
+# TODO: Export a static BGBI map (e.g. using ggplot2 + scale_fill_distiller) and
+# save it as paper/figures/bgbi-vca.png, then change eval=FALSE to eval=TRUE below.
+
+# knitr::include_graphics("figures/bgbi-vca.png")
+```
 
 ### Step 4 — Dasymetric Interpolation of Census Population
 
@@ -613,6 +661,13 @@ CNEFE dwelling points and, subsequently, to H3 hexagons. In practice, the
 vast majority of tract-level values are allocated, with minor losses due to
 CNEFE points that fall outside all census tract polygons (typically fewer
 than 1--2% of points).
+
+```{r fig-pop, echo=FALSE, out.width="100%", fig.cap="Dasymetric population estimate per H3 hexagon (resolution 9) for Vitória da Conquista-BA, derived from the 2022 census tract totals via CNEFE dwelling points as ancillary data. Square-root colour scale.\\label{fig:pop}"}
+# TODO: Export the population map (ggplot2 + scale_fill_viridis_c) and save it
+# as paper/figures/pop-vca.png, then change eval=FALSE to eval=TRUE below.
+
+# knitr::include_graphics("figures/pop-vca.png")
+```
 
 ### Extending to Multiple Municipalities
 
