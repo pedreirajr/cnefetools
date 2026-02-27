@@ -2,23 +2,19 @@
 title: "cnefetools: Access and Analysis of Brazilian CNEFE Address Data in R"
 abstract: >
   The \pkg{cnefetools} package provides programmatic access to the 2022
-  Brazilian National Address File for Statistical Purposes (CNEFE), the
-  geocoded address register of approximately 100 million addresses enumerated
-  during the 2022 Brazilian Census and published by the Instituto Brasileiro de
-  Geografia e Estatística (IBGE). The package offers four main capabilities:
-  downloading and caching CNEFE data for any of Brazil's approximately 5,570
-  municipalities; aggregating address counts to H3 hexagonal grids or
-  user-supplied polygons; computing a suite of land-use mix indices---including
-  the Bidirectional Global-centered Balance Index (BGBI) first introduced by
-  \citet{pedreirajr2025}---directly from the geocoded address data; and
-  performing dasymetric interpolation of census tract variables to finer
-  spatial units using CNEFE dwelling points as ancillary data. A dual-backend
-  design uses DuckDB as the default engine, reading CSV data directly from
-  cached ZIP archives through the \emph{zipfs} extension and performing spatial
-  joins and H3 cell assignment in-process, with speedups of up to 13$\times$
-  over a pure-R fallback for large cities (H3 resolution 8 benchmark). A
-  persistent user-level cache eliminates repeated downloads across R sessions.
-  The package is available on CRAN.
+  Brazilian National Address File for Statistical Purposes (CNEFE), a geocoded
+  register of approximately 100 million addresses published by the Instituto
+  Brasileiro de Geografia e Estatística (IBGE) alongside the 2022 Brazilian
+  Census. The package offers four capabilities: downloading and caching CNEFE
+  data for any of Brazil's 5,570 municipalities; aggregating address counts to
+  H3 hexagonal grids or user-supplied polygons; computing six land-use mix
+  indices---including the novel Bidirectional Global-centered Balance Index
+  (BGBI) of \citet{pedreirajr2025}---from the geocoded data; and dasymetric
+  interpolation of census tract variables using CNEFE dwelling points as
+  ancillary data. A dual DuckDB/R backend reads CSV files directly from cached
+  ZIP archives, achieving speedups of up to 13$\times$ over pure R for large
+  cities. The package is available on CRAN.
+draft: true
 author:
   - name: Jorge Ubirajara Pedreira Junior
     affiliation: Universidade Federal da Bahia
@@ -36,10 +32,9 @@ author:
     email: brunomioto97@gmail.com
 date: "`r Sys.Date()`"
 date_received: ~
-description: |
-  Access and analysis tools for the 2022 Brazilian CNEFE address data.
+type: package
 output:
-  rjtools::rjournal_web_article:
+  rjtools::rjournal_article:
     self_contained: yes
     toc: no
 bibliography: cnefetools.bib
@@ -56,7 +51,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Introduction
+# Introduction
 
 Address-level data are a fundamental resource for urban and regional
 analysis. They enable fine-grained characterisation of land use, population
@@ -116,7 +111,7 @@ detail. Section 5 reports performance benchmarks. Section 6 presents a
 complete worked example. Section 7 summarises contributions and discusses
 future directions.
 
-## The CNEFE Dataset
+# The CNEFE Dataset
 
 The Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) is the
 geocoded address register produced alongside the 2022 Brazilian Census. It was
@@ -125,7 +120,7 @@ records not only residences but also non-residential address points including
 commercial establishments, agricultural units, schools, health facilities, and
 religious institutions \citep{ibge_cnefe2022}.
 
-### Structure
+## Structure
 
 Each CNEFE record corresponds to a single address point. The dataset uses a
 fixed schema of 34 columns. The most analytically relevant columns are:
@@ -162,7 +157,7 @@ fixed schema of 34 columns. The most analytically relevant columns are:
 \end{tabular}
 \end{table}
 
-### Scale and Distribution
+## Scale and Distribution
 
 The CNEFE covers all Brazilian municipalities. The number of address records
 per municipality ranges from a few hundred in small rural municipalities to
@@ -176,7 +171,7 @@ Files are organised hierarchically by Federative Unit (UF) and municipality.
 Each municipality's data are stored as a semicolon-delimited CSV file
 compressed inside a ZIP archive.
 
-### Challenges for Programmatic Use
+## Challenges for Programmatic Use
 
 Working with the CNEFE presents several practical difficulties that
 \pkg{cnefetools} is designed to overcome:
@@ -198,13 +193,13 @@ Working with the CNEFE presents several practical difficulties that
    hexagonal cells or performing point-in-polygon joins with census tract
    geometries is computationally intensive in pure R.
 
-## Package Design
+# Package Design
 
 \pkg{cnefetools} addresses the challenges above through four key design
 decisions: a pre-built URL index, a persistent user-level cache, a dual
 DuckDB/R backend, and a layered set of DuckDB extensions.
 
-### Pre-built Municipality Index
+## Pre-built Municipality Index
 
 The package ships with an internal data frame (`cnefe_index`) that maps
 each of Brazil's approximately 5,570 seven-digit IBGE municipality codes to
@@ -217,7 +212,7 @@ Municipality codes are validated and normalised by the internal helper
 `.normalize_code_muni()`, which accepts integer, character, and numeric inputs
 and checks that the code is a seven-digit IBGE code present in the index.
 
-### Persistent User-level Caching
+## Persistent User-level Caching
 
 ZIP files are cached in the user's application data directory, obtained via
 `tools::R_user_dir("cnefetools", "cache")`. Once a municipality's ZIP file has
@@ -234,7 +229,7 @@ increasing timeout thresholds (300 s, 600 s, and 1,800 s).
 Caching can be disabled with `cache = FALSE`, in which case the ZIP is
 written to a temporary file and removed when the function exits.
 
-### Dual-backend Architecture
+## Dual-backend Architecture
 
 The most computationally intensive operations---assigning millions of
 coordinates to H3 hexagons and performing spatial joins---are available with
@@ -262,7 +257,7 @@ Census tract geometry assets required by `tracts_to_h3()` and
 `tracts_to_polygon()` are stored as Parquet files on GitHub Releases and
 downloaded on-demand with caching via the \CRANpkg{piggyback} package.
 
-### Input Validation
+## Input Validation
 
 All user-facing functions validate their inputs using \CRANpkg{checkmate}
 before any I/O or computation. Municipality codes are normalised and checked
@@ -271,9 +266,9 @@ with `POLYGON` or `MULTIPOLYGON` geometry types, and invalid geometries are
 repaired with `sf::st_make_valid()`. CRS arguments are validated by attempting
 `sf::st_crs()` on the user-supplied value.
 
-## Core Functionality
+# Core Functionality
 
-### `read_cnefe()`: Reading CNEFE Data
+## `read_cnefe()`: Reading CNEFE Data
 
 `read_cnefe()` is the entry point to the package. It downloads (if not cached)
 and reads the CNEFE CSV for a municipality, returning either an
@@ -302,7 +297,7 @@ The function accepts the `year` argument (currently only 2022 is supported),
 `cache` to control ZIP caching, and `verbose` to toggle informative progress
 messages.
 
-### `cnefe_counts()`: Address Counts on Spatial Units
+## `cnefe_counts()`: Address Counts on Spatial Units
 
 `cnefe_counts()` aggregates CNEFE address points to spatial units and returns
 counts of each address type (1 through 8) as columns `addr_type1` to
@@ -342,7 +337,7 @@ The output `sf` object inherits the polygon geometry: H3 hexagons when
 `polygon_type = "hex"`, or the user-supplied polygons (in their original CRS,
 or `crs_output` if specified) when `polygon_type = "user"`.
 
-### `compute_lumi()`: Land-use Mix Indices
+## `compute_lumi()`: Land-use Mix Indices
 
 `compute_lumi()` computes a suite of six land-use mix (LUM) indices from
 CNEFE address data. All indices are based on the local residential share
@@ -401,7 +396,7 @@ The output `sf` object contains columns `id_hex` (or the original polygon
 columns), `p_res`, `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`, and the
 polygon geometry.
 
-### `tracts_to_h3()` and `tracts_to_polygon()`: Dasymetric Interpolation
+## `tracts_to_h3()` and `tracts_to_polygon()`: Dasymetric Interpolation
 
 Census data in Brazil are published at the census tract level
 (*setor censitário*). Census tracts are the smallest geographic unit for
@@ -454,7 +449,7 @@ The set of supported variables is documented in the `tracts_variables_ref`
 reference table shipped with the package, which maps each variable name to the
 official IBGE census tract code and a plain-language description.
 
-## Performance
+# Performance
 
 The DuckDB backend derives its performance advantage from three sources:
 
@@ -543,7 +538,7 @@ The pure-R backend (`backend = "r"`) remains available for environments where
 DuckDB extensions cannot be installed, such as some restricted computing
 clusters. For most users, the default DuckDB backend is recommended.
 
-## Worked Example
+# Worked Example
 
 This section demonstrates a complete end-to-end workflow using
 Vitória da Conquista (IBGE code 2933307), a mid-sized city in the state of
@@ -551,7 +546,7 @@ Bahia with approximately 200,000 CNEFE address points. The workflow illustrates
 all four principal capabilities of \pkg{cnefetools} and runs from scratch
 (without a pre-populated cache) in under ten minutes on a modern laptop.
 
-### Step 1 — Reading CNEFE Data
+## Step 1 — Reading CNEFE Data
 
 ```{r worked-step1, cache=TRUE}
 library(cnefetools)
@@ -573,7 +568,7 @@ reflects the 2022 Census enumeration) and 34 columns. The table can be
 filtered and aggregated using standard `dplyr` verbs before conversion to an
 R data frame.
 
-### Step 2 — Address Counts on H3 Hexagons
+## Step 2 — Address Counts on H3 Hexagons
 
 ```{r worked-step2, cache=TRUE}
 # Aggregate all eight address types to H3 resolution 9 hexagons
@@ -600,7 +595,7 @@ zero counts.
 # knitr::include_graphics("figures/hex-counts.png")
 ```
 
-### Step 3 — Land-use Mix: BGBI Map
+## Step 3 — Land-use Mix: BGBI Map
 
 ```{r worked-step3, cache=TRUE}
 # Compute all six LUM indices on H3 hexagons
@@ -633,7 +628,7 @@ industrial zones, or institutional campuses.
 # knitr::include_graphics("figures/bgbi-vca.png")
 ```
 
-### Step 4 — Dasymetric Interpolation of Census Population
+## Step 4 — Dasymetric Interpolation of Census Population
 
 ```{r worked-step4, cache=TRUE}
 # Interpolate population in private households to H3 hexagons
@@ -669,7 +664,7 @@ than 1--2% of points).
 # knitr::include_graphics("figures/pop-vca.png")
 ```
 
-### Extending to Multiple Municipalities
+## Extending to Multiple Municipalities
 
 The package is designed to be used within iteration workflows. The following
 snippet, adapted from \citet{pedreirajr2026}, shows how to apply
@@ -700,7 +695,7 @@ Because each municipality's ZIP is cached after the first download, re-running
 this workflow (e.g., to add variables) reads from disk and completes in a
 fraction of the original time.
 
-## Summary
+# Summary
 
 \pkg{cnefetools} makes the 2022 Brazilian CNEFE address dataset accessible and
 analytically useful from R. Its principal contributions are:
