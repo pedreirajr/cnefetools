@@ -2,6 +2,8 @@
 
 ## cnefetools 0.2.2
 
+CRAN release: 2026-02-27
+
 - Resubmission to CRAN following package removal on 2026-02-26.
 - No functional changes. Retains the `skip_on_cran()` fix from v0.2.1
   for the DuckDB spatial extension segfault on
