@@ -1,5 +1,7 @@
 ---
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 fontsize: 12pt
 ---
 
