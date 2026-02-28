@@ -1,19 +1,17 @@
 ---
 title: "cnefetools: Access and Analysis of Brazilian CNEFE Address Data in R"
 abstract: >
-  The \pkg{cnefetools} package provides programmatic access to the 2022
+  The \pkg{cnefetools} package provides programmatic access to the
   Brazilian National Address File for Statistical Purposes (CNEFE), a geocoded
-  register of approximately 107 million addresses published by the Instituto
-  Brasileiro de Geografia e Estatística (IBGE) alongside the 2022 Brazilian
-  Census. The package offers four capabilities: downloading and caching CNEFE
+  register of approximately 110 million valid addresses published by the Instituto
+  Brasileiro de Geografia e Estatística (IBGE). The package offers four capabilities: downloading and caching CNEFE
   data for any of Brazil's 5,570 municipalities; aggregating address counts to
-  H3 hexagonal grids or user-supplied polygons; computing six land-use mix
-  indices, including the novel Bidirectional Global-centered Balance Index
-  (BGBI) of @pedreirajr2025, from the geocoded data; and dasymetric
+  H3 hexagonal grids or user-supplied polygons; computing six land use mix
+  indices from the geocoded data; and dasymetric
   interpolation of census tract variables using CNEFE dwelling points as
-  ancillary data. A dual DuckDB/R backend reads CSV files directly from cached
-  ZIP archives, achieving speedups of up to 13$\times$ over pure R for large
-  cities. The package is available on CRAN.
+  ancillary data. The default DuckDB backend reads CSV files directly from
+  cached ZIP archives without prior extraction, achieving speedups of up to
+  13$\times$ over a pure-R fallback for large cities.
 draft: true
 author:
   - name: Jorge Ubirajara Pedreira Junior
@@ -95,17 +93,16 @@ approximately 213 million inhabitants spread across 5,570 municipalities
 Brasileiro de Geografia e Estatística* (IBGE), produced a rich
 by-product: the *Cadastro Nacional de Endereços para Fins Estatísticos*
 (CNEFE, National Address File for Statistical Purposes). This dataset
-records the geocoordinates and functional category of approximately 107
-million addresses across the entire country, making it arguably the most
-comprehensive publicly available geocoded address dataset for any
-country in the Global South.
+records the geocoordinates and functional category of approximately 110
+million addresses across the entire country.
 
 Despite its potential, the CNEFE presents significant barriers to use.
 The data are distributed as individual ZIP-compressed CSV files (one per
-municipality or state) via the IBGE FTP server. Municipal files can be
-as large as 177 MB, the case of São Paulo with more than 5.6 million
-coordinates. Spatial operations on these files (assigning points to grid
-cells, computing land-use mix, or matching them to census tract
+municipality or state) via the IBGE FTP server. Municipal files can reach 177 MB 
+compressed (901 MB uncompressed), as in the case of São Paulo, which contains 
+more than 5.6 million point addresses. 
+Spatial operations on these files (assigning points to grid
+cells, computing land use mix, or matching them to census tract
 polygons) require substantial data engineering. As a result, researchers
 who could benefit from this dataset are often unable to leverage it
 without considerable ad-hoc effort.
@@ -118,19 +115,19 @@ directly from R, with four principal capabilities:
     with transparent caching to avoid repeated downloads.
 2.  **Address counts**: aggregate address points to H3 hexagonal grids
     or user-supplied polygons, returning counts by address type.
-3.  **Land-use mix indices**: compute a suite of six established and
-    novel land-use mix (LUM) indices, including the Bidirectional
-    Global-centered Balance Index (BGBI) of @pedreirajr2025.
+3.  **Land use mix indices**: compute a suite of six established and
+    novel land use mix (LUM) indices.
 4.  **Dasymetric interpolation**: redistribute census tract aggregates
     to any spatial unit using CNEFE dwelling points as ancillary data.
 
-A key technical contribution is a dual-backend architecture in which the
-default DuckDB engine [@duckdb2019] with the support of \pkg{duckdb} and
-\pkg{duckspatial} which reads CSV data directly from cached ZIP
-archives, performs H3 cell assignment and spatial joins in-process, and
-returns results without intermediate file extraction. This design
-achieves speedups of up to 13$\times$ over a pure-R fallback based on
-\CRANpkg{h3jsr} and \CRANpkg{sf} (see Section 5 for benchmarks).
+A key technical contribution is a dual-backend architecture. The default
+DuckDB backend [@duckdb2019], supported by the \pkg{duckdb} R package,
+reads CSV data directly from cached ZIP archives without prior
+extraction, performs H3 cell assignment and spatial joins entirely
+in-process, and returns only the final aggregated result to R. This
+design achieves speedups of up to 13$\times$ over a pure-R fallback
+based on \CRANpkg{h3jsr} and \CRANpkg{sf} (see Section 5 for
+benchmarks).
 
 This paper is organised as follows. Section 2 describes the CNEFE
 dataset and its distribution. Section 3 presents the architectural
@@ -148,6 +145,11 @@ was designed to serve statistical (rather than postal) purposes, and as
 such it records not only residences but also non-residential address
 points including commercial establishments, agricultural units, schools,
 health facilities, and religious institutions [@ibge_cnefe2024].
+Although a CNEFE was produced alongside the 2010 census, the precision
+achieved at that time was limited to the block-face level
+[@ibge_cnefe2024]. \pkg{cnefetools} therefore targets the 2022 edition
+and future censuses, as 2022 is the first to provide address-level
+geocoordinates for the full national register.
 
 During the 2022 census, coordinates were collected by enumerators
 equipped with mobile devices integrating GNSS receivers. Each device was
@@ -159,11 +161,11 @@ coordinates were estimated from block-face geometry, confirmed nearby
 addresses, or the enumerator's recorded position at the time of
 interview. Quality levels were classified by geocoding resolution:
 address, block face, locality, or census tract. Pre-census testing
-measured an average root mean square error (RMSE) of 5.84 m under ideal
-open-sky conditions and 11.71 m in typical collection environments
+measured mean squared error (MSE) of 5.84 m under ideal open-sky
+conditions and 11.71 m in typical collection environments
 [@ibge_cnefe2024].
 
-## Structure
+## Structure, Scale and Distribution
 
 Each CNEFE record corresponds to a single address point. The dataset
 uses a fixed schema of 34 columns. The most analytically relevant
@@ -175,9 +177,9 @@ columns are:
 -   **`COD_ESPECIE`**: an integer code (1--8) identifying the functional
     category of the address, referred to in this paper as the *address
     type*. The eight categories are listed in Table 1.
--   Address description fields: street type (`TIP_LOGR`), street name
-    (`NOM_LOGR`), number (`NUM_SIGLA`), complement, neighbourhood, and
-    postal code (`CEP`).
+-   Address description fields, such as street type (`NOM_TIPO_SEGLOGR`), street
+    name (`NOM_SEGLOGR`), address number (`NUM_ENDERECO`), free-text
+    address description (`DSC_ESTABELECIMENTO`), and postal code (`CEP`).
 
 ```{r tab-especie, echo=FALSE, eval=TRUE}
 knitr::kable(
@@ -202,19 +204,6 @@ knitr::kable(
 )
 ```
 
-Within the universe of constructed addresses, private dwellings (type 1)
-are the most numerous, comprising approximately 90.6 million records
-(81.5% of the total). Collective households (type 2) account for roughly
-104,500 records (0.1%). Among non-residential types, other-purpose
-establishments (type 6) number approximately 11.7 million (10.5%),
-followed by agricultural establishments (type 3) at 4.1 million (3.7%),
-while educational (type 4), health (type 5), and religious
-establishments (type 8) jointly account for approximately 1.1 million
-records (1.0%). Buildings under construction (type 7) number is
-approximately 3.5 million (3.2%).
-
-## Scale and Distribution
-
 The CNEFE covers all Brazilian municipalities. The number of address
 records per municipality ranges from a few hundred in small rural
 municipalities to more than 5.6 million in the city of São Paulo, the
@@ -225,6 +214,17 @@ validated as spatially coherent. More than 110.7 million records
 coordinates, 5.5% with standardised corrections (e.g., apartment units
 sharing the same street number), and 0.7% estimated via spatial
 interpolation.
+
+Within the universe of constructed addresses, private dwellings (`COD_ESPECIE` = 1)
+are the most numerous, comprising approximately 90.6 million records
+(81.5% of the total). Collective households (`COD_ESPECIE` = 2) account for roughly
+104,500 records (0.1%). Among non-residential types, other-purpose
+establishments (`COD_ESPECIE` = 6) number approximately 11.7 million (10.5%),
+followed by agricultural establishments (`COD_ESPECIE` = 3) at 4.1 million (3.7%),
+while educational (`COD_ESPECIE` = 4), health (`COD_ESPECIE` = 5), and religious
+establishments (`COD_ESPECIE` = 8) jointly account for approximately 1.1 million
+records (1.0%). Buildings under construction (`COD_ESPECIE` = 7) were approximately
+3.5 million (3.2%).
 
 The data are distributed by IBGE via an FTP server at
 <https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/>.
@@ -243,15 +243,10 @@ Working with the CNEFE presents several practical difficulties that
     directory (which does not always match standard IBGE name fields),
     and the municipality code.
 
-2.  **Download size**: ZIP files range from a few kilobytes (small rural
-    municipalities) to several hundred megabytes (large cities).
-    Repeated downloads are impractical in interactive workflows.
+2.  **Download size**: while most files are modest, the largest cities produce 
+    ZIP files running into the hundreds of megabytes.
 
-3.  **Parsing**: the CSV files are Latin-1-encoded and
-    semicolon-delimited, and some columns are inconsistently typed
-    across municipalities. Robust parsing requires explicit options.
-
-4.  **Spatial operations at scale**: assigning millions of point
+3.  **Spatial operations at scale**: assigning millions of point
     coordinates to hexagonal cells or performing point-in-polygon joins
     with census tract geometries is computationally intensive in pure R.
 
@@ -292,33 +287,32 @@ written to a temporary file and removed when the function exits.
 
 ## Dual-backend Architecture
 
-The most computationally intensive operations (assigning millions of
-coordinates to H3 hexagons and performing spatial joins) are available
-with two interchangeable backends, selectable via the `backend`
-argument:
+For the computationally intensive operations in `cnefe_counts()` and
+`compute_lumi()`, such as assigning millions of coordinates to H3
+hexagons or user-supplied polygons and performing spatial joins, users can choose between two
+backends via the `backend` argument:
 
--   **`"duckdb"` (default)**: uses an in-memory DuckDB database with
-    three extensions: `zipfs` (to read CSV directly from the cached
-    ZIP), `h3` (for H3 cell assignment entirely in SQL), and `spatial`
-    (for point-in-polygon joins). All computation occurs inside DuckDB
-    and only the final aggregated result is transferred to R.
+-   **`"duckdb"` (default)**: uses the \CRANpkg{duckdb} R package to
+    spin up an in-memory DuckDB database. The `zipfs` extension is
+    always loaded to read CSV data directly from the cached ZIP without
+    decompression. For H3 aggregation, the `h3` extension assigns cell
+    indices entirely in SQL, while for user-provided polygons, the `spatial`
+    extension and the \CRANpkg{duckspatial} R package handle the
+    point-in-polygon join. Only the final aggregated result is
+    transferred to R.
 
--   **`"r"`**: uses \CRANpkg{arrow} to read the CSV, \CRANpkg{h3jsr} to
-    compute H3 cell indices, and \CRANpkg{sf} for spatial joins. This
-    backend is slower but requires no DuckDB extensions beyond the base
-    `duckdb` R package.
+-   **`"r"`**: uses \CRANpkg{arrow} to read the CSV. For H3 aggregation,
+    \CRANpkg{h3jsr} assigns each point to a cell, whereas for
+    user-provided polygons, \CRANpkg{sf} performs the point-in-polygon
+    join. This backend is slower but requires no DuckDB dependency
+    whatsoever.
 
-The DuckDB backend leverages the `zipfs` community extension to read the
-CSV directly from the ZIP archive without decompressing it to disk. This
-is particularly valuable for large municipalities, where extraction
-alone can take several seconds. Extensions are loaded lazily:
-\pkg{cnefetools} checks whether each extension is already installed and
-loaded before attempting installation, so the overhead on repeat calls
-is negligible.
-
-Census tract geometry assets required by `tracts_to_h3()` and
-`tracts_to_polygon()` are stored as Parquet files on GitHub Releases and
-downloaded on-demand with caching via the \CRANpkg{piggyback} package.
+The dasymetric interpolation functions `tracts_to_h3()` and
+`tracts_to_polygon()` do not expose this argument and rely on DuckDB
+exclusively. Additionally, census tract geometry assets required by
+`tracts_to_h3()` and `tracts_to_polygon()` are stored as Parquet files
+on GitHub Releases and downloaded on-demand with caching via the
+\CRANpkg{piggyback} package.
 
 ## Input Validation
 
@@ -342,11 +336,11 @@ cached) and reads the CNEFE CSV for a municipality, returning either an
 library(cnefetools)
 
 # Read as an Arrow table (default; no spatial conversion)
-cnefe <- read_cnefe(code_muni = 2933307)
+cnefe <- read_cnefe(code_muni = 2919207)
 cnefe
 
 # Read as an sf point object with SIRGAS 2000 coordinates (EPSG:4674)
-cnefe_sf <- read_cnefe(code_muni = 2933307, output = "sf")
+cnefe_sf <- read_cnefe(code_muni = 2919207, output = "sf")
 ```
 
 The `output = "arrow"` default (an `arrow::Table`) is preferred for
@@ -360,7 +354,31 @@ coordinates, and constructs an `sf` point object in CRS 4674 (SIRGAS
 
 The function accepts the `year` argument (currently only 2022 is
 supported), `cache` to control ZIP caching, and `verbose` to toggle
-informative progress messages.
+informative progress messages. Figure \@ref(fig:fig-read-cnefe) maps
+the private household addresses for Lauro de Freitas, Bahia.
+
+```{r fig-read-cnefe, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Private household addresses geocoded in Lauro de Freitas, Bahia. Data: IBGE CNEFE 2022.", fig.width=6, fig.height=5, out.width="100%"}
+library(geobr)
+library(ggplot2)
+library(sf)
+library(dplyr)
+
+# Lauro de Freitas boundary
+muni_ldf <- geobr::read_municipality(code_muni = 2919207, year = 2020,
+                                     showProgress = FALSE)
+
+# CNEFE private households only (COD_ESPECIE == 1)
+private <- cnefetools::read_cnefe(
+  code_muni = 2919207, output = "sf", verbose = FALSE
+) |>
+  dplyr::filter(COD_ESPECIE == 1)
+
+ggplot() +
+  geom_sf(data = muni_ldf, fill = "grey95", color = "black", linewidth = 0.7) +
+  geom_sf(data = private, size = 0.05, alpha = 0.2, color = "#2166AC") +
+  theme_void() +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+```
 
 ## Address Counts on Spatial Units: `cnefe_counts()`
 
@@ -371,16 +389,16 @@ returns counts of each address type (1 through 8) as columns
 ```{r counts-hex-example}
 # Count addresses per H3 hexagon at resolution 9
 hex_counts <- cnefe_counts(
-  code_muni = 2933307,
+  code_muni = 2919207,
   h3_resolution = 9
 )
 
 # Count per user-supplied polygon (e.g., neighbourhoods)
 library(geobr)
-nei <- subset(read_neighborhood(year = 2022), code_muni == 2933307)
+nei <- subset(read_neighborhood(year = 2022), code_muni == 2919207)
 
 poly_counts <- cnefe_counts(
-  code_muni   = 2933307,
+  code_muni   = 2919207,
   polygon_type = "user",
   polygon      = nei
 )
@@ -388,10 +406,12 @@ poly_counts <- cnefe_counts(
 
 When `polygon_type = "hex"` (default), the function builds a complete H3
 grid over the municipality boundary using \CRANpkg{geobr} to obtain the
-boundary polygon and \CRANpkg{h3jsr} (or the DuckDB `h3` extension) to
-generate the hexagons. The H3 resolution can be set from 0 (coarse) to
-15 (fine); the default is 9, corresponding to an average hexagon area of
-approximately 105,000 m² and a diameter of roughly 400 m.
+boundary polygon and \CRANpkg{h3jsr} to generate the hexagon geometries.
+The DuckDB `h3` extension is used (when `backend = "duckdb"`) to assign
+CNEFE points to cells in SQL, but the grid itself is always constructed
+via \CRANpkg{h3jsr}. The H3 resolution can be set from 0 (coarse) to 15
+(fine), and the default is 9, corresponding to an average hexagon area of
+approximately 105,000 m².
 
 When `polygon_type = "user"`, the function performs a point-in-polygon
 join between the CNEFE coordinates and the user-supplied `sf` polygon. A
@@ -402,10 +422,64 @@ inside.
 The output `sf` object inherits the polygon geometry: H3 hexagons when
 `polygon_type = "hex"`, or the user-supplied polygons (in their original
 CRS, or `crs_output` if specified) when `polygon_type = "user"`.
+Figure \@ref(fig:fig-counts) illustrates both modes for Lauro de Freitas
+at H3 resolution 8 and at the neighbourhood level.
 
-## Land-use Mix Indices: `compute_lumi()`
+```{r fig-counts, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Private household address counts (\\texttt{addr\\_type1}) aggregated to H3 hexagons at resolution~8 (left) and to neighbourhoods (right) for Lauro de Freitas, Bahia. Colour scale: viridis. Data: IBGE CNEFE 2022.", fig.width=10, fig.height=5, out.width="100%"}
+library(geobr)
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(patchwork)
 
-`compute_lumi()` computes a suite of six land-use mix (LUM) indices from
+# Lauro de Freitas boundary
+muni_ldf <- geobr::read_municipality(code_muni = 2919207, year = 2020,
+                                     showProgress = FALSE)
+
+# Neighbourhoods of Lauro de Freitas
+nei <- geobr::read_neighborhood(year = 2022, showProgress = FALSE) |>
+  dplyr::filter(name_muni == "Lauro de Freitas")
+
+# Address counts per H3 hexagon at resolution 8
+hex8 <- cnefetools::cnefe_counts(
+  code_muni     = 2919207,
+  h3_resolution = 8,
+  verbose       = FALSE
+)
+
+# Address counts per neighbourhood
+poly_counts <- cnefetools::cnefe_counts(
+  code_muni    = 2919207,
+  polygon_type = "user",
+  polygon      = nei,
+  verbose      = FALSE
+)
+
+p1 <- ggplot(hex8) +
+  geom_sf(aes(fill = addr_type1), color = NA) +
+  scale_fill_viridis_c(option = "viridis", name = "Count") +
+  labs(title = "H3 resolution 8") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11),
+        legend.position = "right",
+        plot.background = element_rect(fill = "white", color = NA))
+
+p2 <- ggplot() +
+  geom_sf(data = poly_counts, aes(fill = addr_type1), color = "white",
+          linewidth = 0.2) +
+  scale_fill_viridis_c(option = "viridis", name = "Count") +
+  labs(title = "Neighbourhoods") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11),
+        legend.position = "right",
+        plot.background = element_rect(fill = "white", color = NA))
+
+p1 + p2
+```
+
+## Land use mix Indices: `compute_lumi()`
+
+`compute_lumi()` computes a suite of six land use mix (LUM) indices from
 CNEFE address data. All indices are based on the local residential share
 $p_i = n_{\text{res},i} / n_{\text{tot},i}$, where $n_{\text{res},i}$ is
 the count of type-1 addresses (private households) and
@@ -414,69 +488,124 @@ excluding type 7 (under construction) due to its transitional nature.
 The citywide residential share $P$ is computed from the full
 municipality CNEFE.
 
-The six indices are:
+Table \@ref(tab:lumi-table) summarises the seven output columns. Further 
+methodological details on these indices can be found in @song2013 and 
+@pedreirajr2025.
 
--   **Residential share** (`p_res`): $p_i$, the proportion of addresses
-    that are private households.
--   **Entropy Index** (`ei`) [@song2013]:
-    $\text{EI}_i = -\bigl(p_i \ln p_i + q_i \ln q_i\bigr) / \ln 2$,
-    where $q_i = 1 - p_i$. Ranges from 0 (homogeneous) to 1 (equal
-    split).
--   **Herfindahl-Hirschman Index** (`hhi`):
-    $\text{HHI}_i = p_i^2 + q_i^2$. Ranges from 0.5 (equal split) to 1
-    (homogeneous).
--   **Balance Index** (`bal`) [@booth2001]:
-    $\text{BAL}_i = 1 - |p_i - \frac{P}{1-P} q_i| \,/\, (p_i +
-    \frac{P}{1-P} q_i)$. Measures balance relative to the citywide
-    composition; ranges from 0 to 1.
--   **Index of Concentration at Extremes** (`ice`):
-    $\text{ICE}_i = p_i - q_i$. Ranges from $-1$ (fully non-residential)
-    to $+1$ (fully residential).
--   **Adapted HHI** (`hhi_adp`): a signed version of the scaled HHI,
-    $\text{HHI\_adp}_i = \text{sign}(p_i - q_i) \cdot
-    (\text{HHI}_i - 0.5) / 0.5$.
--   **Bidirectional Global-centered Balance Index** (`bgbi`)
-    [@pedreirajr2025]:
-    $$\text{BGBI}_i = \frac{(2p_i - 1) - (2P - 1)}{1 - (2p_i - 1)(2P - 1)}$$
-    Ranges from $-1$ to $+1$. Positive values indicate that the local
-    residential share exceeds the citywide reference ($p_i > P$);
-    negative values indicate non-residential dominance. Unlike EI and
-    BAL, BGBI is both directional and globally referenced, addressing
-    two key limitations of classical indices.
+| Index | Code | Formula | Range |
+|:------|:-----|:--------|:-----:|
+| Residential share | `p_res` | $p_i$ | $[0,1]$ |
+| Entropy Index [@song2013] | `ei` | $-\,(p_i \ln p_i + q_i \ln q_i)\,/\ln 2$ | $[0,1]$ |
+| Herfindahl-Hirschman Index | `hhi` | $p_i^2 + q_i^2$ | $[0.5,\,1]$ |
+| Balance Index [@booth2001] | `bal` | $1 - \lvert p_i - r\,q_i\rvert\,/\,(p_i + r\,q_i)$ | $[0,1]$ |
+| Index of Concentration at Extremes | `ice` | $p_i - q_i$ | $[-1,+1]$ |
+| Adapted HHI | `hhi_adp` | $\mathrm{sign}(p_i - q_i)\cdot(\mathrm{HHI}_i - 0.5)\,/\,0.5$ | $[-1,+1]$ |
+| BGBI [@pedreirajr2025] | `bgbi` | $[(2p_i-1)-(2P-1)]\,/\,[1-(2p_i-1)(2P-1)]$ | $[-1,+1]$ |
 
-The function interface mirrors `cnefe_counts()`:
+: (\#tab:lumi-table) Land use mix indices returned by `compute_lumi()`. Here $q_i = 1 - p_i$ and $r = P/(1-P)$.
+
+The parameter interface of `compute_lumi()` mirrors that of
+`cnefe_counts()`:
 
 ```{r lumi-example}
-# Compute all six indices on H3 hexagons at resolution 9
-lumi_hex <- compute_lumi(code_muni = 2933307)
+# Compute all indices on H3 hexagons at resolution 9 (default)
+lumi_hex <- compute_lumi(
+  code_muni     = 2919207,
+  year          = 2022,
+  polygon_type  = "hex",
+  h3_resolution = 9,
+  verbose       = TRUE,
+  backend       = "duckdb"
+)
 
 # Compute on user-supplied polygons
 lumi_poly <- compute_lumi(
-  code_muni    = 2933307,
+  code_muni    = 2919207,
+  year         = 2022,
   polygon_type = "user",
-  polygon      = nei
+  polygon      = nei,
+  crs_output   = NULL,
+  verbose      = TRUE,
+  backend      = "duckdb"
 )
 ```
 
 The output `sf` object contains columns `id_hex` (or the original
 polygon columns), `p_res`, `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`,
-and the polygon geometry.
+and the polygon geometry. Figure \@ref(fig:fig-bgbi) maps the BGBI
+index [@pedreirajr2025] for Lauro de Freitas at H3 resolution 8 and
+at the neighbourhood level.
+
+```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index (BGBI; @pedreirajr2025) for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighbourhoods (right). Blue cells indicate a local residential share above the citywide average ($p_i > P$); red cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline. Data: IBGE CNEFE 2022.", fig.width=10, fig.height=5, out.width="100%"}
+library(geobr)
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(patchwork)
+
+# Lauro de Freitas boundary
+muni_ldf <- geobr::read_municipality(code_muni = 2919207, year = 2020,
+                                     showProgress = FALSE)
+
+# Neighbourhoods of Lauro de Freitas
+nei <- geobr::read_neighborhood(year = 2022, showProgress = FALSE) |>
+  dplyr::filter(name_muni == "Lauro de Freitas")
+
+# BGBI per H3 hexagon at resolution 8
+lumi_hex <- cnefetools::compute_lumi(
+  code_muni     = 2919207,
+  h3_resolution = 8,
+  verbose       = FALSE
+)
+
+# BGBI per neighbourhood
+lumi_poly <- cnefetools::compute_lumi(
+  code_muni    = 2919207,
+  polygon_type = "user",
+  polygon      = nei,
+  verbose      = FALSE
+)
+
+p1 <- ggplot(lumi_hex) +
+  geom_sf(aes(fill = bgbi), color = NA) +
+  scale_fill_gradient2(low = "#D6604D", mid = "white", high = "#2166AC",
+                       midpoint = 0, limits = c(-1, 1), name = "BGBI") +
+  labs(title = "H3 resolution 8") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11),
+        legend.position = "right",
+        plot.background = element_rect(fill = "white", color = NA))
+
+p2 <- ggplot() +
+  geom_sf(data = lumi_poly, aes(fill = bgbi), color = "white",
+          linewidth = 0.2) +
+  scale_fill_gradient2(low = "#D6604D", mid = "white", high = "#2166AC",
+                       midpoint = 0, limits = c(-1, 1), name = "BGBI") +
+  labs(title = "Neighbourhoods") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11),
+        legend.position = "right",
+        plot.background = element_rect(fill = "white", color = NA))
+
+p1 + p2
+```
 
 ## Dasymetric Interpolation: `tracts_to_h3()` and `tracts_to_polygon()`
 
-Census data in Brazil are published at the census tract level (*setor
-censitário*). Census tracts are the smallest geographic unit for which
-aggregate statistics are released, typically covering 200--400 private
-households. For many applications, however, the desired spatial unit
-differs from census tracts: researchers may want data on a regular H3
-grid for comparative analyses, or on custom polygons such as traffic
-zones for transportation modelling.
+The 2022 Brazilian Census disseminates questionnaire results
+through multiple geographic products, one of which is the
+*Agregados por Setores Censitários* (aggregates by census tract). A
+census tract (*setor censitário*) is the basic territorial unit of
+census collection and of this particular dissemination product.
+For many applications, however, the desired spatial unit differs from
+census tracts: researchers may want data on a regular H3 grid for
+comparative analyses, or on custom polygons such as traffic zones for
+transportation modelling.
 
 `tracts_to_h3()` and `tracts_to_polygon()` perform dasymetric
-interpolation [@mennis2003] from census tract aggregates to finer
-spatial units, using CNEFE dwelling points as ancillary data. The
-procedure, carried out entirely within DuckDB for efficiency, proceeds
-in four steps:
+interpolation [@mennis2003] from census tract aggregates to user-defined
+spatial units, using CNEFE dwelling points as ancillary data. The core
+computation is carried out within DuckDB for efficiency, in four steps:
 
 1.  **Spatial join (tracts → CNEFE points)**: each CNEFE point (types 1
     and 2 only, private and collective dwellings) is matched to the
@@ -499,14 +628,14 @@ in four steps:
 ```{r tracts-example}
 # Interpolate population in private and collective households to H3 hexagons
 hex_pop <- tracts_to_h3(
-  code_muni    = 2933307,
+  code_muni    = 2919207,
   h3_resolution = 9,
   vars         = c("pop_ph", "pop_ch")
 )
 
 # Interpolate to user-supplied polygons (e.g., traffic zones)
 poly_pop <- tracts_to_polygon(
-  code_muni = 2933307,
+  code_muni = 2919207,
   polygon   = my_zones,
   vars      = c("pop_ph", "avg_inc_resp")
 )
@@ -515,7 +644,64 @@ poly_pop <- tracts_to_polygon(
 The set of supported variables is documented in the
 `tracts_variables_ref` reference table shipped with the package, which
 maps each variable name to the official IBGE census tract code and a
-plain-language description.
+plain-language description. Figure \@ref(fig:fig-pop) shows dasymetric
+estimates of private-household population (`pop_ph`) for Lauro de
+Freitas at H3 resolution 8 and at the neighbourhood level.
+
+```{r fig-pop, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Dasymetric estimates of private-household population (\\texttt{pop\\_ph}) for Lauro de Freitas, Bahia, interpolated from 2022 census tract totals to H3 hexagons at resolution~8 (left) and to neighbourhoods (right) using CNEFE dwelling points as ancillary data. Colour scale: viridis. Data: IBGE CNEFE 2022; IBGE Censo Demográfico 2022.", fig.width=10, fig.height=5, out.width="100%"}
+library(geobr)
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(patchwork)
+
+# Lauro de Freitas boundary
+muni_ldf <- geobr::read_municipality(code_muni = 2919207, year = 2020,
+                                     showProgress = FALSE)
+
+# Neighbourhoods of Lauro de Freitas
+nei <- geobr::read_neighborhood(year = 2022, showProgress = FALSE) |>
+  dplyr::filter(name_muni == "Lauro de Freitas")
+
+# Dasymetric population to H3 hexagons at resolution 8
+hex_pop <- cnefetools::tracts_to_h3(
+  code_muni     = 2919207,
+  h3_resolution = 8,
+  vars          = "pop_ph",
+  verbose       = FALSE
+)
+
+# Dasymetric population to neighbourhoods
+poly_pop <- cnefetools::tracts_to_polygon(
+  code_muni = 2919207,
+  polygon   = nei,
+  vars      = "pop_ph",
+  verbose   = FALSE
+)
+
+p1 <- ggplot(hex_pop) +
+  geom_sf(aes(fill = pop_ph), color = NA) +
+  scale_fill_viridis_c(option = "viridis", name = "Population",
+                       na.value = "grey90") +
+  labs(title = "H3 resolution 8") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11),
+        legend.position = "right",
+        plot.background = element_rect(fill = "white", color = NA))
+
+p2 <- ggplot() +
+  geom_sf(data = poly_pop, aes(fill = pop_ph), color = "white",
+          linewidth = 0.2) +
+  scale_fill_viridis_c(option = "viridis", name = "Population",
+                       na.value = "grey90") +
+  labs(title = "Neighbourhoods") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, size = 11),
+        legend.position = "right",
+        plot.background = element_rect(fill = "white", color = NA))
+
+p1 + p2
+```
 
 # Performance
 
@@ -525,7 +711,8 @@ The DuckDB backend derives its performance advantage from three sources:
     process, eliminating the overhead of client–server communication.
 2.  **Reading directly from ZIP**: the `zipfs` extension exposes ZIP
     archives as virtual file systems, so DuckDB reads the compressed CSV
-    without a separate extraction step.
+    without a separate extraction step. For São Paulo, this avoids
+    materialising 901 MB of uncompressed data on disk.
 3.  **Vectorised query execution**: DuckDB uses a columnar engine with
     SIMD-accelerated operations, making aggregation and joins over tens
     of millions of rows substantially faster than row-oriented R
@@ -538,7 +725,7 @@ with a 14-core Intel Core i9-13900H (2.60 GHz), 32 GB RAM, Windows 11, R
 ```{r tab-bench-cities, echo=FALSE, eval=TRUE}
 knitr::kable(
   data.frame(
-    Municipality = c("Vitória da Conquista-BA", "Curitiba-PR", "São Paulo-SP"),
+    Municipality = c("Lauro de Freitas-BA", "Curitiba-PR", "São Paulo-SP"),
     `Approx. addresses` = c("200,000", "900,000", "5,700,000"),
     `Pure-R (s)` = c("8.24", "35.91", "428.78"),
     `DuckDB (s)` = c("5.40", "8.17", "36.90"),
@@ -601,8 +788,8 @@ recommended.
 
 # Worked Example
 
-This section demonstrates a complete end-to-end workflow using Vitória
-da Conquista (IBGE code 2933307), a mid-sized city in the state of Bahia
+This section demonstrates a complete end-to-end workflow using Simões
+Filho (IBGE code 2919207), a mid-sized city in the state of Bahia
 with approximately 200,000 CNEFE address points. The workflow
 illustrates all four principal capabilities of \pkg{cnefetools} and runs
 from scratch (without a pre-populated cache) in under ten minutes on a
@@ -616,7 +803,7 @@ library(dplyr)
 library(ggplot2)
 library(sf)
 
-code_muni <- 2933307  # Vitória da Conquista-BA
+code_muni <- 2919207  # Lauro de Freitas-BA
 
 # Download (first run) or read from cache (subsequent runs)
 cnefe <- read_cnefe(code_muni = code_muni)
@@ -650,14 +837,14 @@ The result is an `sf` polygon object with one row per H3 hexagon that
 intersects the municipality boundary. Hexagons with no CNEFE points
 receive zero counts.
 
-```{r fig-hex-counts, echo=FALSE, out.width="100%", fig.cap="Address counts per H3 hexagon (resolution 9) for Vitória da Conquista-BA. Each cell is shaded by the number of private households (\\texttt{addr\\_type1}).\\label{fig:hex-counts}"}
+```{r fig-hex-counts, echo=FALSE, out.width="100%", fig.cap="Address counts per H3 hexagon (resolution 9) for Lauro de Freitas-BA. Each cell is shaded by the number of private households (\\texttt{addr\\_type1}).\\label{fig:hex-counts}"}
 # TODO: Export the hex_counts map (e.g. using mapview or ggplot2) and save it
 # as paper/figures/hex-counts.png, then change eval=FALSE to eval=TRUE below.
 
 # knitr::include_graphics("figures/hex-counts.png")
 ```
 
-## Step 3 — Land-use Mix: BGBI Map
+## Step 3 — Land use mix: BGBI Map
 
 ```{r worked-step3, cache=TRUE}
 # Compute all six LUM indices on H3 hexagons
@@ -684,12 +871,6 @@ cells; negative values (red) indicate non-residential concentrations
 such as commercial districts, industrial zones, or institutional
 campuses.
 
-```{r fig-bgbi, echo=FALSE, out.width="100%", fig.cap="BGBI map for Vitória da Conquista-BA at H3 resolution 9. Blue cells have a local residential share above the citywide average; red cells are dominated by non-residential uses.\\label{fig:bgbi}"}
-# TODO: Export a static BGBI map (e.g. using ggplot2 + scale_fill_distiller) and
-# save it as paper/figures/bgbi-vca.png, then change eval=FALSE to eval=TRUE below.
-
-# knitr::include_graphics("figures/bgbi-vca.png")
-```
 
 ## Step 4 — Dasymetric Interpolation of Census Population
 
@@ -710,7 +891,7 @@ ggplot(hex_pop) +
     trans  = "sqrt"
   ) +
   theme_void() +
-  labs(title = "Dasymetric population — Vitória da Conquista")
+  labs(title = "Dasymetric population — Lauro de Freitas")
 ```
 
 The function reports allocation diagnostics: the proportion of the
@@ -720,12 +901,6 @@ the vast majority of tract-level values are allocated, with minor losses
 due to CNEFE points that fall outside all census tract polygons
 (typically fewer than 1--2% of points).
 
-```{r fig-pop, echo=FALSE, out.width="100%", fig.cap="Dasymetric population estimate per H3 hexagon (resolution 9) for Vitória da Conquista-BA, derived from the 2022 census tract totals via CNEFE dwelling points as ancillary data. Square-root colour scale.\\label{fig:pop}"}
-# TODO: Export the population map (ggplot2 + scale_fill_viridis_c) and save it
-# as paper/figures/pop-vca.png, then change eval=FALSE to eval=TRUE below.
-
-# knitr::include_graphics("figures/pop-vca.png")
-```
 
 ## Extending to Multiple Municipalities
 
@@ -770,7 +945,7 @@ are:
 2.  **Address aggregation**: flexible aggregation of address counts to
     H3 hexagonal grids or arbitrary polygons, supporting both a fast
     DuckDB backend and a portable pure-R fallback.
-3.  **Land-use mix indices**: a complete implementation of six
+3.  **Land use mix indices**: a complete implementation of six
     established and novel LUM indices, including the directional,
     globally referenced BGBI.
 4.  **Dasymetric interpolation**: tract-to-hexagon and tract-to-polygon
@@ -784,7 +959,7 @@ are:
 The package has several current limitations. It supports only the 2022
 CNEFE edition; support for earlier or future editions is contingent on
 IBGE publishing data in a consistent format and is planned for future
-releases. The land-use mix indices are restricted to a binary
+releases. The land use mix indices are restricted to a binary
 residential/non-residential classification; multi-category extensions
 are the subject of ongoing methodological work. The dasymetric functions
 (`tracts_to_h3()` and `tracts_to_polygon()`) use the DuckDB backend

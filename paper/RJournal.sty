@@ -46,6 +46,12 @@
 %   math & palatino
 
 \RequirePackage{microtype}
+% microtype v3.2c (TeX Live 2025/2026) removed \MT@patch@undo@@ and
+% \MT@patch@name. Provide no-op stubs so that older code calling these
+% commands at \begin{document} does not raise "Undefined control sequence".
+% Note: \makeatletter/\makeatother are not needed inside .sty files.
+\providecommand{\MT@patch@undo@@}[1]{}
+\providecommand{\MT@patch@name}{}
 
 \RequirePackage[scaled=0.92]{helvet}
 \RequirePackage{palatino,mathpazo}
