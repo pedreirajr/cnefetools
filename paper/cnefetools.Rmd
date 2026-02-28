@@ -200,7 +200,8 @@ knitr::kable(
     check.names = FALSE
   ),
   caption = "CNEFE address types (COD\\_ESPECIE).",
-  col.names = c("Code", "English label", "Portuguese label")
+  col.names = c("Code", "English label", "Portuguese label"),
+  align = "c"
 )
 ```
 
@@ -493,7 +494,7 @@ methodological details on these indices can be found in @song2013 and
 @pedreirajr2025.
 
 | Index | Code | Formula | Range |
-|:------|:-----|:--------|:-----:|
+|:-----:|:----:|:-------:|:-----:|
 | Residential share | `p_res` | $p_i$ | $[0,1]$ |
 | Entropy Index [@song2013] | `ei` | $-\,(p_i \ln p_i + q_i \ln q_i)\,/\ln 2$ | $[0,1]$ |
 | Herfindahl-Hirschman Index | `hhi` | $p_i^2 + q_i^2$ | $[0.5,\,1]$ |
@@ -720,12 +721,13 @@ The DuckDB backend derives its performance advantage from three sources:
 
 Tables 2 and 3 summarise the results of a benchmark run on a machine
 with a 14-core Intel Core i9-13900H (2.60 GHz), 32 GB RAM, Windows 11, R
-4.3.2, and DuckDB 1.4.1. Figure 1 shows the same data as bar charts.
+4.3.2, and DuckDB 1.4.1. Figures \@ref(fig:fig-bench-cities) and
+\@ref(fig:fig-bench-h3) show the same data as bar charts.
 
 ```{r tab-bench-cities, echo=FALSE, eval=TRUE}
 knitr::kable(
   data.frame(
-    Municipality = c("Lauro de Freitas-BA", "Curitiba-PR", "São Paulo-SP"),
+    Municipality = c("Vitória da Conquista-BA", "Curitiba-PR", "São Paulo-SP"),
     `Approx. addresses` = c("200,000", "900,000", "5,700,000"),
     `Pure-R (s)` = c("8.24", "35.91", "428.78"),
     `DuckDB (s)` = c("5.40", "8.17", "36.90"),
@@ -739,7 +741,8 @@ knitr::kable(
     "Note: for small municipalities, DuckDB incurs a fixed initialisation",
     "overhead that can offset its query-execution gains, making the pure-R backend",
     "competitive or faster."
-  )
+  ),
+  align = "c"
 )
 ```
 
@@ -758,16 +761,17 @@ knitr::kable(
     "by H3 resolution. At finer resolutions, H3 indexing dominates both backends",
     "equally, reducing the relative DuckDB advantage."
   ),
-  col.names = c("H3 resolution", "Avg. hex area (m²)", "Pure-R (s)", "DuckDB (s)", "Speedup")
+  col.names = c("H3 resolution", "Avg. hex area (m²)", "Pure-R (s)", "DuckDB (s)", "Speedup"),
+  align = "c"
 )
 ```
 
-```{r fig-bench, echo=FALSE, out.width="100%", fig.cap="Performance comparison between DuckDB and pure-R backends. Top: elapsed time by municipality (H3 resolution 8). Bottom: elapsed time by H3 resolution (Curitiba-PR). DuckDB speedup is highest for large municipalities at coarser resolutions.\\label{fig:bench}"}
-# TODO: Place the two benchmark bar charts (exported from the bench_duckdb
-# vignette) as a combined figure in paper/figures/bench-backends.png,
-# then change eval=FALSE to eval=TRUE below.
+```{r fig-bench-cities, echo=FALSE, eval=TRUE, out.width="100%", fig.cap="Elapsed time (s) for \\texttt{cnefe\\_counts()} at H3 resolution~8, by municipality size, comparing the DuckDB and pure-R backends. DuckDB speedup is largest for São Paulo (13$\\times$) and smallest for Vitória da Conquista (1.5$\\times$), where the fixed initialisation overhead partially offsets the query gains."}
+knitr::include_graphics("figures/bench-cities.png")
+```
 
-# knitr::include_graphics("figures/bench-backends.png")
+```{r fig-bench-h3, echo=FALSE, eval=TRUE, out.width="100%", fig.cap="Elapsed time (s) for \\texttt{cnefe\\_counts()} on Curitiba-PR, by H3 resolution. At finer resolutions (higher cell counts), H3 indexing dominates both backends equally, reducing the relative DuckDB advantage."}
+knitr::include_graphics("figures/bench-h3.png")
 ```
 
 The speedup increases with the number of address points. For large
