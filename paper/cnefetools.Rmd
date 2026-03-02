@@ -2,23 +2,23 @@
 title: "cnefetools: Access and Analysis of Brazilian CNEFE Address Data in R"
 abstract: >
   The \pkg{cnefetools} package provides programmatic access to the
-  Brazilian National Address File for Statistical Purposes (CNEFE), a geocoded
-  register of approximately 110 million valid addresses published by the
-  Instituto Brasileiro de Geografia e Estatística (IBGE). Despite its
-  analytical potential, the CNEFE is distributed as municipality-level
-  ZIP-compressed CSV files through an FTP server with no unified index,
-  creating practical barriers to programmatic use. The package addresses
-  these barriers with four capabilities: downloading and caching CNEFE data
-  for any of Brazil's 5,570 municipalities; aggregating address counts to
-  H3 hexagonal grids or user-supplied polygons; computing six land use mix
-  indices, including the novel Bidirectional Global-centered Balance Index;
-  and performing dasymetric interpolation of census tract variables to
-  arbitrary spatial units using CNEFE dwelling points as ancillary data.
-  A dual-backend architecture allows users to choose between a default
-  DuckDB backend, which reads CSV data directly from cached ZIP archives
-  without prior extraction and performs spatial operations in-process, and
-  a portable pure-R fallback. For large municipalities, the DuckDB backend
-  achieves up to 13-fold speedups over the pure-R alternative.
+  Brazilian National Address File for Statistical Purposes (CNEFE), a
+  geocoded register of approximately 110 million valid addresses from the
+  2022 census, published by the Instituto Brasileiro de Geografia e
+  Estatística (IBGE). Although the CNEFE enables fine-grained spatial
+  analyses central to urban and regional planning, such as characterising
+  land use patterns and
+  redistributing census aggregates to arbitrary spatial zones, leveraging
+  it requires overcoming both access barriers, arising from its distribution
+  across thousands of municipality-level files with no unified programmatic
+  interface, and computational barriers from spatial operations that scale
+  to millions of records. \pkg{cnefetools} addresses both through
+  four capabilities: (i) downloading and caching CNEFE data for any of Brazil's
+  5,570 municipalities; (ii) aggregating address counts to H3 hexagonal grids or
+  user-supplied polygons; (iii) computing land use mix indices; and (iv) performing
+  dasymetric interpolation of census tract variables to arbitrary spatial
+  units using CNEFE dwelling points as ancillary data. The package provides a flexible dual-backend architecture for all computationally intensive operations.  The default DuckDB backend reads CSV data in-process from cached ZIP archives and handles all spatial joins, H3 indexing, and
+  aggregations without transferring intermediate results to R, achieving up to 13-fold speedups over the pure-R fallback for large municipalities.
 draft: true
 author:
   - name: Jorge Ubirajara Pedreira Junior
