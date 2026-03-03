@@ -30,15 +30,16 @@ author:
     url: https://pedreirajr.github.io/website/
     orcid: 0000-0002-8243-5395
     email: jorge.ubirajara@ufba.br
-  - name: Bruno Mioto
+  - name: Bruno Henrique Mioto Stabile
     affiliation: Universidade Estadual de Maringá
     address:
-    - Departamento de Biologia
+    - Programa de Pós-Graduação em Ecologia de Ambientes Aquáticos Continentais (PEA-UEM)
     - Maringá, Paraná, Brazil
-    email: brunomioto97@gmail.com
+    orcid: 0000-0002-3524-537X
+    email: bhmstabile@gmail.com
 date: "`r Sys.Date()`"
 date_received: null
-citation_author: Pedreira Junior and Mioto
+citation_author: Pedreira Junior and Stabile
 type: package
 output:
   rjtools::rjournal_article:
@@ -567,7 +568,7 @@ and the polygon geometry. Figure \@ref(fig:fig-bgbi) maps the BGBI
 index [@pedreirajr2025] for Lauro de Freitas at H3 resolution 8 and
 at the neighborhood level.
 
-```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right). Blue cells indicate a local residential share above the citywide average ($p_i > P$); red cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline. Data: IBGE CNEFE 2022.", fig.width=10, fig.height=5, out.width="100%"}
+```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index (BGBI) for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right). Blue cells indicate a local residential share above the citywide average ($p_i > P$); red cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline. Data: IBGE CNEFE 2022.", fig.width=10, fig.height=5, out.width="100%"}
 library(geobr)
 library(ggplot2)
 library(sf)
@@ -648,7 +649,7 @@ knitr::kable(
     paste0(
       "Variables supported by \\texttt{tracts\\_to\\_h3()} and",
       " \\texttt{tracts\\_to\\_polygon()}, with their corresponding IBGE",
-      " census tract variable codes and source tables. Portuguese descriptions",
+     " census tract variable codes and source tables. Portuguese descriptions",
       " are available in \\texttt{tracts\\_variables\\_ref\\$desc\\_var\\_ibge}."
     )
   } else {
