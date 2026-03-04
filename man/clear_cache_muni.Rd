@@ -23,7 +23,7 @@ directory by \code{\link[=cnefe_counts]{cnefe_counts()}}, \code{\link[=compute_l
 related functions.
 }
 \examples{
-\dontrun{
+\donttest{
 # Delete all cached CNEFE ZIPs
 clear_cache_muni()
 

@@ -23,7 +23,7 @@ Invisibly, the character vector of deleted file paths.
 user cache directory by \code{\link[=tracts_to_h3]{tracts_to_h3()}} and \code{\link[=tracts_to_polygon]{tracts_to_polygon()}}.
 }
 \examples{
-\dontrun{
+\donttest{
 # Delete all cached census tract Parquets
 clear_cache_tracts()
 

@@ -14,7 +14,7 @@
 #' @return Invisibly, the character vector of deleted file paths.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Delete all cached CNEFE ZIPs
 #' clear_cache_muni()
 #'
@@ -98,7 +98,7 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE) {
 #' @return Invisibly, the character vector of deleted file paths.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Delete all cached census tract Parquets
 #' clear_cache_tracts()
 #'
