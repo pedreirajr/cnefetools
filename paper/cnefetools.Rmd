@@ -386,7 +386,9 @@ library(sf)
 library(dplyr)
 
 # Lauro de Freitas boundary
-muni_ldf <- geobr::read_municipality(code_muni = 2919207, year = 2020,
+muni_ldf <- geobr::read_municipality(code_muni = 2919207, 
+                                     year = 2020,
+                                     simplified = FALSE,
                                      showProgress = FALSE)
 
 # CNEFE private households only (COD_ESPECIE == 1)
@@ -463,6 +465,7 @@ library(ggplot2)
 library(sf)
 library(dplyr)
 library(patchwork)
+library(paletteer)
 
 # Lauro de Freitas boundary
 muni_ldf <- geobr::read_municipality(code_muni = 2919207, year = 2020,
@@ -488,8 +491,10 @@ poly_counts <- cnefetools::cnefe_counts(
 )
 
 p1 <- ggplot(hex8) +
-  geom_sf(aes(fill = addr_type1), color = NA) +
-  scale_fill_viridis_c(option = "viridis", name = "Count") +
+  geom_sf(aes(fill = addr_type1), color = NA)+
+  paletteer::scale_fill_paletteer_c("grDevices::ag_GrnYl",
+                                    direction = 1, 
+                                    name = "Count")+
   labs(title = "H3 resolution 8") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
@@ -499,7 +504,9 @@ p1 <- ggplot(hex8) +
 p2 <- ggplot() +
   geom_sf(data = poly_counts, aes(fill = addr_type1), color = "white",
           linewidth = 0.2) +
-  scale_fill_viridis_c(option = "viridis", name = "Count") +
+  paletteer::scale_fill_paletteer_c("grDevices::ag_GrnYl",
+                                    direction = 1, 
+                                    name = "Count")+
   labs(title = "Neighborhoods") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
@@ -568,7 +575,7 @@ and the polygon geometry. Figure \@ref(fig:fig-bgbi) maps the BGBI
 index [@pedreirajr2025] for Lauro de Freitas at H3 resolution 8 and
 at the neighborhood level.
 
-```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index (BGBI) for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right). Blue cells indicate a local residential share above the citywide average ($p_i > P$); red cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline. Data: IBGE CNEFE 2022.", fig.width=10, fig.height=5, out.width="100%"}
+```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index (BGBI) for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right). Green cells indicate a local residential share above the citywide average ($p_i > P$); pink cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline. Data: IBGE CNEFE 2022.", fig.width=10, fig.height=5, out.width="100%"}
 library(geobr)
 library(ggplot2)
 library(sf)
@@ -598,10 +605,27 @@ lumi_poly <- cnefetools::compute_lumi(
   verbose      = FALSE
 )
 
+outline_hex <- lumi_hex |>
+  summarise() |>         
+  st_union() |>         
+  st_boundary() 
+
+outline_poly <- lumi_poly |>
+  summarise() |>         
+  st_union() |>         
+  st_boundary()
+
 p1 <- ggplot(lumi_hex) +
+  geom_sf(data=outline_hex, 
+          fill=NA, 
+          color = "black", 
+          linewidth = 0.8,
+          lineend = "round")+
   geom_sf(aes(fill = bgbi), color = NA) +
-  scale_fill_gradient2(low = "#D6604D", mid = "white", high = "#2166AC",
-                       midpoint = 0, limits = c(-1, 1), name = "BGBI") +
+  paletteer::scale_fill_paletteer_c("grDevices::Tropic", 
+                                    direction = -1,
+                                    limits = c(-1,1),
+                                    name = "BGBI")+
   labs(title = "H3 resolution 8") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
@@ -609,10 +633,18 @@ p1 <- ggplot(lumi_hex) +
         plot.background = element_rect(fill = "white", color = NA))
 
 p2 <- ggplot() +
-  geom_sf(data = lumi_poly, aes(fill = bgbi), color = "white",
+  geom_sf(data=outline_poly, 
+          fill=NA,
+          color = "black", 
+          linewidth = 1)+
+  geom_sf(data = lumi_poly, 
+          aes(fill = bgbi),
+          color = "white",
           linewidth = 0.2) +
-  scale_fill_gradient2(low = "#D6604D", mid = "white", high = "#2166AC",
-                       midpoint = 0, limits = c(-1, 1), name = "BGBI") +
+  paletteer::scale_fill_paletteer_c("grDevices::Tropic", 
+                                    direction = -1,
+                                    limits = c(-1,1),
+                                    name = "BGBI")+
   labs(title = "Neighborhoods") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
@@ -741,8 +773,8 @@ poly_pop <- cnefetools::tracts_to_polygon(
 
 p1 <- ggplot(hex_pop) +
   geom_sf(aes(fill = pop_ph), color = NA) +
-  scale_fill_viridis_c(option = "viridis", name = "Population",
-                       na.value = "grey90") +
+  paletteer::scale_fill_paletteer_c("grDevices::ag_GrnYl",
+                                    direction = 1)+
   labs(title = "H3 resolution 8") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
@@ -752,8 +784,7 @@ p1 <- ggplot(hex_pop) +
 p2 <- ggplot() +
   geom_sf(data = poly_pop, aes(fill = pop_ph), color = "white",
           linewidth = 0.2) +
-  scale_fill_viridis_c(option = "viridis", name = "Population",
-                       na.value = "grey90") +
+  paletteer::scale_fill_paletteer_c("grDevices::ag_GrnYl",direction = 1)+
   labs(title = "Neighborhoods") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
