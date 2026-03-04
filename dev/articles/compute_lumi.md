@@ -156,16 +156,22 @@ spo_lumi <- compute_lumi(
   h3_resolution = 8
 )
 #> ℹ Processing municipality code 3550308...
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-✔ Step 1/3 (CNEFE ZIP ready) [149ms]
 #> 
-#> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [8.4s]
+ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+
+                                                   
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
+#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+
+✔ Step 1/3 (CNEFE ZIP ready) [738ms]              
 #> 
-#> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [406ms]
+ℹ Step 2/3: Counting addresses per H3 cell...
+
+✔ Step 2/3 (Addresses counted) [25.1s]       
+#> 
+ℹ Step 3/3: Building grid and computing LUMI...
+
+✔ Step 3/3 (Land use mix indices computed) [2.1s]
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields
