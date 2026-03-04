@@ -97,30 +97,38 @@ ftl_h3 <- tracts_to_h3(
   vars = c("pop_ph", "avg_inc_resp", "race_preta")
 )
 #> ℹ Processing code 2304400
+#> 
+ℹ Step 1/6: connecting to DuckDB and loading extensions...
+✔ Spatial extension loaded
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-#> ✔ Spatial extension loaded
-#> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-✔ Step 1/6 (DuckDB ready) [788ms]
+
+✔ Step 1/6 (DuckDB ready) [591ms]                         
 #> 
+ℹ Step 2/6: preparing census tracts in DuckDB...
+
+                                                 
+ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
-#> ℹ Using cached file: 'sc_23.parquet'
-#> ℹ Step 2/6: preparing census tracts in DuckDB...
-✔ Step 2/6 (Tracts ready) [399ms]
+
+✔ Step 2/6 (Tracts ready) [375ms]               
 #> 
+ℹ Step 3/6: preparing CNEFE points in DuckDB...
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
-#> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-✔ Step 3/6 (CNEFE points ready) [7.6s]
+
+✔ Step 3/6 (CNEFE points ready) [4.1s]         
 #> 
-#> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (Join and allocation) [1.7s]
+ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
+
+✔ Step 4/6 (Join and allocation) [1.3s]                           
 #> 
-#> ℹ Step 5/6: aggregating allocated values to H3 cells...
-#> ✔ Step 5/6 (Hex aggregation) [205ms]
+ℹ Step 5/6: aggregating allocated values to H3 cells...
+
+✔ Step 5/6 (Hex aggregation) [251ms]                   
 #> 
-#> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [806ms]
-#> 
+ℹ Step 6/6: building H3 grid and joining results...
+
+✔ Step 6/6 (sf output) [4s]                        
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 
@@ -128,7 +136,7 @@ ftl_h3 <- tracts_to_h3(
 #> ! Unallocated total for population from private households (pop_ph): 2169 of
 #>   2424722 (0.09%)
 #> ! Unallocated total for race_preta (race_preta): 74 of 170887 (0.04%)
-#> ! avg_inc_resp assigned to 1032500 of 1033953 eligible points (99.86% of total
+#> ! avg_inc_resp assigned to 1032500 of 1033952 eligible points (99.86% of total
 #>   points)
 #> ! avg_inc_resp is NA in 128 of 4408 tracts (2.90% of total tracts)
 #> ! Unmatched CNEFE points (no tract): 194 of 1034611 points (0.02% of total
@@ -146,22 +154,22 @@ head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -38.61162 ymin: -3.827556 xmax: -38.47009 ymax: -3.71684
+#> Bounding box:  xmin: -38.5613 ymin: -3.889301 xmax: -38.48939 ymax: -3.840329
 #> Geodetic CRS:  WGS 84
-#>            id_hex     pop_ph avg_inc_resp race_preta
-#> 1 8880104f11fffff   547.6366     9501.404   27.97055
-#> 2 8880104c6bfffff  5130.2476    11917.039  151.67999
-#> 3 8880104e17fffff  2969.0585     1637.215  257.11403
-#> 4 8880104553fffff  8415.9331     1245.070  871.71422
-#> 5 8880104cc1fffff  6760.5683     2766.186  469.64049
-#> 6 8880107b6bfffff 15033.8448     1795.090  922.54085
+#>            id_hex     pop_ph avg_inc_resp  race_preta
+#> 1 8880104033fffff  1241.6543     1623.636  122.037929
+#> 2 8880104037fffff   149.3201     1329.010    8.075055
+#> 3 8880104087fffff     0.0000           NA    0.000000
+#> 4 8880104097fffff  9046.0550     1290.292  819.862787
+#> 5 88801040a1fffff 15026.8906     1298.539 1319.257618
+#> 6 88801040a3fffff 12112.4260     1490.707 1155.222380
 #>                         geometry
-#> 1 POLYGON ((-38.47411 -3.7882...
-#> 2 POLYGON ((-38.48272 -3.7658...
-#> 3 POLYGON ((-38.53372 -3.7908...
-#> 4 POLYGON ((-38.60576 -3.8275...
-#> 5 POLYGON ((-38.53578 -3.7271...
-#> 6 POLYGON ((-38.58644 -3.7281...
+#> 1 POLYGON ((-38.50237 -3.8893...
+#> 2 POLYGON ((-38.49341 -3.8877...
+#> 3 POLYGON ((-38.53476 -3.8630...
+#> 4 POLYGON ((-38.55544 -3.8506...
+#> 5 POLYGON ((-38.51684 -3.8598...
+#> 6 POLYGON ((-38.5227 -3.85288...
 ```
 
 ### Mapping the results
@@ -263,32 +271,44 @@ sp_zones_census <- tracts_to_polygon(
   vars = c("pop_ph", "age_70m")
 )
 #> ℹ Processing municipality code 3550308...
+#> 
+ℹ Step 1/6: aligning CRS...
+
+                            
+ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
-#> ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
-#> ℹ Step 1/6: aligning CRS...
-✔ Step 1/6 (CRS alignment) [273ms]
+
+✔ Step 1/6 (CRS alignment) [639ms]
 #> 
+ℹ Step 2/6: connecting to DuckDB and loading extensions...
+✔ Spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Spatial extension loaded
-#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-✔ Step 2/6 (DuckDB ready) [476ms]
+
+✔ Step 2/6 (DuckDB ready) [2.8s]                          
 #> 
+ℹ Step 3/6: preparing census tracts in DuckDB...
+
+                                                 
+ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ℹ Using cached file: 'sc_35.parquet'
-#> ℹ Step 3/6: preparing census tracts in DuckDB...
-✔ Step 3/6 (Tracts ready) [4.8s]
+
+✔ Step 3/6 (Tracts ready) [13.8s]               
 #> 
+ℹ Step 4/6: preparing CNEFE points in DuckDB...
+
+                                                
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
-#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-✔ Step 4/6 (CNEFE points ready) [15.4s]
+
+✔ Step 4/6 (CNEFE points ready) [42.8s]        
 #> 
-#> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [46.5s]
+ℹ Step 5/6: spatial join (points to tracts) and allocation...
+
+✔ Step 5/6 (Join and allocation) [1m 53.4s]                  
 #> 
-#> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [310ms]
-#> 
+ℹ Step 6/6: aggregating allocated values to polygons...
+
+✔ Step 6/6 (Polygon aggregation) [667ms]               
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 

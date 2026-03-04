@@ -272,9 +272,9 @@ speedups_cities |>
 
 | city                 | n_points   | speedup |
 |:---------------------|:-----------|--------:|
-| Vitória da Conquista | ~200,000   |    1.53 |
-| Curitiba             | ~900,000   |    4.40 |
-| São Paulo            | ~5,700,000 |   13.08 |
+| Vitória da Conquista | ~200,000   |    2.26 |
+| Curitiba             | ~900,000   |    6.96 |
+| São Paulo            | ~5,700,000 |   14.34 |
 
 - Resolution of spatial units where CNEFE addresses are counted:
 
@@ -300,9 +300,9 @@ speedups_h3 |>
 
 | h3_res | avg_hex_area_m2 | speedup |
 |-------:|----------------:|--------:|
-|      7 |      5161293.36 |    5.38 |
-|      9 |       105332.51 |    3.46 |
-|     11 |         2149.64 |    1.31 |
+|      7 |      5161293.36 |    2.40 |
+|      9 |       105332.51 |    2.54 |
+|     11 |         2149.64 |    1.27 |
 
 **Recommendation**: Use the DuckDB backend (default) for best
 performance. The pure R backend (`backend = "r"`) is available only if
