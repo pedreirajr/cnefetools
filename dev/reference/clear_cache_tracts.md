@@ -9,16 +9,16 @@ and
 ## Usage
 
 ``` r
-clear_cache_tracts(uf = NULL, verbose = TRUE)
+clear_cache_tracts(uf = "all", verbose = TRUE)
 ```
 
 ## Arguments
 
 - uf:
 
-  `NULL`, a two-letter UF abbreviation (e.g. `"BA"`), a two-digit
+  `"all"`, a two-letter UF abbreviation (e.g. `"BA"`), a two-digit
   numeric state code (e.g. `29L`), or a seven-digit IBGE municipality
-  code (e.g. `2919207`). If `NULL` (default), all cached Parquet files
+  code (e.g. `2919207`). If `"all"` (default), all cached Parquet files
   are deleted. Otherwise, only the file for the resolved state is
   deleted.
 

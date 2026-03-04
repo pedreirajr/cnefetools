@@ -10,16 +10,16 @@ and related functions.
 ## Usage
 
 ``` r
-clear_cache_muni(code_muni = NULL, verbose = TRUE)
+clear_cache_muni(code_muni = "all", verbose = TRUE)
 ```
 
 ## Arguments
 
 - code_muni:
 
-  Integer or `NULL`. If `NULL` (default), all cached CNEFE ZIP files are
-  deleted. If a seven-digit IBGE municipality code is provided, only the
-  ZIP file for that municipality is deleted.
+  Integer or `"all"`. If `"all"` (default), all cached CNEFE ZIP files
+  are deleted. If a seven-digit IBGE municipality code is provided, only
+  the ZIP file for that municipality is deleted.
 
 - verbose:
 

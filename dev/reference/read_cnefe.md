@@ -95,7 +95,7 @@ cnefe <- read_cnefe(code_muni = 2929057)
 #> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [199ms]
+#> ✔ Reading CSV with arrow [193ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
