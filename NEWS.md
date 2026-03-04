@@ -1,9 +1,10 @@
 # cnefetools 0.2.3.9000
 
-* `build_h3_grid()` now includes border hexagons that physically overlap the
-  municipality boundary but whose H3 cell center falls just outside it. After
-  the center-based pass from `polygon_to_cells()`, the k=1 neighbor ring is
-  checked via `sf::st_intersects()` and matching cells are added (#62).
+* Fixed missing hexagons at the edges of the H3 grid. `h3jsr::polygon_to_cells()`
+  only returns hexagons whose centroid falls inside the municipality boundary, so
+  border hexagons that overlap the boundary without their center being inside
+  were silently excluded. `build_h3_grid()` now adds those hexagons by checking
+  the immediate neighbors of the grid against the municipality boundary (#62).
 
 * `cnefe_counts()` and `compute_lumi()` now expose a `cache` parameter
   (default `TRUE`), consistent with `tracts_to_h3()` and `tracts_to_polygon()`
