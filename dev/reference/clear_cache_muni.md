@@ -33,11 +33,13 @@ Invisibly, the character vector of deleted file paths.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
 # Delete all cached CNEFE ZIPs
 clear_cache_muni()
+#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools
 
 # Delete only the ZIP for Lauro de Freitas-BA
 clear_cache_muni(2919207)
-} # }
+#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools
+# }
 ```

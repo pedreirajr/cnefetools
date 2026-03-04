@@ -128,7 +128,7 @@ lumi <- compute_lumi(code_muni = 2929057)
 #> ✔ Step 1/3 (CNEFE ZIP ready) [10ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [223ms]
+#> ✔ Step 2/3 (Addresses counted) [230ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
 #> ✔ Step 3/3 (Land use mix indices computed) [4.3s]
@@ -151,7 +151,7 @@ lumi_poly <- compute_lumi(
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ✔ Step 1/3 (Data and polygon ready) [22ms]
+#> ✔ Step 1/3 (Data and polygon ready) [23ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
 #> ℹ Table <user_polygons> dropped
