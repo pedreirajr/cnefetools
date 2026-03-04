@@ -1,5 +1,10 @@
 # cnefetools 0.2.3.9000
 
+* `build_h3_grid()` now includes border hexagons that physically overlap the
+  municipality boundary but whose H3 cell center falls just outside it. After
+  the center-based pass from `polygon_to_cells()`, the k=1 neighbor ring is
+  checked via `sf::st_intersects()` and matching cells are added (#62).
+
 * `cnefe_counts()` and `compute_lumi()` now expose a `cache` parameter
   (default `TRUE`), consistent with `tracts_to_h3()` and `tracts_to_polygon()`
   (#58).
