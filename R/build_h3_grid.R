@@ -61,6 +61,20 @@ build_h3_grid <- function(
     hex_ids <- unique(stats::na.omit(as.character(hex_ids)))
 
     if (length(hex_ids) == 0L) {
+      # Fallback for cases where the resolution is so coarse that no cell
+      # center falls inside the boundary (e.g., a small municipality at res 1-3).
+      # Use the cell containing the boundary centroid instead.
+      centroid <- sf::st_centroid(geom1)
+      coords   <- sf::st_coordinates(centroid)
+      hex_ids  <- as.character(h3jsr::point_to_cell(
+        data.frame(lon = coords[1L, 1L], lat = coords[1L, 2L]),
+        res    = h3_resolution,
+        simple = TRUE
+      ))
+      hex_ids <- unique(stats::na.omit(hex_ids))
+    }
+
+    if (length(hex_ids) == 0L) {
       rlang::abort("No H3 cells were generated for this municipality boundary.")
     }
 

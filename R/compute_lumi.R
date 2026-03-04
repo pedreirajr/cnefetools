@@ -486,7 +486,7 @@ compute_lumi <- function(
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    id_hex = counts_hex$id_hex
+    code_muni     = code_muni
   )
 
   # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
