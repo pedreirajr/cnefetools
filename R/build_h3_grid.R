@@ -78,6 +78,26 @@ build_h3_grid <- function(
       rlang::abort("No H3 cells were generated for this municipality boundary.")
     }
 
+    # Expand with border hexagons: polygon_to_cells() uses center-based
+    # containment, so hexagons whose center falls just outside the boundary
+    # are excluded even if they physically overlap the municipality. We add
+    # them back by checking the k=1 neighbor ring via st_intersects().
+    neighbors <- unique(unlist(
+      h3jsr::get_disk(hex_ids, ring_size = 1L, simple = TRUE),
+      use.names = FALSE
+    ))
+    border_candidates <- setdiff(neighbors, hex_ids)
+
+    if (length(border_candidates) > 0L) {
+      cand_geom <- h3jsr::cell_to_polygon(border_candidates, simple = TRUE)
+      cand_sf   <- sf::st_sf(
+        id_hex   = border_candidates,
+        geometry = sf::st_sfc(cand_geom, crs = 4326)
+      )
+      hits    <- lengths(sf::st_intersects(cand_sf, boundary1)) > 0L
+      hex_ids <- c(hex_ids, border_candidates[hits])
+    }
+
     ok <- h3jsr::is_valid(hex_ids, simple = TRUE)
     if (any(!ok)) {
       hex_ids <- hex_ids[ok]
