@@ -1,5 +1,28 @@
 # Changelog
 
+## cnefetools 0.2.3.9000
+
+- [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
+  and
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  now expose a `cache` parameter (default `TRUE`), consistent with
+  [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  ([\#58](https://github.com/pedreirajr/cnefetools/issues/58)).
+
+- New
+  [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
+  function to delete cached CNEFE ZIP files from the user cache
+  directory, with optional filtering by municipality code
+  ([\#59](https://github.com/pedreirajr/cnefetools/issues/59)).
+
+- New
+  [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
+  function to delete cached census tract Parquet files, with optional
+  filtering by state (UF) code
+  ([\#59](https://github.com/pedreirajr/cnefetools/issues/59)).
+
 ## cnefetools 0.2.2
 
 CRAN release: 2026-02-27

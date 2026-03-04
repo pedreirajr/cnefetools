@@ -2,6 +2,10 @@
 
 ## All functions
 
+- [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
+  : Delete cached CNEFE ZIP files
+- [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
+  : Delete cached census tract Parquet files
 - [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
   : Count CNEFE address species on a spatial grid
 - [`cnefe_dictionary()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_dictionary.md)

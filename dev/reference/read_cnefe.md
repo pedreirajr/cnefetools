@@ -95,7 +95,7 @@ cnefe <- read_cnefe(code_muni = 2929057)
 #> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [182ms]
+#> ✔ Reading CSV with arrow [199ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
@@ -110,7 +110,7 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
 #> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [13ms]
+#> ✔ Reading CSV with arrow [14ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object
