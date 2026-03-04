@@ -102,6 +102,51 @@
   tools::R_user_dir("cnefetools", which = "cache")
 }
 
+# Named vector: two-letter UF abbreviation → numeric IBGE state code
+# Official IBGE codes — stable; no runtime dependency needed.
+.uf_lookup <- c(
+  AC = 12L, AL = 27L, AM = 13L, AP = 16L, BA = 29L,
+  CE = 23L, DF = 53L, ES = 32L, GO = 52L, MA = 21L,
+  MG = 31L, MS = 50L, MT = 51L, PA = 15L, PB = 25L,
+  PE = 26L, PI = 22L, PR = 41L, RJ = 33L, RN = 24L,
+  RO = 11L, RR = 14L, RS = 43L, SC = 42L, SE = 28L,
+  SP = 35L, TO = 17L
+)
+
+#' Resolve a UF identifier to a two-digit integer state code
+#'
+#' Accepts three input formats:
+#' - Two-letter abbreviation: `"BA"` → `29L`
+#' - Numeric state code: `29L` → `29L`
+#' - Seven-digit municipality code: `2919207` → `29L` (via `.uf_from_code_muni()`)
+#'
+#' @param uf A UF identifier (character abbreviation, numeric state code, or
+#'   7-digit municipality code).
+#' @return Integer. Two-digit IBGE state code.
+#' @keywords internal
+#' @noRd
+.resolve_uf <- function(uf) {
+  # 7-digit municipality code → extract UF code
+  if (is.numeric(uf) && length(uf) == 1L && uf > 99) {
+    return(as.integer(.uf_from_code_muni(uf)))
+  }
+  uf_char <- toupper(trimws(as.character(uf)))
+  # Two-letter abbreviation → numeric
+  if (nchar(uf_char) == 2L && grepl("^[A-Z]{2}$", uf_char)) {
+    code <- .uf_lookup[uf_char]
+    if (is.na(code)) {
+      cli::cli_abort("Unknown UF abbreviation: {.val {uf_char}}")
+    }
+    return(code)
+  }
+  # Numeric string or integer → integer
+  code <- suppressWarnings(as.integer(uf_char))
+  if (is.na(code)) {
+    cli::cli_abort("Cannot resolve UF: {.val {uf}}")
+  }
+  code
+}
+
 
 # Theme: Download and file handling
 

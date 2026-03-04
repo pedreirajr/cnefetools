@@ -1,3 +1,15 @@
+# cnefetools 0.2.3.9000
+
+* `cnefe_counts()` and `compute_lumi()` now expose a `cache` parameter
+  (default `TRUE`), consistent with `tracts_to_h3()` and `tracts_to_polygon()`
+  (#58).
+
+* New `clear_cache_muni()` function to delete cached CNEFE ZIP files from
+  the user cache directory, with optional filtering by municipality code (#59).
+
+* New `clear_cache_tracts()` function to delete cached census tract Parquet
+  files, with optional filtering by state (UF) code (#59).
+
 # cnefetools 0.2.2
 
 * Resubmission to CRAN following package removal on 2026-02-26.
