@@ -4,12 +4,12 @@
 \alias{clear_cache_tracts}
 \title{Delete cached census tract Parquet files}
 \usage{
-clear_cache_tracts(uf = NULL, verbose = TRUE)
+clear_cache_tracts(uf = "all", verbose = TRUE)
 }
 \arguments{
-\item{uf}{\code{NULL}, a two-letter UF abbreviation (e.g. \code{"BA"}), a two-digit
+\item{uf}{\code{"all"}, a two-letter UF abbreviation (e.g. \code{"BA"}), a two-digit
 numeric state code (e.g. \code{29L}), or a seven-digit IBGE municipality code
-(e.g. \code{2919207}). If \code{NULL} (default), all cached Parquet files are
+(e.g. \code{2919207}). If \code{"all"} (default), all cached Parquet files are
 deleted. Otherwise, only the file for the resolved state is deleted.}
 
 \item{verbose}{Logical; if \code{TRUE} (default), reports the number of files

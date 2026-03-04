@@ -5,7 +5,7 @@
 #' directory by [cnefe_counts()], [compute_lumi()], [tracts_to_h3()], and
 #' related functions.
 #'
-#' @param code_muni Integer or `NULL`. If `NULL` (default), all cached CNEFE
+#' @param code_muni Integer or `"all"`. If `"all"` (default), all cached CNEFE
 #'   ZIP files are deleted. If a seven-digit IBGE municipality code is provided,
 #'   only the ZIP file for that municipality is deleted.
 #' @param verbose Logical; if `TRUE` (default), reports the number of files
@@ -23,7 +23,7 @@
 #' }
 #'
 #' @export
-clear_cache_muni <- function(code_muni = NULL, verbose = TRUE) {
+clear_cache_muni <- function(code_muni = "all", verbose = TRUE) {
   cache_dir <- .cnefe_cache_dir()
 
   if (!dir.exists(cache_dir)) {
@@ -48,8 +48,8 @@ clear_cache_muni <- function(code_muni = NULL, verbose = TRUE) {
     return(invisible(character(0)))
   }
 
-  # Filter by municipality code if provided
-  if (!is.null(code_muni)) {
+  # Filter by municipality code if a specific code was provided
+  if (!identical(code_muni, "all")) {
     code_muni <- .normalize_code_muni(code_muni)
     code_str <- as.character(code_muni)
     all_zips <- all_zips[grepl(code_str, basename(all_zips), fixed = TRUE)]
@@ -88,9 +88,9 @@ clear_cache_muni <- function(code_muni = NULL, verbose = TRUE) {
 #' `clear_cache_tracts()` removes census tract Parquet files stored in the
 #' user cache directory by [tracts_to_h3()] and [tracts_to_polygon()].
 #'
-#' @param uf `NULL`, a two-letter UF abbreviation (e.g. `"BA"`), a two-digit
+#' @param uf `"all"`, a two-letter UF abbreviation (e.g. `"BA"`), a two-digit
 #'   numeric state code (e.g. `29L`), or a seven-digit IBGE municipality code
-#'   (e.g. `2919207`). If `NULL` (default), all cached Parquet files are
+#'   (e.g. `2919207`). If `"all"` (default), all cached Parquet files are
 #'   deleted. Otherwise, only the file for the resolved state is deleted.
 #' @param verbose Logical; if `TRUE` (default), reports the number of files
 #'   deleted and the space freed.
@@ -109,7 +109,7 @@ clear_cache_muni <- function(code_muni = NULL, verbose = TRUE) {
 #' }
 #'
 #' @export
-clear_cache_tracts <- function(uf = NULL, verbose = TRUE) {
+clear_cache_tracts <- function(uf = "all", verbose = TRUE) {
   sc_dir <- .sc_cache_dir()
 
   if (!dir.exists(sc_dir)) {
@@ -134,8 +134,8 @@ clear_cache_tracts <- function(uf = NULL, verbose = TRUE) {
     return(invisible(character(0)))
   }
 
-  # Filter by UF if provided
-  if (!is.null(uf)) {
+  # Filter by UF if a specific UF was provided
+  if (!identical(uf, "all")) {
     uf_code <- .resolve_uf(uf)
     filename <- .sc_asset_filename(uf_code)
     all_parquets <- all_parquets[basename(all_parquets) == filename]

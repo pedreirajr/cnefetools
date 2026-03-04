@@ -4,10 +4,10 @@
 \alias{clear_cache_muni}
 \title{Delete cached CNEFE ZIP files}
 \usage{
-clear_cache_muni(code_muni = NULL, verbose = TRUE)
+clear_cache_muni(code_muni = "all", verbose = TRUE)
 }
 \arguments{
-\item{code_muni}{Integer or \code{NULL}. If \code{NULL} (default), all cached CNEFE
+\item{code_muni}{Integer or \code{"all"}. If \code{"all"} (default), all cached CNEFE
 ZIP files are deleted. If a seven-digit IBGE municipality code is provided,
 only the ZIP file for that municipality is deleted.}
 
