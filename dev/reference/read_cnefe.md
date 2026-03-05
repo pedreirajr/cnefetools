@@ -110,11 +110,11 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
 #> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [27ms]
+#> ✔ Reading CSV with arrow [13ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object
-#> ✔ Converting to sf object [22ms]
+#> ✔ Converting to sf object [25ms]
 #> 
 #> ✔ Created <sf> object with 9354 points (CRS: EPSG:4674)
 # }

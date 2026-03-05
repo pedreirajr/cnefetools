@@ -128,10 +128,12 @@ lumi <- compute_lumi(code_muni = 2929057)
 #> ✔ Step 1/3 (CNEFE ZIP ready) [10ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [228ms]
+#> ✔ Step 2/3 (Addresses counted) [885ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [4.7s]
+#> Error in .read_muni_boundary_2024(code_muni): geobr returned an empty or invalid object.
+#> ℹ Try updating geobr with `remotes::install_github('ipeaGIT/geobr')`.
+#> ✖ Step 3/3: Building grid and computing LUMI... [20s]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -142,29 +144,13 @@ nei_ldf <- subset(
   code_muni == 2919207
 )
 #> Using year/date 2022
+#> Problem connecting to data server. Please try again in a few minutes.
+#> Error: object 'code_muni' not found
 lumi_poly <- compute_lumi(
   code_muni = 2919207,
   polygon_type = "user",
   polygon = nei_ldf
 )
-#> ℹ Processing municipality code 2919207...
-#> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
-#> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ✔ Step 1/3 (Data and polygon ready) [21ms]
-#> 
-#> ℹ Step 2/3: Counting addresses per polygon...
-#> ℹ Table <user_polygons> dropped
-#> ℹ Step 2/3: Counting addresses per polygon...
-#> ✔ Table user_polygons successfully imported
-#> ℹ Step 2/3: Counting addresses per polygon...
-#> ✔ Step 2/3 (Addresses counted) [1.1s]
-#> 
-#> ℹ Step 3/3: Computing land use mix indices...
-#> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
-#> ℹ 111103 of 111385 points are within the provided polygon.
-#> ℹ 282 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [56ms]
-#> 
+#> Error: object 'nei_ldf' not found
 # }
 ```
