@@ -12,7 +12,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedreirajr/cnefetools/blob/dev/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedreirajr/cnefetools/blob/main/DESCRIPTION)
 
 Pedreira Junior J, Mioto B (2026). *cnefetools: Access and Analysis of
 Brazilian CNEFE Address Data*. R package version 0.2.3.9000,

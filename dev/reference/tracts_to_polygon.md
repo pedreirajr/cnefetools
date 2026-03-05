@@ -125,13 +125,52 @@ nei_ldf <- subset(
   code_muni == 2919207
 )
 #> Using year/date 2022
-#> Problem connecting to data server. Please try again in a few minutes.
-#> Error: object 'code_muni' not found
 poly_pop <- tracts_to_polygon(
   code_muni = 2919207,
   polygon = nei_ldf,
   vars = c("pop_ph", "pop_ch")
 )
-#> Error: object 'nei_ldf' not found
+#> ℹ Processing municipality code 2919207...
+#> ℹ Step 1/6: aligning CRS...
+#> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
+#> ℹ Step 1/6: aligning CRS...
+#> ✔ Step 1/6 (CRS alignment) [36ms]
+#> 
+#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
+#> ✔ Spatial extension loaded
+#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
+#> ✔ Step 2/6 (DuckDB ready) [251ms]
+#> 
+#> ℹ Step 3/6: preparing census tracts in DuckDB...
+#> ℹ Using cached file: sc_29.parquet
+#> ℹ Step 3/6: preparing census tracts in DuckDB...
+#> ✔ Step 3/6 (Tracts ready) [188ms]
+#> 
+#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
+#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
+#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
+#> ✔ Step 4/6 (CNEFE points ready) [807ms]
+#> 
+#> ℹ Step 5/6: spatial join (points to tracts) and allocation...
+#> ✔ Step 5/6 (Join and allocation) [1s]
+#> 
+#> ℹ Step 6/6: aggregating allocated values to polygons...
+#> ✔ Step 6/6 (Polygon aggregation) [38ms]
+#> 
+#> 
+#> ── Dasymetric interpolation diagnostics ──
+#> 
+#> ── Stage 1: Tracts → CNEFE points 
+#> ! Unallocated total for population from private households (pop_ph): 0 of
+#>   202583 (0.00%)
+#> ! Unallocated total for population from collective households (pop_ch): 0 of
+#>   317 (0.00%)
+#> ! Unmatched CNEFE points (no tract): 186 of 95739 points (0.19% of total
+#>   points)
+#> ! Tracts with NA totals: pop_ph in 4 of 354 tracts (1.13% of total tracts);
+#>   pop_ch in 6 of 354 tracts (1.69% of total tracts).
+#> 
+#> ── Stage 2: CNEFE points → Polygons 
+#> ℹ Polygon coverage: 95488 of 95553 allocated points captured (99.93%)
 # }
 ```
