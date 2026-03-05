@@ -152,7 +152,7 @@ residential tower and a single-storey house may have similar footprints
 yet house very different numbers of households. Because each CNEFE record
 corresponds to one address unit, the point count within a zone directly
 reflects the number of dwellings, making it a more precise ancillary
-variable for identifying population density in verticalised urban
+variable for identifying population density in verticalized urban
 environments. Beyond interpolation, no R package currently provides
 tools for computing land use mix indices from address-level data.
 
@@ -211,9 +211,9 @@ columns are:
 -   **`COD_ESPECIE`**: an integer code (1--8) identifying the functional
     category of the address, referred to in this paper as the *address
     type*. The eight categories are listed in Table \@ref(tab:tab-especie).
--   Address description fields, including street type (`NOM_TIPO_SEGLOGR`),
-    street name (`NOM_SEGLOGR`), address number (`NUM_ENDERECO`), free-text
-    address description (`DSC_ESTABELECIMENTO`), and postal code (`CEP`).
+-   Address description fields, including street type (**`NOM_TIPO_SEGLOGR`**),
+    street name (**`NOM_SEGLOGR`**), address number (**`NUM_ENDERECO`**), free-text
+    address description (**`DSC_ESTABELECIMENTO`**), and postal code (**`CEP`**).
 
 | Code | English label | Portuguese label |
 |:----:|:-------------:|:----------------:|
@@ -325,7 +325,7 @@ backends via the `backend` argument:
     point-in-polygon join. Only the final aggregated result is
     transferred to R.
 
--   **`"r"`**: uses \CRANpkg{arrow} [@arrow2024] to read the CSV. For H3 aggregation,
+-   **`"r"`**: for H3 aggregation,
     \CRANpkg{h3jsr} assigns each point to a cell, whereas for
     user-provided polygons, \CRANpkg{sf} performs the point-in-polygon
     join. This backend is slower but requires no DuckDB dependency
@@ -749,9 +749,9 @@ facilitates accuracy assessment against reference counts.
 
 \pkg{cnefetools} follows the same dasymetric logic as the volume-weighting mode
 of \CRANpkg{populR}, but uses geocoded dwelling points from the CNEFE register
-instead of building footprints. This distinction matters in verticalised urban
-environments: a building footprint captures ground-floor area but carries no
-information about how many dwelling units the building contains. A high-rise
+instead of building footprints. This distinction matters in verticalized urban
+environments, as building footprints capture ground-floor area but carry no
+information about how many dwelling units a building contains. A high-rise
 residential tower and an adjacent single-storey house may have similar footprints
 yet house very different numbers of households. Because each CNEFE record
 corresponds to one address unit, the point count within a zone directly reflects the number of
