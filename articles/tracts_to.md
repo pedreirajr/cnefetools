@@ -102,7 +102,7 @@ ftl_h3 <- tracts_to_h3(
 ✔ Spatial extension loaded
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
 
-✔ Step 1/6 (DuckDB ready) [591ms]                         
+✔ Step 1/6 (DuckDB ready) [525ms]                         
 #> 
 ℹ Step 2/6: preparing census tracts in DuckDB...
 
@@ -110,17 +110,17 @@ ftl_h3 <- tracts_to_h3(
 ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 
-✔ Step 2/6 (Tracts ready) [375ms]               
+✔ Step 2/6 (Tracts ready) [372ms]               
 #> 
 ℹ Step 3/6: preparing CNEFE points in DuckDB...
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
 
-✔ Step 3/6 (CNEFE points ready) [4.1s]         
+✔ Step 3/6 (CNEFE points ready) [4s]           
 #> 
 ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
 
-✔ Step 4/6 (Join and allocation) [1.3s]                           
+✔ Step 4/6 (Join and allocation) [1.2s]                           
 #> 
 ℹ Step 5/6: aggregating allocated values to H3 cells...
 
@@ -128,7 +128,7 @@ ftl_h3 <- tracts_to_h3(
 #> 
 ℹ Step 6/6: building H3 grid and joining results...
 
-✔ Step 6/6 (sf output) [4s]                        
+✔ Step 6/6 (sf output) [3.3s]                      
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 
@@ -154,22 +154,22 @@ head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -38.5613 ymin: -3.889301 xmax: -38.48939 ymax: -3.840329
+#> Bounding box:  xmin: -38.54958 ymin: -3.899435 xmax: -38.48939 ymax: -3.854262
 #> Geodetic CRS:  WGS 84
-#>            id_hex     pop_ph avg_inc_resp  race_preta
-#> 1 8880104033fffff  1241.6543     1623.636  122.037929
-#> 2 8880104037fffff   149.3201     1329.010    8.075055
-#> 3 8880104087fffff     0.0000           NA    0.000000
-#> 4 8880104097fffff  9046.0550     1290.292  819.862787
-#> 5 88801040a1fffff 15026.8906     1298.539 1319.257618
-#> 6 88801040a3fffff 12112.4260     1490.707 1155.222380
+#>            id_hex     pop_ph avg_inc_resp race_preta
+#> 1 8880104017fffff  519.04462     2126.606  43.431126
+#> 2 8880104031fffff    0.00000           NA   0.000000
+#> 3 8880104033fffff 1241.65429     1623.636 122.037929
+#> 4 8880104037fffff  149.32009     1329.010   8.075055
+#> 5 888010403bfffff   58.81569     1281.817   7.224510
+#> 6 8880104083fffff    0.00000           NA   0.000000
 #>                         geometry
-#> 1 POLYGON ((-38.50237 -3.8893...
-#> 2 POLYGON ((-38.49341 -3.8877...
-#> 3 POLYGON ((-38.53476 -3.8630...
-#> 4 POLYGON ((-38.55544 -3.8506...
-#> 5 POLYGON ((-38.51684 -3.8598...
-#> 6 POLYGON ((-38.5227 -3.85288...
+#> 1 POLYGON ((-38.51443 -3.8994...
+#> 2 POLYGON ((-38.49651 -3.8962...
+#> 3 POLYGON ((-38.50237 -3.8893...
+#> 4 POLYGON ((-38.49341 -3.8877...
+#> 5 POLYGON ((-38.50547 -3.8978...
+#> 6 POLYGON ((-38.54373 -3.8646...
 ```
 
 ### Mapping the results
@@ -278,13 +278,13 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
 
-✔ Step 1/6 (CRS alignment) [639ms]
+✔ Step 1/6 (CRS alignment) [359ms]
 #> 
 ℹ Step 2/6: connecting to DuckDB and loading extensions...
 ✔ Spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
 
-✔ Step 2/6 (DuckDB ready) [2.8s]                          
+✔ Step 2/6 (DuckDB ready) [567ms]                         
 #> 
 ℹ Step 3/6: preparing census tracts in DuckDB...
 
@@ -292,7 +292,7 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 
-✔ Step 3/6 (Tracts ready) [13.8s]               
+✔ Step 3/6 (Tracts ready) [5.1s]                
 #> 
 ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
@@ -300,15 +300,15 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-✔ Step 4/6 (CNEFE points ready) [42.8s]        
+✔ Step 4/6 (CNEFE points ready) [18.1s]        
 #> 
 ℹ Step 5/6: spatial join (points to tracts) and allocation...
 
-✔ Step 5/6 (Join and allocation) [1m 53.4s]                  
+✔ Step 5/6 (Join and allocation) [15.1s]                     
 #> 
 ℹ Step 6/6: aggregating allocated values to polygons...
 
-✔ Step 6/6 (Polygon aggregation) [667ms]               
+✔ Step 6/6 (Polygon aggregation) [377ms]               
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 

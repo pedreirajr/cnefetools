@@ -16,6 +16,7 @@ cnefe_counts(
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
+  cache = TRUE,
   backend = c("duckdb", "r")
 )
 ```
@@ -61,6 +62,12 @@ cnefe_counts(
 - verbose:
 
   Logical; if `TRUE`, prints messages and timing information.
+
+- cache:
+
+  Logical. If `TRUE` (default), the downloaded ZIP is stored in the user
+  cache directory and reused in future calls. If `FALSE`, a temporary
+  file is used and deleted after the call.
 
 - backend:
 
@@ -118,10 +125,10 @@ hex_counts <- cnefe_counts(code_muni = 2929057)
 #> ✔ Step 1/3 (CNEFE ZIP ready) [1.5s]
 #> 
 #> ℹ Step 2/3: Building full H3 grid over municipality boundary...
-#> ✔ Step 2/3 (H3 grid built) [7.3s]
+#> ✔ Step 2/3 (H3 grid built) [8.1s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [964ms]
+#> ✔ Step 3/3 (Addresses counted) [794ms]
 #> 
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)

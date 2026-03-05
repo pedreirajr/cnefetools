@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">cnefetools</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,9 +39,16 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pedreirajr/cnefetools/blob/dev/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.3" id="cnefetools-023">cnefetools 0.2.3<a class="anchor" aria-label="anchor" href="#cnefetools-023"></a></h2>
+<ul><li><p>Fixed missing hexagons at the edges of the H3 grid. <code><a href="https://obrl-soil.github.io/h3jsr/reference/polygon_to_cells.html" class="external-link">h3jsr::polygon_to_cells()</a></code> only returns hexagons whose centroid falls inside the municipality boundary, so border hexagons that overlap the boundary without their center being inside were silently excluded. <code><a href="../reference/build_h3_grid.html">build_h3_grid()</a></code> now adds those hexagons by checking the immediate neighbors of the grid against the municipality boundary (<a href="https://github.com/pedreirajr/cnefetools/issues/62" class="external-link">#62</a>).</p></li>
+<li><p><code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="../reference/compute_lumi.html">compute_lumi()</a></code> now expose a <code>cache</code> parameter (default <code>TRUE</code>), consistent with <code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> and <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> (<a href="https://github.com/pedreirajr/cnefetools/issues/58" class="external-link">#58</a>).</p></li>
+<li><p>New <code><a href="../reference/clear_cache_muni.html">clear_cache_muni()</a></code> function to delete cached CNEFE ZIP files from the user cache directory, with optional filtering by municipality code (<a href="https://github.com/pedreirajr/cnefetools/issues/59" class="external-link">#59</a>).</p></li>
+<li><p>New <code><a href="../reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> function to delete cached census tract Parquet files, with optional filtering by state (UF) code (<a href="https://github.com/pedreirajr/cnefetools/issues/59" class="external-link">#59</a>).</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.2" id="cnefetools-022">cnefetools 0.2.2<a class="anchor" aria-label="anchor" href="#cnefetools-022"></a></h2><p class="text-muted">CRAN release: 2026-02-27</p>
 <ul><li>Resubmission to CRAN following package removal on 2026-02-26.</li>

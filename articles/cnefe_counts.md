@@ -96,36 +96,36 @@ poa_hex_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
 
-✔ Step 1/3 (CNEFE ZIP ready) [548ms]              
+✔ Step 1/3 (CNEFE ZIP ready) [225ms]              
 #> 
 ℹ Step 2/3: Building full H3 grid over municipality boundary...
 
-✔ Step 2/3 (H3 grid built) [3.5s]                              
+✔ Step 2/3 (H3 grid built) [5s]                                
 #> 
 ℹ Step 3/3: Counting address species per hexagon...
 
-✔ Step 3/3 (Addresses counted) [4.5s]              
+✔ Step 3/3 (Addresses counted) [1.8s]              
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
 #> Geometry type: POLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -51.1276 ymin: -30.24817 xmax: -51.08759 ymax: -30.22164
+#> Bounding box:  xmin: -51.10675 ymin: -30.26442 xmax: -51.04588 ymax: -30.23249
 #> Geodetic CRS:  WGS 84
 #>            id_hex addr_type1 addr_type2 addr_type3 addr_type4 addr_type5
-#> 1 88a9010c83fffff          0          0          0          0          0
-#> 2 88a9010c87fffff        444          0          0          0          1
-#> 3 88a9010c8bfffff          0          0          0          0          0
-#> 4 88a9010c91fffff          5          0          0          0          0
-#> 5 88a9010c93fffff         11          0          0          0          0
-#> 6 88a9010c95fffff         43          0          0          0          0
+#> 1 88a9010c33fffff          0          0          0          0          0
+#> 2 88a9010c37fffff          0          0          0          0          0
+#> 3 88a9010c81fffff          5          0          0          0          0
+#> 4 88a9010c83fffff          0          0          0          0          0
+#> 5 88a9010c85fffff        179          0          0          1          0
+#> 6 88a9010c87fffff        444          0          0          0          1
 #>   addr_type6 addr_type7 addr_type8                       geometry
-#> 1          0          0          0 POLYGON ((-51.10091 -30.241...
-#> 2         27          6          5 POLYGON ((-51.09175 -30.240...
-#> 3          0          0          0 POLYGON ((-51.10422 -30.248...
-#> 4          2          0          0 POLYGON ((-51.11591 -30.236...
-#> 5          1          0          0 POLYGON ((-51.12176 -30.230...
-#> 6          2          0          0 POLYGON ((-51.10675 -30.235...
+#> 1          0          0          0 POLYGON ((-51.0592 -30.2644...
+#> 2          0          0          0 POLYGON ((-51.05004 -30.263...
+#> 3          0          0          0 POLYGON ((-51.09506 -30.247...
+#> 4          0          0          0 POLYGON ((-51.10091 -30.241...
+#> 5         25          6          2 POLYGON ((-51.0859 -30.2469...
+#> 6         27          6          5 POLYGON ((-51.09175 -30.240...
 ```
 
 The output contains columns `addr_type1` through `addr_type8`,
@@ -148,7 +148,7 @@ poa_hex_ice <- poa_hex_counts |>
 
 summary(poa_hex_ice$ice)
 #>     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-#> -1.00000 -1.00000 -0.38462 -0.27384  0.07692  1.00000
+#> -1.00000 -1.00000 -0.39231 -0.28022  0.07692  1.00000
 ```
 
 ## Mapping H3 results
@@ -195,14 +195,14 @@ poa_neigh_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-✔ Step 1/2 (Data and polygon ready) [639ms]       
+✔ Step 1/2 (Data and polygon ready) [284ms]       
 #> 
 ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
 #> 
-✔ Step 2/2 (Addresses counted) [11.4s]       
+✔ Step 2/2 (Addresses counted) [3.3s]        
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 26 fields
