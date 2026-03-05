@@ -109,6 +109,22 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
         is.numeric(res$avg_inc_resp) || all(is.na(res$avg_inc_resp))
       )
     },
+    build_h3_grid = function(h3_resolution, code_muni = NULL,
+                             id_hex = NULL, boundary = NULL) {
+      # Mock: build a grid from the fake CNEFE point coordinates so no geobr
+      # network call is needed. The 4 allocated points (0.2/0.8 lon/lat) map
+      # to specific H3 cells; these are the only cells that need to be present
+      # for the join to succeed.
+      pts <- data.frame(
+        lon = c(0.2, 0.2, 0.8, 0.8),
+        lat = c(0.2, 0.8, 0.2, 0.8)
+      )
+      ids <- unique(as.character(
+        h3jsr::point_to_cell(pts, res = h3_resolution, simple = TRUE)
+      ))
+      geoms <- h3jsr::cell_to_polygon(ids, simple = TRUE)
+      sf::st_sf(id_hex = ids, geometry = sf::st_set_crs(geoms, 4326))
+    },
     .sc_create_views_in_duckdb = function(con, code_muni, cache, verbose) {
       # Two tracts. Only the first has CNEFE points in the mocked CNEFE view.
       DBI::dbExecute(

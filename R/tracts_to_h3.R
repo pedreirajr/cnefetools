@@ -481,18 +481,29 @@ tracts_to_h3 <- function(
 
   }
 
+  # Build the full municipality grid first, then LEFT_JOIN allocated values.
+  # This ensures hexagons with no eligible dwelling points are retained (with
+  # count variables coalesced to 0 and avg_inc_resp left as NA).
+  hex_grid <- build_h3_grid(
+    h3_resolution = h3_resolution,
+    code_muni     = code_muni
+  )
+
   # capture.output para capturar TUDO (output E messages)
   invisible(utils::capture.output({
     invisible(utils::capture.output({
       hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
-      hex_sf <- h3jsr::cell_to_polygon(hex_df$id_hex, simple = FALSE) |>
-        dplyr::rename(id_hex = "h3_address")
-
-      out <- hex_sf |>
+      out <- hex_grid |>
         dplyr::left_join(hex_df, by = "id_hex") |>
         sf::st_as_sf() |>
         dplyr::select(id_hex, dplyr::all_of(vars), geometry)
+
+      # Coalesce count variables to 0 for empty hexagons; avg_inc_resp stays NA
+      count_vars <- setdiff(vars, "avg_inc_resp")
+      for (v in count_vars) {
+        out[[v]] <- dplyr::coalesce(out[[v]], 0)
+      }
     }, type = "message"))
   }, type = "output"))
 
