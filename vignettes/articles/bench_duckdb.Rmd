@@ -296,17 +296,17 @@ speedups_cities |>
   <tr>
    <td style="text-align:left;"> Vitória da Conquista </td>
    <td style="text-align:left;"> ~200,000 </td>
-   <td style="text-align:right;"> 1.33 </td>
+   <td style="text-align:right;"> 1.36 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Curitiba </td>
    <td style="text-align:left;"> ~900,000 </td>
-   <td style="text-align:right;"> 3.25 </td>
+   <td style="text-align:right;"> 3.68 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> São Paulo </td>
    <td style="text-align:left;"> ~5,700,000 </td>
-   <td style="text-align:right;"> 10.33 </td>
+   <td style="text-align:right;"> 13.33 </td>
   </tr>
 </tbody>
 </table>
@@ -348,17 +348,17 @@ speedups_h3 |>
   <tr>
    <td style="text-align:right;"> 7 </td>
    <td style="text-align:right;"> 5161293.36 </td>
-   <td style="text-align:right;"> 2.55 </td>
+   <td style="text-align:right;"> 4.32 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 9 </td>
    <td style="text-align:right;"> 105332.51 </td>
-   <td style="text-align:right;"> 2.49 </td>
+   <td style="text-align:right;"> 3.09 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 11 </td>
    <td style="text-align:right;"> 2149.64 </td>
-   <td style="text-align:right;"> 0.82 </td>
+   <td style="text-align:right;"> 1.34 </td>
   </tr>
 </tbody>
 </table>
