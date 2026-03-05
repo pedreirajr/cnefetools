@@ -12,6 +12,7 @@ cnefe_counts(
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
+  cache = TRUE,
   backend = c("duckdb", "r")
 )
 }
@@ -39,6 +40,10 @@ object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 \code{polygon_type = "hex"}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
+
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded ZIP is stored
+in the user cache directory and reused in future calls. If \code{FALSE},
+a temporary file is used and deleted after the call.}
 
 \item{backend}{Character. \code{"duckdb"} (default) uses DuckDB with H3/spatial
 extensions. \code{"r"} uses h3jsr and sf in R (slower but no DuckDB dependency).}

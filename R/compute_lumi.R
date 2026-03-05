@@ -26,6 +26,9 @@
 #' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used when
 #'   `polygon_type = "hex"`.
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
+#' @param cache Logical. If `TRUE` (default), the downloaded ZIP is stored
+#'   in the user cache directory and reused in future calls. If `FALSE`,
+#'   a temporary file is used and deleted after the call.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB + H3 extension
 #'   reading directly from the cached ZIP. `"r"` computes H3 in R using h3jsr.
 #'
@@ -91,6 +94,7 @@ compute_lumi <- function(
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
+  cache = TRUE,
   backend = c("duckdb", "r")
 ) {
   polygon_type <- match.arg(polygon_type)
@@ -182,7 +186,8 @@ compute_lumi <- function(
       h3_resolution = h3_resolution,
       backend = backend,
       cnefe_index = cnefe_index,
-      verbose = verbose
+      verbose = verbose,
+      cache = cache
     )
   } else {
     out <- .compute_lumi_user_poly(
@@ -192,7 +197,8 @@ compute_lumi <- function(
       crs_output = crs_output,
       backend = backend,
       cnefe_index = cnefe_index,
-      verbose = verbose
+      verbose = verbose,
+      cache = cache
     )
   }
 
@@ -302,7 +308,8 @@ compute_lumi <- function(
   h3_resolution,
   backend,
   cnefe_index,
-  verbose
+  verbose,
+  cache = TRUE
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure ZIP and find CSV inside
@@ -315,7 +322,7 @@ compute_lumi <- function(
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
     index = cnefe_index,
-    cache = TRUE,
+    cache = cache,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )
@@ -414,7 +421,7 @@ compute_lumi <- function(
       code_muni = code_muni,
       year = year,
       output = "arrow",
-      cache = TRUE,
+      cache = cache,
       verbose = FALSE
     )
 
@@ -486,7 +493,7 @@ compute_lumi <- function(
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    id_hex = counts_hex$id_hex
+    code_muni     = code_muni
   )
 
   # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
@@ -529,7 +536,8 @@ compute_lumi <- function(
   crs_output,
   backend,
   cnefe_index,
-  verbose
+  verbose,
+  cache = TRUE
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure ZIP exists in cache and prepare polygon
@@ -542,7 +550,7 @@ compute_lumi <- function(
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
     index = cnefe_index,
-    cache = TRUE,
+    cache = cache,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )
@@ -602,7 +610,8 @@ compute_lumi <- function(
       code_muni = code_muni,
       year = year,
       polygon = polygon_4326,
-      verbose = verbose
+      verbose = verbose,
+      cache = cache
     )
   }
 
@@ -860,14 +869,15 @@ compute_lumi <- function(
   code_muni,
   year,
   polygon,
-  verbose
+  verbose,
+  cache = TRUE
 ) {
   # Read CNEFE data via Arrow
   tab <- read_cnefe(
     code_muni = code_muni,
     year = year,
     output = "arrow",
-    cache = TRUE,
+    cache = cache,
     verbose = FALSE
   )
 
