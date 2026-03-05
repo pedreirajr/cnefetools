@@ -1,4 +1,4 @@
-# cnefetools 0.2.3.9000
+# cnefetools 0.2.3
 
 * Fixed missing hexagons at the edges of the H3 grid. `h3jsr::polygon_to_cells()`
   only returns hexagons whose centroid falls inside the municipality boundary, so
