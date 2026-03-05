@@ -145,7 +145,7 @@ reads CSV data directly from cached ZIP archives without prior
 extraction, performs H3 cell assignment and spatial joins entirely
 in-process, and returns only the final aggregated result to R. This
 design achieves speedups of up to 13$\times$ over a pure-R fallback
-based on \CRANpkg{h3jsr} and \CRANpkg{sf} (see Section 5 for
+based on \CRANpkg{h3jsr} [@h3jsr2023] and \CRANpkg{sf} [@pebesma2018] (see Section 5 for
 benchmarks).
 
 This paper is organised as follows. Section 2 describes the CNEFE
@@ -299,7 +299,7 @@ For the computationally intensive operations in `cnefe_counts()` and
 hexagons or user-supplied polygons and performing spatial joins, users can choose between two
 backends via the `backend` argument:
 
--   **`"duckdb"` (default)**: uses the \CRANpkg{duckdb} R package to
+-   **`"duckdb"` (default)**: uses the \CRANpkg{duckdb} [@duckdb_r2024] R package to
     spin up an in-memory DuckDB database. The `zipfs` extension is
     always loaded to read CSV data directly from the cached ZIP without
     decompression. For H3 aggregation, the `h3` extension assigns cell
@@ -308,7 +308,7 @@ backends via the `backend` argument:
     point-in-polygon join. Only the final aggregated result is
     transferred to R.
 
--   **`"r"`**: uses \CRANpkg{arrow} to read the CSV. For H3 aggregation,
+-   **`"r"`**: uses \CRANpkg{arrow} [@arrow2024] to read the CSV. For H3 aggregation,
     \CRANpkg{h3jsr} assigns each point to a cell, whereas for
     user-provided polygons, \CRANpkg{sf} performs the point-in-polygon
     join. This backend is slower but requires no DuckDB dependency
@@ -326,7 +326,7 @@ downloaded on-demand with caching via the \CRANpkg{piggyback} package.
 ## Input validation
 
 All user-facing functions validate their inputs using
-\CRANpkg{checkmate} before any I/O or computation. Municipality codes
+\CRANpkg{checkmate} [@lang2017] before any I/O or computation. Municipality codes
 are normalised and checked against the built-in index. Polygon inputs
 are verified to be `sf` objects with `POLYGON` or `MULTIPOLYGON`
 geometry types, and invalid geometries are repaired with
@@ -373,6 +373,20 @@ verbs applied to Arrow tables before conversion to a data frame. The
 coordinates, and constructs an `sf` point object in CRS 4674 (SIRGAS
 2000).
 
+The code below previews five selected columns for the first six records of the
+dataset previously read as an \CRANpkg{sf} point object.
+
+```{r cnefe-preview, echo=-1, eval=TRUE, cache=TRUE}
+cnefe_sf <- cnefetools::read_cnefe(
+  code_muni = 2919207, output = "sf", verbose = FALSE
+)
+cnefe_sf |>
+  sf::st_drop_geometry() |>
+  dplyr::select(NOM_TIPO_SEGLOGR, NOM_SEGLOGR, CEP, COD_ESPECIE,
+                LONGITUDE, LATITUDE, DSC_ESTABELECIMENTO) |>
+  head()
+```
+
 The function accepts the `year` argument (currently only 2022 is
 supported), `cache` to control ZIP caching, and `verbose` to toggle
 informative progress messages. Figure \@ref(fig:fig-read-cnefe) maps
@@ -410,13 +424,14 @@ ggplot() +
 returns counts of each address type (1 through 8) as columns
 `addr_type1` to `addr_type8`. To illustrate both output modes, the examples below count addresses per
 H3 hexagon at resolution 9 and per official neighborhood boundary obtained
-from \CRANpkg{geobr}.
+from \CRANpkg{geobr} [@geobr2019].
 
 ```{r counts-hex-example}
 # Count addresses per H3 hexagon at resolution 9
 hex_counts <- cnefe_counts(
   code_muni     = 2919207,
   year          = 2022,
+  cache         = TRUE,
   polygon_type  = "hex",
   h3_resolution = 9,
   verbose       = TRUE,
@@ -428,11 +443,12 @@ library(geobr)
 nei <- subset(read_neighborhood(year = 2022), code_muni == 2919207)
 
 poly_counts <- cnefe_counts(
-  code_muni   = 2919207,
-  year        = 2022,
+  code_muni    = 2919207,
+  year         = 2022,
+  cache        = TRUE,
   polygon_type = "user",
   polygon      = nei,
-   crs_output   = NULL,
+  crs_output   = NULL,
   verbose      = TRUE,
   backend      = "duckdb"
 )
@@ -551,6 +567,7 @@ The parameter interface of `compute_lumi()` mirrors that of
 lumi_hex <- compute_lumi(
   code_muni     = 2919207,
   year          = 2022,
+  cache         = TRUE,
   polygon_type  = "hex",
   h3_resolution = 9,
   verbose       = TRUE,
@@ -561,6 +578,7 @@ lumi_hex <- compute_lumi(
 lumi_poly <- compute_lumi(
   code_muni    = 2919207,
   year         = 2022,
+  cache        = TRUE,
   polygon_type = "user",
   polygon      = nei,
   crs_output   = NULL,
@@ -605,50 +623,55 @@ lumi_poly <- cnefetools::compute_lumi(
   verbose      = FALSE
 )
 
-outline_hex <- lumi_hex |>
-  summarise() |>         
-  st_union() |>         
-  st_boundary() 
-
-outline_poly <- lumi_poly |>
-  summarise() |>         
-  st_union() |>         
-  st_boundary()
+tropic_colors <- paletteer::paletteer_c("grDevices::Tropic", n = 256, direction = -1)
 
 p1 <- ggplot(lumi_hex) +
-  geom_sf(data=outline_hex, 
-          fill=NA, 
-          color = "black", 
-          linewidth = 0.8,
-          lineend = "round")+
-  geom_sf(aes(fill = bgbi), color = NA) +
-  paletteer::scale_fill_paletteer_c("grDevices::Tropic", 
-                                    direction = -1,
-                                    limits = c(-1,1),
-                                    name = "BGBI")+
+  geom_sf(aes(fill = bgbi), color = NA, linetype = 1) +
+  geom_sf(data = dplyr::filter(lumi_hex, is.na(bgbi)),
+          aes(linetype = "No data (NA)"),
+          fill = NA, color = NA) +
+  scale_fill_gradientn(
+    colours  = tropic_colors,
+    limits   = c(-1, 1),
+    na.value = "gray40",
+    name     = "BGBI"
+  ) +
+  scale_linetype_manual(
+    values = 0, name = NULL,
+    guide  = guide_legend(
+      override.aes = list(fill = "grey40", color = NA, linewidth = 0)
+    )
+  ) +
   labs(title = "H3 resolution 8") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
         legend.position = "right",
+        legend.box = "vertical",
         plot.background = element_rect(fill = "white", color = NA))
 
 p2 <- ggplot() +
-  geom_sf(data=outline_poly, 
-          fill=NA,
-          color = "black", 
-          linewidth = 1)+
-  geom_sf(data = lumi_poly, 
-          aes(fill = bgbi),
-          color = "white",
-          linewidth = 0.2) +
-  paletteer::scale_fill_paletteer_c("grDevices::Tropic", 
-                                    direction = -1,
-                                    limits = c(-1,1),
-                                    name = "BGBI")+
+  geom_sf(data = lumi_poly, aes(fill = bgbi),
+          color = "white", linewidth = 0.2, linetype = 1) +
+  geom_sf(data = dplyr::filter(lumi_poly, is.na(bgbi)),
+          aes(linetype = "No data (NA)"),
+          fill = NA, color = NA) +
+  scale_fill_gradientn(
+    colours  = tropic_colors,
+    limits   = c(-1, 1),
+    na.value = "grey80",
+    name     = "BGBI"
+  ) +
+  scale_linetype_manual(
+    values = 0, name = NULL,
+    guide  = guide_legend(
+      override.aes = list(fill = "grey80", color = "white", linewidth = 0.2)
+    )
+  ) +
   labs(title = "Neighborhoods") +
   theme_void() +
   theme(plot.title = element_text(hjust = 0.5, size = 11),
         legend.position = "right",
+        legend.box = "vertical",
         plot.background = element_rect(fill = "white", color = NA))
 
 p1 + p2
@@ -668,7 +691,16 @@ transportation modelling or health districts for public health management.
 
 `tracts_to_h3()` and `tracts_to_polygon()` perform dasymetric
 interpolation [@mennis2003] from census tract aggregates to user-defined
-spatial units, using CNEFE dwelling points as ancillary data. The set of supported
+spatial units, using CNEFE dwelling points as ancillary data. Two existing R tools
+address related problems: `sf::st_interpolate_aw()` [@pebesma2018] and
+\CRANpkg{areal} [@prener2019] implement areal-weighted interpolation, which
+distributes source-zone totals in proportion to the overlap area between source and
+target polygons, implicitly assuming a uniform spatial distribution of the attribute
+within each source zone. By contrast, `tracts_to_h3()` and `tracts_to_polygon()`
+use geocoded dwelling points as ancillary data, concentrating allocated mass where
+residential addresses actually are rather than spreading it uniformly across the
+tract. This produces more accurate estimates in municipalities with heterogeneous
+land use, where population density varies sharply within census tracts. The set of supported
 variables is documented in Table \@ref(tab:tab-tracts-vars), which lists
 each variable alongside its IBGE census tract code and source table.
 
@@ -843,6 +875,7 @@ The DuckDB backend derives its performance advantage from three sources:
     of millions of rows substantially faster than row-oriented R
     operations.
 
+<!-- Check values here -->
 Performance is benchmarked along two independent dimensions. The first
 varies municipality size (measured by the number of CNEFE address points)
 while holding the H3 output resolution fixed at 8, using three
@@ -852,22 +885,21 @@ All timings were collected on a machine with a 14-core Intel Core
 i9-13900H (2.60 GHz), 32 GB RAM, Windows 11, R 4.3.2, and DuckDB 1.4.1.
 
 Figure \@ref(fig:fig-bench-cities) shows that DuckDB reduces elapsed time
-for `cnefe_counts()` from 8.2 s to 5.4 s for Vitória da Conquista-BA
-(approximately 200,000 addresses, 1.5× speedup), from 35.9 s to 8.2 s
-for Curitiba-PR (approximately 900,000 addresses, 4.4× speedup), and from
-429 s to 37 s for São Paulo-SP (approximately 5.7 million addresses, 13×
+for `cnefe_counts()` from 3.66 s to 2.96 s for Vitória da Conquista-BA
+(approximately 200,000 addresses, ~1.4× speedup), from 12.23 s to 3.32 s
+for Curitiba-PR (approximately 900,000 addresses, 3.7× speedup), and from
+165.68 s to 12.43 s for São Paulo-SP (approximately 5.7 million addresses, 13.3×
 speedup). The relative advantage grows with dataset size, because DuckDB's
 columnar engine and in-process ZIP reading scale more favourably than
-row-oriented R operations. For small municipalities (fewer than 50,000
-addresses), the fixed initialisation overhead can dominate and the two
-backends perform comparably.
+row-oriented R operations. For small municipalities, the fixed initialisation 
+overhead can dominate and the two backends perform comparably.
 
 ```{r fig-bench-cities, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.cap=paste0("Elapsed time (s) for ", cfmt("cnefe_counts()"), " at H3 resolution~8, by municipality size, comparing the DuckDB and pure-R backends.")}
 knitr::include_graphics("figures/bench-cities.png")
 ```
 
 Figure \@ref(fig:fig-bench-h3) shows results for Curitiba-PR across three
-H3 resolutions. The DuckDB speedup is 5.4× at resolution 7, 3.5× at
+H3 resolutions. The DuckDB speedup is 4.3× at resolution 7, 3.1× at
 resolution 9, and 1.3× at resolution 11. At finer resolutions (higher cell counts), 
 H3 indexing dominates both backends equally, reducing the relative DuckDB advantage.
 
