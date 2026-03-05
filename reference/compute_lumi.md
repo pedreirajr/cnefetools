@@ -125,13 +125,13 @@ lumi <- compute_lumi(code_muni = 2929057)
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
 #> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-#> ✔ Step 1/3 (CNEFE ZIP ready) [9ms]
+#> ✔ Step 1/3 (CNEFE ZIP ready) [10ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [214ms]
+#> ✔ Step 2/3 (Addresses counted) [226ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [4.8s]
+#> ✔ Step 3/3 (Land use mix indices computed) [4.5s]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -151,7 +151,7 @@ lumi_poly <- compute_lumi(
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ✔ Step 1/3 (Data and polygon ready) [20ms]
+#> ✔ Step 1/3 (Data and polygon ready) [21ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
 #> ℹ Table <user_polygons> dropped
@@ -164,7 +164,7 @@ lumi_poly <- compute_lumi(
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
 #> ℹ 111103 of 111385 points are within the provided polygon.
 #> ℹ 282 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [54ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [58ms]
 #> 
 # }
 ```
