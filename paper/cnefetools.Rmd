@@ -1,7 +1,7 @@
 ---
 title: "cnefetools: Access and Analysis of Brazilian CNEFE Address Data in R"
 abstract: >
-  The \pkg{cnefetools} package provides programmatic access to the
+  The cnefetools package provides programmatic access to the
   Brazilian National Address File for Statistical Purposes (CNEFE), a
   geocoded register of approximately 110 million valid addresses from the
   2022 census, published by the Instituto Brasileiro de Geografia e
@@ -12,7 +12,7 @@ abstract: >
   it requires overcoming both access barriers, arising from its distribution
   across thousands of municipality-level files with no unified programmatic
   interface, and computational barriers from spatial operations that scale
-  to millions of records. \pkg{cnefetools} addresses both through
+  to millions of records. cnefetools addresses both through
   four capabilities: (i) downloading and caching CNEFE data for any of Brazil's
   5,570 municipalities; (ii) aggregating address counts to H3 hexagonal grids or
   user-supplied polygons; (iii) computing land use mix indices; and (iv) performing
@@ -139,6 +139,23 @@ directly from R, with four principal capabilities:
 4.  **Dasymetric interpolation**: redistribute census tract aggregates
     to any spatial unit using CNEFE dwelling points as ancillary data.
 
+Existing R tools address related interpolation problems, but with
+important limitations. Areal-weighted approaches, such as those provided by \CRANpkg{sf}
+[@pebesma2018] and \CRANpkg{areal} [@prener2019], assume a uniform
+distribution of the attribute within each source zone, which is
+methodologically weaker than dasymetric methods that incorporate
+ancillary data on where people actually live.
+\CRANpkg{populR} [@batsaris2023] takes a dasymetric approach using
+building footprints from OpenStreetMap as ancillary data, but footprints
+capture ground-floor area rather than dwelling counts: a high-rise
+residential tower and a single-storey house may have similar footprints
+yet house very different numbers of households. Because each CNEFE record
+corresponds to one address unit, the point count within a zone directly
+reflects the number of dwellings, making it a more precise ancillary
+variable for identifying population density in verticalised urban
+environments. Beyond interpolation, no R package currently provides
+tools for computing land use mix indices from address-level data.
+
 A key technical contribution is a dual-backend architecture. The default
 DuckDB backend [@duckdb2019], supported by the \pkg{duckdb} R package,
 reads CSV data directly from cached ZIP archives without prior
@@ -154,7 +171,7 @@ decisions underpinning \pkg{cnefetools}. Section 4 describes each
 exported function in detail. Section 5 reports performance benchmarks.
 Section 6 summarises contributions and discusses future directions.
 
-# The CNEFE Dataset
+# The CNEFE dataset
 
 The Cadastro Nacional de Endereços para Fins Estatísticos (CNEFE) is the
 geocoded address register produced alongside the 2022 Brazilian Census.
@@ -235,7 +252,7 @@ approximately 3.5 million (3.2%).
 
 The data are distributed by IBGE via an FTP server at
 <https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/>.
-Files are organised hierarchically by Federative Unit (UF) and
+Files are organised hierarchically by Federative Unit/state (UF) and
 municipality. Each municipality's data are stored as a
 semicolon-delimited CSV file compressed inside a ZIP archive.
 
@@ -335,6 +352,16 @@ geometry types, and invalid geometries are repaired with
 
 # Core functionality
 
+A typical \pkg{cnefetools} workflow begins with `read_cnefe()`, which
+downloads and caches the CNEFE data for a chosen municipality. The
+cached data then feed the three analytical functions: `cnefe_counts()`
+aggregates address points to H3 hexagonal grids or user-supplied
+polygons; `compute_lumi()` computes land use mix indices over the same
+spatial units; and `tracts_to_h3()` or `tracts_to_polygon()` performs
+dasymetric interpolation of census tract variables. Each analytical
+function calls `read_cnefe()` (or its underlying download logic) internally,
+so users can call any of them directly without a separate data-loading step.
+
 ## Reading CNEFE data: `read_cnefe()`
 
 `read_cnefe()` is the entry point to the package. It downloads (if not
@@ -393,7 +420,7 @@ informative progress messages. Figure \@ref(fig:fig-read-cnefe) maps
 the private household addresses for Lauro de Freitas which was previously read 
 in `cnefe_sf`.
 
-```{r fig-read-cnefe, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Private household addresses geocoded in Lauro de Freitas, Bahia. Data: IBGE CNEFE 2022.", fig.width=6, fig.height=5, out.width="100%"}
+```{r fig-read-cnefe, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Private household addresses geocoded in Lauro de Freitas, Bahia.", fig.alt="Map of Lauro de Freitas municipality showing private household address points as blue dots distributed across the urban area, with the municipal boundary outlined in black on a light grey background.", fig.width=6, fig.height=5, out.width="100%"}
 library(geobr)
 library(ggplot2)
 library(sf)
@@ -475,7 +502,7 @@ CRS, or `crs_output` if specified) when `polygon_type = "user"`.
 Figure \@ref(fig:fig-counts) illustrates both modes for Lauro de Freitas
 at H3 resolution 8 and at the neighborhood level.
 
-```{r fig-counts, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap=paste0("Private household address counts (", cfmt("addr_type1"), ") aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right) for Lauro de Freitas, Bahia. Data: IBGE CNEFE 2022."), fig.width=10, fig.height=5, out.width="100%"}
+```{r fig-counts, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap=paste0("Private household address counts (", cfmt("addr_type1"), ") aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right) for Lauro de Freitas, Bahia."), fig.alt="Two side-by-side choropleth maps of Lauro de Freitas. The left map shows private household address counts aggregated to H3 hexagons at resolution 8; the right map shows the same counts aggregated to neighborhoods. Both maps use a green-to-yellow colour scale where darker green indicates lower counts and bright yellow indicates higher counts.", fig.width=10, fig.height=5, out.width="100%"}
 library(geobr)
 library(ggplot2)
 library(sf)
@@ -593,7 +620,7 @@ and the polygon geometry. Figure \@ref(fig:fig-bgbi) maps the BGBI
 index [@pedreirajr2025] for Lauro de Freitas at H3 resolution 8 and
 at the neighborhood level.
 
-```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index (BGBI) for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right). Green cells indicate a local residential share above the citywide average ($p_i > P$); pink cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline. Data: IBGE CNEFE 2022.", fig.width=10, fig.height=5, out.width="100%"}
+```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index (BGBI) for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right). Green cells indicate a local residential share above the citywide average ($p_i > P$); pink cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline.", fig.alt="Two side-by-side choropleth maps of Lauro de Freitas showing the BGBI index. The left map aggregates to H3 hexagons at resolution 8 and the right map aggregates to neighborhoods. Green areas indicate a local residential share above the citywide average, pink areas indicate non-residential dominance, and white or neutral areas are near the citywide baseline.", fig.width=10, fig.height=5, out.width="100%"}
 library(geobr)
 library(ggplot2)
 library(sf)
@@ -677,6 +704,17 @@ p2 <- ggplot() +
 p1 + p2
 ```
 
+Figure \@ref(fig:fig-bgbi) illustrates how the spatial pattern of the BGBI
+can differ markedly between the H3 hexagonal grid and neighborhood boundaries:
+some neighborhoods aggregate areas of contrasting land use, smoothing out
+local variation that remains visible at the hexagon level, while the coarser
+polygon boundaries may shift which zones appear residentially dominant or
+non-residential. By allowing the same indices to be computed across multiple
+H3 resolutions and over user-supplied polygon layers, \pkg{cnefetools} makes
+it straightforward to assess the sensitivity of land use mix measurement to
+spatial aggregation and, therefore, to explicitly probe scale effects
+associated with the Modifiable Areal Unit Problem (MAUP) [@dark2007].
+
 ## Dasymetric interpolation: `tracts_to_h3()` and `tracts_to_polygon()`
 
 The 2022 Brazilian Census disseminates questionnaire results
@@ -691,16 +729,34 @@ transportation modelling or health districts for public health management.
 
 `tracts_to_h3()` and `tracts_to_polygon()` perform dasymetric
 interpolation [@mennis2003] from census tract aggregates to user-defined
-spatial units, using CNEFE dwelling points as ancillary data. Two existing R tools
-address related problems: `sf::st_interpolate_aw()` [@pebesma2018] and
-\CRANpkg{areal} [@prener2019] implement areal-weighted interpolation, which
-distributes source-zone totals in proportion to the overlap area between source and
-target polygons, implicitly assuming a uniform spatial distribution of the attribute
-within each source zone. By contrast, `tracts_to_h3()` and `tracts_to_polygon()`
-use geocoded dwelling points as ancillary data, concentrating allocated mass where
-residential addresses actually are rather than spreading it uniformly across the
-tract. This produces more accurate estimates in municipalities with heterogeneous
-land use, where population density varies sharply within census tracts. The set of supported
+spatial units, using CNEFE dwelling points as ancillary data. Several R packages
+address related polygon-to-polygon interpolation problems.
+`sf::st_interpolate_aw()` [@pebesma2018] and \CRANpkg{areal} [@prener2019],
+whose main function is `aw_interpolate()`, both implement areal-weighted
+interpolation, distributing source-zone totals in proportion to the overlap area
+between source and target polygons and implicitly assuming a uniform spatial
+distribution of the attribute within each source zone. \CRANpkg{smile} takes
+a model-based approach, fitting an underlying continuous
+spatial process to areal data via `fit_spm()` and predicting over target regions
+with `predict_spm()`, propagating estimation uncertainty through the interpolation.
+
+\CRANpkg{populR} [@batsaris2023] is the closest in spirit to \pkg{cnefetools}:
+its `pp_estimate()` function supports both areal weighting and a dasymetric
+mode that uses building footprints downloaded from OpenStreetMap via `pp_vgi()`
+as ancillary data, weighting the redistribution by the total floor area within
+each target zone rather than by plain overlap area. `pp_compare()` additionally
+facilitates accuracy assessment against reference counts.
+
+\pkg{cnefetools} follows the same dasymetric logic as the volume-weighting mode
+of \CRANpkg{populR}, but uses geocoded dwelling points from the CNEFE register
+instead of building footprints. This distinction matters in verticalised urban
+environments: a building footprint captures ground-floor area but carries no
+information about how many dwelling units the building contains. A high-rise
+residential tower and an adjacent single-storey house may have similar footprints
+yet house very different numbers of households. Because each CNEFE record
+corresponds to one address unit, the point count within a zone directly reflects the number of
+dwellings rather than the built area, which is a more appropriate ancillary
+variable for redistributing population and household-level census aggregates. The set of supported
 variables is documented in Table \@ref(tab:tab-tracts-vars), which lists
 each variable alongside its IBGE census tract code and source table.
 
@@ -728,25 +784,127 @@ knitr::kable(
 )
 ```
 
-The core computation is carried out within DuckDB for efficiency, in four steps:
+The entire computation pipeline runs within an in-memory DuckDB instance
+and proceeds in six steps, with all heavy operations remaining inside DuckDB
+until the final aggregated result is materialised in R:
 
-1.  **Spatial join (tracts → CNEFE points)**: each CNEFE point (types 1
-    and 2 only, private and collective dwellings) is matched to the
-    census tract that contains it via `ST_Within`.
-2.  **Allocation**: the tract-level total for each requested variable is
-    divided equally among eligible dwelling points within that tract.
-    The eligibility rule depends on the variable: `pop_ph` (private
-    household population) is allocated only to type-1 points; `pop_ch`
-    to type-2; demographic variables (`male`, `female`, `age_*`,
-    `race_*`) follow private dwellings when available, otherwise
-    collective. For `avg_inc_resp` (average income of household heads),
-    the tract-level average is assigned (not split) to each eligible
-    point and the target unit receives the mean of assigned values.
-3.  **H3 / polygon aggregation**: allocated values are summed (or
-    averaged for `avg_inc_resp`) within each target spatial unit.
-4.  **Diagnostics**: the function reports the percentage of the
-    tract-level total successfully allocated, the percentage of CNEFE
-    points matched to a tract, and any tracts with missing values.
+1.  **DuckDB setup**: an in-memory DuckDB database is opened and three
+    extensions are loaded: `zipfs` (to read compressed CSV directly from the cached ZIP
+    without extraction), `h3` (for H3 cell assignment in SQL), and `spatial` 
+    (for `ST_Within` point-in-polygon joins).
+
+2.  **Census tract geometry**: the UF-level Parquet asset is registered as
+    a DuckDB `VIEW` and immediately materialised into a persistent in-memory
+    `TABLE`. A spatial R-tree index (`USING RTREE`) is built on the tract
+    geometry column to accelerate the subsequent point-in-polygon join.
+
+3.  **CNEFE points**: the municipality ZIP is mounted as a virtual file
+    system via the `zipfs` extension, and DuckDB streams the semicolon-delimited
+    CSV directly without extracting it to disk. Only rows with
+    `COD_ESPECIE` $\in \{1, 2\}$ (private and collective dwellings) and
+    non-null coordinates are retained and materialised into a second
+    in-memory `TABLE`.
+
+4.  **Spatial join and allocation**: an inner `ST_Within` join matches each
+    dwelling point to its enclosing census tract. Per-tract counts of
+    type-1 (`n_dom_p`) and type-2 (`n_dom_c`) matched points serve as
+    denominators. Variable-specific allocation expressions are assembled
+    into a single SQL `VIEW` (`cnefe_alloc`) and, for `tracts_to_h3()`,
+    H3 cell indices are assigned in the same step via
+    `h3_latlng_to_cell_string(lat, lon, resolution)`. All intermediate
+    results remain inside DuckDB with no transfer to R at this stage.
+    Table \@ref(tab:tab-alloc) summarises the allocation rule for each
+    variable group.
+
+5.  **Aggregation**: the `cnefe_alloc` view is grouped by target spatial
+    unit (H3 cell or polygon identifier). Count variables are aggregated
+    with `SUM`; `avg_inc_resp` is aggregated with `AVG` (mean of
+    per-point tract averages, weighted implicitly by the number of eligible
+    points per cell). This produces a compact result table with one row per
+    non-empty target unit.
+
+6.  **Materialisation and output**: the aggregated result is pulled into R
+    with a single `dbGetQuery()` call. For `tracts_to_h3()`, the complete
+    H3 grid for the municipality is built in R via \CRANpkg{h3jsr} —
+    including border hexagons recovered via a $k = 1$ neighbour ring — and
+    joined to the DuckDB result with a `LEFT JOIN`, so hexagons with no
+    eligible dwelling points are retained with count variables set to 0 and
+    `avg_inc_resp` set to `NA`. For `tracts_to_polygon()`, the user-supplied
+    `sf` polygons are the join target. 
+
+```{r tab-alloc, eval=TRUE, echo=FALSE}
+if (knitr::is_latex_output()) {
+  alloc_df <- data.frame(
+    Variable = c(
+      "\\texttt{pop\\_ph}",
+      "\\texttt{pop\\_ch}",
+      "\\texttt{n\\_resp}",
+      "\\texttt{male}, \\texttt{female}, \\texttt{age\\_*}, \\texttt{race\\_*}",
+      "\\texttt{avg\\_inc\\_resp}"
+    ),
+    `Eligible type` = c(
+      "Type 1 (private)",
+      "Type 2 (collective)",
+      "Type 1 (private)",
+      "Type 1; else Type 2",
+      "Type 1 (private)"
+    ),
+    `Per-point value` = c(
+      "total / n\\_dom\\_p",
+      "total / n\\_dom\\_c",
+      "total / n\\_dom\\_p",
+      "total / n\\_eligible",
+      "tract avg (assigned)"
+    ),
+    `Aggregated as` = c("SUM", "SUM", "SUM", "SUM", "MEAN"),
+    check.names = FALSE
+  )
+  knitr::kable(
+    alloc_df,
+    escape  = FALSE,
+    booktabs = TRUE,
+    caption = "Allocation rules applied during dasymetric interpolation. \\texttt{n\\_dom\\_p} and \\texttt{n\\_dom\\_c} are counts of matched type-1 and type-2 CNEFE dwelling points per census tract."
+  ) |>
+    kableExtra::kable_styling(latex_options = "scale_down")
+} else {
+  alloc_df <- data.frame(
+    Variable = c(
+      "`pop_ph`", "`pop_ch`", "`n_resp`",
+      "`male`, `female`, `age_*`, `race_*`",
+      "`avg_inc_resp`"
+    ),
+    `Eligible type` = c(
+      "Type 1 (private)",
+      "Type 2 (collective)",
+      "Type 1 (private)",
+      "Type 1; else Type 2",
+      "Type 1 (private)"
+    ),
+    `Per-point value` = c(
+      "total / `n_dom_p`",
+      "total / `n_dom_c`",
+      "total / `n_dom_p`",
+      "total / n_eligible",
+      "tract avg (assigned)"
+    ),
+    `Aggregated as` = c("SUM", "SUM", "SUM", "SUM", "MEAN"),
+    check.names = FALSE
+  )
+  knitr::kable(
+    alloc_df,
+    booktabs = TRUE,
+    caption = "Allocation rules applied during dasymetric interpolation. `n_dom_p` and `n_dom_c` are counts of matched type-1 and type-2 CNEFE dwelling points per census tract."
+  )
+}
+```
+
+7.  **Diagnostics**: regardless of the `verbose` setting, the function
+    always emits a two-stage diagnostic report. Stage 1 reports, for each
+    requested variable, the share of the tract-level total successfully
+    allocated to CNEFE points, the number of tracts with `NA` source
+    values, and the number of tracts where no eligible dwelling points were
+    found. Stage 2 reports the share of allocated CNEFE points that fall
+    within at least one target spatial unit.
 
 ```{r tracts-example}
 # Interpolate population in private and collective households to H3 hexagons
@@ -772,7 +930,7 @@ Figure \@ref(fig:fig-pop) shows dasymetric
 estimates of private-household population (`pop_ph`) for Lauro de
 Freitas at H3 resolution 8 and at the neighborhood level.
 
-```{r fig-pop, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap=paste0("Dasymetric estimates of private-household population (", cfmt("pop_ph"), ") for Lauro de Freitas, Bahia, interpolated from 2022 census tract totals to H3 hexagons at resolution~8 (left) and to neighborhoods (right) using CNEFE dwelling points as ancillary data. Data: IBGE CNEFE 2022; IBGE Censo Demográfico 2022."), fig.width=10, fig.height=5, out.width="100%"}
+```{r fig-pop, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap=paste0("Dasymetric estimates of private-household population (", cfmt("pop_ph"), ") for Lauro de Freitas, Bahia, interpolated from 2022 census tract totals to H3 hexagons at resolution~8 (left) and to neighborhoods (right) using CNEFE dwelling points as ancillary data."), fig.alt="Two side-by-side choropleth maps of Lauro de Freitas showing dasymetric estimates of private-household population. The left map shows estimates on H3 hexagons at resolution 8 and the right map shows estimates on neighborhoods. Both use a green-to-yellow colour scale where brighter yellow indicates higher population counts.", fig.width=10, fig.height=5, out.width="100%"}
 library(geobr)
 library(ggplot2)
 library(sf)
@@ -826,7 +984,7 @@ p2 <- ggplot() +
 p1 + p2
 ```
 
-The function always emits a diagnostic summary at the end of each call,
+The diagnostic summary is displayed at the end of each call,
 regardless of the `verbose` setting. Running `tracts_to_polygon()` for
 Lauro de Freitas with `vars = c("pop_ph", "avg_inc_resp")` produces the
 following report:
@@ -860,6 +1018,46 @@ points that fall within at least one of the provided polygons. Values below
 Polygons with no captured CNEFE points receive zero
 for all count variables and `NA` for `avg_inc_resp` in the output object.
 
+Users should bear in mind that dasymetric interpolation produces
+estimates, not observed values. The method assumes that the attribute being
+redistributed (e.g., population) is distributed proportionally to dwelling
+points within each census tract. While this is a more realistic assumption
+than uniform areal weighting, it remains an approximation: if population
+density varies systematically within a tract in ways not captured by the
+CNEFE point pattern, the sub-tract estimates will be correspondingly biased.
+Inferences about individuals or households from these tract-level aggregates
+are therefore subject to the ecological fallacy [@robinson1950].
+
+## Utility functions
+
+\pkg{cnefetools} also exports four utility functions for documentation access
+and cache management. `cnefe_dictionary()` opens the official CNEFE data dictionary (an Excel file
+bundled with the package) in the system's default spreadsheet viewer, providing
+column definitions and value codes for all 34 fields of the CNEFE schema.
+`cnefe_doc()` opens the bundled IBGE methodological note [@ibge_cnefe2024] as a
+PDF, detailing the geocoding procedures and quality classifications used in the
+2022 census.
+
+```{r util-docs}
+cnefe_dictionary()  # opens the Excel data dictionary
+cnefe_doc()         # opens the IBGE methodological PDF
+```
+
+`clear_cache_muni()` deletes CNEFE ZIP files from the user cache directory,
+either all at once or for a specific municipality identified by its seven-digit
+IBGE code. `clear_cache_tracts()` removes cached census tract Parquet files,
+with optional filtering by state, accepting a two-letter UF abbreviation, a
+two-digit numeric state code, or a seven-digit municipality code (which is
+resolved to its state automatically).
+
+```{r util-cache}
+clear_cache_muni()          # delete all cached CNEFE ZIPs
+clear_cache_muni(2919207)   # delete only the ZIP for Lauro de Freitas-BA
+
+clear_cache_tracts()        # delete all cached census tract Parquets
+clear_cache_tracts("BA")    # delete only the Parquet for the state of Bahia ("BA")
+```
+
 # Performance
 
 The DuckDB backend derives its performance advantage from three sources:
@@ -875,7 +1073,7 @@ The DuckDB backend derives its performance advantage from three sources:
     of millions of rows substantially faster than row-oriented R
     operations.
 
-<!-- Check values here -->
+
 Performance is benchmarked along two independent dimensions. The first
 varies municipality size (measured by the number of CNEFE address points)
 while holding the H3 output resolution fixed at 8, using three
@@ -894,7 +1092,7 @@ columnar engine and in-process ZIP reading scale more favourably than
 row-oriented R operations. For small municipalities, the fixed initialisation 
 overhead can dominate and the two backends perform comparably.
 
-```{r fig-bench-cities, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.cap=paste0("Elapsed time (s) for ", cfmt("cnefe_counts()"), " at H3 resolution~8, by municipality size, comparing the DuckDB and pure-R backends.")}
+```{r fig-bench-cities, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.alt="Grouped bar chart comparing elapsed time in seconds for cnefe_counts() at H3 resolution 8 across three municipalities of increasing size: Vitória da Conquista-BA (roughly 200,000 addresses), Curitiba-PR (roughly 900,000 addresses), and São Paulo-SP (roughly 5.7 million addresses). For each municipality, two bars represent the DuckDB and pure-R backends; the DuckDB bar is shorter for larger municipalities, indicating increasing speedup with dataset size.", fig.cap=paste0("Elapsed time (s) for ", cfmt("cnefe_counts()"), " at H3 resolution~8, by municipality size, comparing the DuckDB and pure-R backends.")}
 knitr::include_graphics("figures/bench-cities.png")
 ```
 
@@ -903,7 +1101,7 @@ H3 resolutions. The DuckDB speedup is 4.3× at resolution 7, 3.1× at
 resolution 9, and 1.3× at resolution 11. At finer resolutions (higher cell counts), 
 H3 indexing dominates both backends equally, reducing the relative DuckDB advantage.
 
-```{r fig-bench-h3, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.cap=paste0("Elapsed time (s) for ", cfmt("cnefe_counts()"), " on Curitiba-PR, by H3 resolution.")}
+```{r fig-bench-h3, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.alt="Grouped bar chart comparing elapsed time in seconds for cnefe_counts() on Curitiba-PR across three H3 resolutions: 7 (coarse), 9 (medium), and 11 (fine). For each resolution, two bars represent the DuckDB and pure-R backends; the DuckDB speedup decreases at finer resolutions as H3 indexing cost becomes dominant.", fig.cap=paste0("Elapsed time (s) for ", cfmt("cnefe_counts()"), " on Curitiba-PR, by H3 resolution.")}
 knitr::include_graphics("figures/bench-h3.png")
 ```
 
@@ -938,6 +1136,11 @@ are:
 The package also has some limitations. First, data access depends on the
 availability and stability of the IBGE FTP server, since municipal CNEFE
 files are downloaded on demand from the official distribution endpoint.
+This does not represent a fundamental barrier in practice: the CNEFE is
+open data, freely available to the public, and the IBGE FTP infrastructure
+is designed to support broad access to census products. The persistent
+caching layer in \pkg{cnefetools} further mitigates this dependency by
+ensuring that each file is downloaded at most once per machine.
 Second, although the package supports aggregation to H3 grids and
 user-supplied polygons, its core analytical workflows are organised around
 municipality-specific inputs, which limits analyses that span multiple

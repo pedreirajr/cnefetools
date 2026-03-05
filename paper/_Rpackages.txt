@@ -1,0 +1,9 @@
+cnefetools
+geobr
+ggplot2
+sf
+dplyr
+patchwork
+paletteer
+knitr
+kableExtra
