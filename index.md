@@ -157,6 +157,7 @@ library(ggplot2)
 hex_sp <- cnefe_counts(
   code_muni = 3550308,
   h3_resolution = 9,
+  cache = TRUE,
   verbose = TRUE
   )
 ```
@@ -213,6 +214,7 @@ library(ggplot2)
 lumi_ftl <- compute_lumi(
   code_muni = 2304400,
   h3_resolution = 8,
+  cache = TRUE,
   verbose = TRUE
   )
 ```
@@ -352,6 +354,7 @@ rec_poly <- tracts_to_polygon(
   code_muni = 2611606,
   polygon = rec_nei,
   vars = c("pop_ph", "avg_inc_resp"),
+  cache = TRUE,
   verbose = F
 )
 ```
