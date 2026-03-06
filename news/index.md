@@ -2,6 +2,8 @@
 
 ## cnefetools 0.2.3
 
+CRAN release: 2026-03-06
+
 - Fixed missing hexagons at the edges of the H3 grid.
   [`h3jsr::polygon_to_cells()`](https://obrl-soil.github.io/h3jsr/reference/polygon_to_cells.html)
   only returns hexagons whose centroid falls inside the municipality
