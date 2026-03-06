@@ -37,15 +37,16 @@ remotes::install_github("pedreirajr/cnefetools")
 
 ## Overview
 
-| Function                                                                                        | Description                                                                                            |
-|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/reference/read_cnefe.md)               | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object               |
-| [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)           | Aggregates address counts to H3 hexagons or user-provided polygons                                     |
-| [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)           | Computes land-use mix indices on H3 hexagons or user-provided polygons                                 |
-| [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_h3.md)           | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points             |
-| [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_polygon.md) | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
-| [`cnefe_doc()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_doc.md)                 | Opens the official CNEFE methodological note (PDF)                                                     |
-| [`cnefe_dictionary()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_dictionary.md)   | Opens the official CNEFE variable dictionary (Excel)                                                   |
+| Function                                                                                                                                                                                         | Description                                                                                            |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/reference/read_cnefe.md)                                                                                                                | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object               |
+| [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)                                                                                                            | Aggregates address counts to H3 hexagons or user-provided polygons                                     |
+| [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)                                                                                                            | Computes land-use mix indices on H3 hexagons or user-provided polygons                                 |
+| [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_h3.md)                                                                                                            | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points             |
+| [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_polygon.md)                                                                                                  | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
+| [`cnefe_doc()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_doc.md)                                                                                                                  | Opens the official CNEFE methodological note (PDF)                                                     |
+| [`cnefe_dictionary()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_dictionary.md)                                                                                                    | Opens the official CNEFE variable dictionary (Excel)                                                   |
+| [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/reference/clear_cache_muni.md), [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/reference/clear_cache_tracts.md) | Delete cached CNEFE ZIP files or census tract Parquet files from the user cache directory              |
 
 ## Reading CNEFE data
 
@@ -417,6 +418,36 @@ pure-R fallback (`backend = "r"`) is also available, using `h3jsr` and
 and
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
 functions (slower, but without the DuckDB dependency).
+
+## Managing the local cache
+
+While caching speeds up repeated analyses by avoiding redundant
+downloads, users may want to free up disk space or force a fresh
+download. **{cnefetools}** provides two dedicated functions for
+fine-grained control over the local cache, allowing you to remove cached
+files selectively or all at once.
+
+[`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/reference/clear_cache_muni.md)
+deletes cached CNEFE ZIP files from the user cache directory. You can
+remove all cached files at once or target a specific municipality by its
+seven-digit IBGE code:
+
+``` r
+clear_cache_muni()          # delete all cached CNEFE ZIPs
+clear_cache_muni(2919207)   # delete only the ZIP for Lauro de Freitas-BA
+```
+
+[`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/reference/clear_cache_tracts.md)
+removes cached census tract Parquet files. You can filter by state using
+a two-letter UF abbreviation, a two-digit numeric state code, or a
+seven-digit municipality code (resolved to its state automatically):
+
+``` r
+clear_cache_tracts()        # delete all cached census tract Parquets
+clear_cache_tracts("BA")    # delete only the Parquet for Bahia
+clear_cache_tracts(29)      # same, using the numeric state code
+clear_cache_tracts(2919207) # same, using a municipality code
+```
 
 ## Citation
 

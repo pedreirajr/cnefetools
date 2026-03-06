@@ -129,6 +129,12 @@
 <td><code><a href="reference/cnefe_dictionary.html">cnefe_dictionary()</a></code></td>
 <td>Opens the official CNEFE variable dictionary (Excel)</td>
 </tr>
+<tr class="even">
+<td>
+<code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code>, <code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code>
+</td>
+<td>Delete cached CNEFE ZIP files or census tract Parquet files from the user cache directory</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -397,6 +403,21 @@
 </ul>
 <p>The R package <a href="https://cidree.github.io/duckspatial/" class="external-link"><strong>duckspatial</strong></a> also bridges <code>sf</code> objects and DuckDB’s spatial extension, enabling seamless transfers between R and DuckDB.</p>
 <p>All extensions are installed and loaded automatically on first use. A pure-R fallback (<code>backend = "r"</code>) is also available, using <code>h3jsr</code> and <code>sf</code> for the same operations on <code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> functions (slower, but without the DuckDB dependency).</p>
+</div>
+<div class="section level2">
+<h2 id="managing-the-local-cache">Managing the local cache<a class="anchor" aria-label="anchor" href="#managing-the-local-cache"></a>
+</h2>
+<p>While caching speeds up repeated analyses by avoiding redundant downloads, users may want to free up disk space or force a fresh download. <strong>{cnefetools}</strong> provides two dedicated functions for fine-grained control over the local cache, allowing you to remove cached files selectively or all at once.</p>
+<p><code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code> deletes cached CNEFE ZIP files from the user cache directory. You can remove all cached files at once or target a specific municipality by its seven-digit IBGE code:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="op">)</span>          <span class="co"># delete all cached CNEFE ZIPs</span></span>
+<span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>   <span class="co"># delete only the ZIP for Lauro de Freitas-BA</span></span></code></pre></div>
+<p><code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> removes cached census tract Parquet files. You can filter by state using a two-letter UF abbreviation, a two-digit numeric state code, or a seven-digit municipality code (resolved to its state automatically):</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># delete all cached census tract Parquets</span></span>
+<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span>    <span class="co"># delete only the Parquet for Bahia</span></span>
+<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">29</span><span class="op">)</span>      <span class="co"># same, using the numeric state code</span></span>
+<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span> <span class="co"># same, using a municipality code</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
