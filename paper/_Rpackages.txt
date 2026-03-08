@@ -7,3 +7,4 @@ patchwork
 paletteer
 knitr
 kableExtra
+arrow
