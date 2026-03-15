@@ -8,7 +8,7 @@ downloads](https://cranlogs.r-pkg.org/badges/grand-total/cnefetools)](https://CR
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 
 **{cnefetools}** provides helper functions to efficiently work with the
 Brazilian National Address File for Statistical Purposes (*Cadastro
