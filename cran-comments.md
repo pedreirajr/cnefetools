@@ -14,7 +14,15 @@ files on the check machine.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 0 notes
+0 errors | 0 warnings | 2 notes
+
+* `NOTE: unable to verify current time` — transient CRAN infrastructure
+  issue (check server cannot reach time-verification servers); unrelated
+  to the package.
+* `NOTE: Non-standard file/directory found at top level: 'paper'` — the
+  `paper/` directory (R Journal manuscript) lives on disk during local
+  checks because it is maintained on a separate git branch. It is listed
+  in `.Rbuildignore` and is not included in the built tarball.
 
 ## Test environments
 
