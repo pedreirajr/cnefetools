@@ -62,7 +62,8 @@
 #' poly_pop <- tracts_to_polygon(
 #'   code_muni = 2919207,
 #'   polygon = nei_ldf,
-#'   vars = c("pop_ph", "pop_ch")
+#'   vars = c("pop_ph", "pop_ch"),
+#'   cache = FALSE
 #' )
 #' }
 #'
