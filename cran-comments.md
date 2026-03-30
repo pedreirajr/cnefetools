@@ -1,25 +1,28 @@
-## Submission (v0.2.3)
+## Resubmission (v0.2.4)
 
-This is a new release following the acceptance of v0.2.2 on CRAN.
+The package was archived on 2026-03-30 due to a NOTE flagged by the donttest
+checker: `\donttest{}` examples in five functions called package functions with
+`cache = TRUE` (the default), causing ZIP and Parquet files to be written to
+`~/.cache/R/cnefetools` during the check run.
 
-### Changes in this version
+### Fix
 
-* `cnefe_counts()` and `compute_lumi()` now expose a `cache` parameter
-  (default `TRUE`), consistent with `tracts_to_h3()` and `tracts_to_polygon()`.
-* New `clear_cache_muni()` and `clear_cache_tracts()` functions to delete
-  cached files from the user cache directory.
-* Fixed missing hexagons at municipality boundaries in `build_h3_grid()`:
-  `h3jsr::polygon_to_cells()` only returns hexagons whose centroid falls
-  inside the boundary; border hexagons are now recovered via a k=1 neighbour
-  ring filtered by `sf::st_intersects()`.
+Added `cache = FALSE` to all function calls inside `\donttest{}` blocks in:
+`read_cnefe()`, `cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()`, and
+`tracts_to_polygon()`. Examples now use temporary files and leave no persistent
+files on the check machine.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 2 notes
 
-* `NOTE: unable to verify current time` — this is a transient CRAN
-  infrastructure issue (the check server cannot reach time-verification
-  servers) and is unrelated to the package code.
+* `NOTE: unable to verify current time` — transient CRAN infrastructure
+  issue (check server cannot reach time-verification servers); unrelated
+  to the package.
+* `NOTE: Non-standard file/directory found at top level: 'paper'` — the
+  `paper/` directory (R Journal manuscript) lives on disk during local
+  checks because it is maintained on a separate git branch. It is listed
+  in `.Rbuildignore` and is not included in the built tarball.
 
 ## Test environments
 

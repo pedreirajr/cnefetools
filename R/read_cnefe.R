@@ -46,10 +46,10 @@
 #' @examples
 #' \donttest{
 #' # Read CNEFE data as an Arrow table
-#' cnefe <- read_cnefe(code_muni = 2929057)
+#' cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #'
 #' # Read as an sf spatial object
-#' cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
+#' cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 #' }
 #'
 #' @export

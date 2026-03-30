@@ -47,7 +47,8 @@
 #' # Interpolate population to H3 hexagons
 #' hex_pop <- tracts_to_h3(
 #'   code_muni = 2929057,
-#'   vars = c("pop_ph", "pop_ch")
+#'   vars = c("pop_ph", "pop_ch"),
+#'   cache = FALSE
 #' )
 #' }
 #'

@@ -14,3 +14,4 @@
 \.Rmd\.orig$
 _build\.R$
 ^CRAN-SUBMISSION$
+^paper$
