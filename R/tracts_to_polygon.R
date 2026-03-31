@@ -358,7 +358,8 @@ cnefe_index <- .get_cnefe_index(year)
 
   }
 
-  .cnefe_create_points_view_in_duckdb(
+  # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
+  zip_info_cnefe <- .cnefe_create_points_view_in_duckdb(
     con,
     code_muni = code_muni,
     index = cnefe_index,
@@ -366,6 +367,7 @@ cnefe_index <- .get_cnefe_index(year)
     verbose = verbose
   )
 
+  # Materialise the lazy view (reads ZIP data into DuckDB memory).
   .duckdb_quiet_execute(
     con,
     "
@@ -383,6 +385,11 @@ cnefe_index <- .get_cnefe_index(year)
     con,
     "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
   )$n[1]
+
+  # ZIP data is now fully in DuckDB — safe to delete the temp file.
+  if (is.list(zip_info_cnefe) && isTRUE(zip_info_cnefe$cleanup_zip)) {
+    on.exit(unlink(zip_info_cnefe$zip_path), add = TRUE)
+  }
 
   if (verbose) {
     cli::cli_progress_done("Step 4/6: preparing CNEFE points in DuckDB...")
@@ -581,6 +588,14 @@ cnefe_index <- .get_cnefe_index(year)
       ),
       type = "output"
     )
+  )
+
+  # duckspatial 1.0.0 (DuckDB 1.5+) writes GEOMETRY with embedded CRS metadata,
+  # which RTREE does not accept. Strip CRS via WKB round-trip first.
+  .duckdb_quiet_execute(
+    con,
+    "ALTER TABLE user_polygons ALTER COLUMN geom SET DATA TYPE GEOMETRY
+     USING ST_GeomFromWKB(ST_AsWKB(geom));"
   )
 
   # Create spatial index on user polygons

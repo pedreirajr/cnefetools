@@ -82,7 +82,7 @@ The counts in the columns \code{addr_type1} to \code{addr_type8} correspond to:
 \examples{
 \donttest{
 # Count addresses per H3 hexagon (resolution 9)
-hex_counts <- cnefe_counts(code_muni = 2929057)
+hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries
@@ -94,7 +94,8 @@ nei_ldf <- subset(
 hex_counts <- cnefe_counts(
   code_muni = 2919207,
   polygon_type = "user",
-  polygon = nei_ldf
+  polygon = nei_ldf,
+  cache = FALSE
 )
 }
 

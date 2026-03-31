@@ -227,16 +227,21 @@ tracts_to_h3 <- function(
 
   }
 
+  # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
+  # The ZIP must remain on disk until the views are materialised into a table.
+  zip_info_cnefe <- suppressMessages(
+    .cnefe_create_points_view_in_duckdb(
+      con,
+      code_muni = code_muni,
+      index = cnefe_index,
+      cache = cache,
+      verbose = verbose
+    )
+  )
+
+  # Materialise the lazy view into a table (reads ZIP data into DuckDB memory).
   invisible(utils::capture.output({
     invisible(utils::capture.output({
-      .cnefe_create_points_view_in_duckdb(
-        con,
-        code_muni = code_muni,
-        index = cnefe_index,
-        cache = cache,
-        verbose = verbose
-      )
-
       .duckdb_quiet_execute(
         con,
         "
@@ -256,6 +261,11 @@ tracts_to_h3 <- function(
       )$n[1]
     }, type = "message"))
   }, type = "output"))
+
+  # ZIP data is now fully in DuckDB — safe to delete the temp file.
+  if (is.list(zip_info_cnefe) && isTRUE(zip_info_cnefe$cleanup_zip)) {
+    on.exit(unlink(zip_info_cnefe$zip_path), add = TRUE)
+  }
 
   if (verbose) {
     cli::cli_progress_done("Step 3/6: preparing CNEFE points in DuckDB...")
