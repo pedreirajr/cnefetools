@@ -794,6 +794,14 @@ compute_lumi <- function(
     overwrite = TRUE
   )
 
+  # duckspatial 1.0.0 (DuckDB 1.5+) writes GEOMETRY with embedded CRS metadata,
+  # which RTREE does not accept. Strip CRS via WKB round-trip first.
+  DBI::dbExecute(
+    con,
+    "ALTER TABLE user_polygons ALTER COLUMN geom SET DATA TYPE GEOMETRY
+     USING ST_GeomFromWKB(ST_AsWKB(geom));"
+  )
+
   # Spatial index on user polygons for faster joins
   DBI::dbExecute(
     con,

@@ -797,10 +797,9 @@
     )
   })
 
-  # Clean up temp ZIP if cache = FALSE
-  if (isTRUE(zip_info$cleanup_zip)) {
-    on.exit(unlink(zip_path), add = TRUE)
-  }
-
-  invisible(TRUE)
+  # Return zip_info so callers can manage cleanup after materialising the views.
+  # Do NOT register on.exit here: cnefe_pts is a lazy VIEW that reads from the
+  # ZIP file; if the ZIP were deleted on function exit, any subsequent
+  # CREATE TABLE ... AS SELECT * FROM cnefe_pts in the caller would fail.
+  invisible(zip_info)
 }
