@@ -120,18 +120,17 @@ https://doi.org/10.1016/j.compenvurbsys.2013.08.001
 ``` r
 # \donttest{
 # Compute land-use mix indices on H3 hexagons
-lumi <- compute_lumi(code_muni = 2929057)
+lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #> ℹ Processing municipality code 2929057...
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
-#> ✔ Step 1/3 (CNEFE ZIP ready) [10ms]
+#> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
+#> ✔ Step 1/3 (CNEFE ZIP ready) [581ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [233ms]
+#> ✔ Step 2/3 (Addresses counted) [239ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [5.5s]
+#> ✔ Step 3/3 (Land use mix indices computed) [4.9s]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -145,13 +144,13 @@ nei_ldf <- subset(
 lumi_poly <- compute_lumi(
   code_muni = 2919207,
   polygon_type = "user",
-  polygon = nei_ldf
+  polygon = nei_ldf,
+  cache = FALSE
 )
 #> ℹ Processing municipality code 2919207...
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
-#> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ✔ Step 1/3 (Data and polygon ready) [22ms]
+#> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
+#> ✔ Step 1/3 (Data and polygon ready) [2.7s]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
 #> ℹ Table <user_polygons> dropped
@@ -164,7 +163,7 @@ lumi_poly <- compute_lumi(
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
 #> ℹ 111103 of 111385 points are within the provided polygon.
 #> ℹ 282 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [60ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [64ms]
 #> 
 # }
 ```

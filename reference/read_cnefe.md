@@ -85,32 +85,32 @@ removed when the function exits.
 ``` r
 # \donttest{
 # Read CNEFE data as an Arrow table
-cnefe <- read_cnefe(code_muni = 2929057)
+cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #> ℹ Processing municipality code 2929057
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip
+#> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Listing file contents
-#> ✔ Listing file contents [6ms]
+#> ✔ Listing file contents [7ms]
 #> 
 #> ℹ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv
-#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
+#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [23ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [184ms]
+#> ✔ Reading CSV with arrow [185ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
 # Read as an sf spatial object
-cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf")
+cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 #> ℹ Processing municipality code 2929057
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2929057_SAO_FELIX_DO_CORIBE.zip
+#> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Listing file contents
-#> ✔ Listing file contents [6ms]
+#> ✔ Listing file contents [7ms]
 #> 
 #> ℹ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv
-#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
+#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [15ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [29ms]
+#> ✔ Reading CSV with arrow [15ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object

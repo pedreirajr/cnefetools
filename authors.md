@@ -15,13 +15,13 @@ Source:
 [`DESCRIPTION`](https://github.com/pedreirajr/cnefetools/blob/main/DESCRIPTION)
 
 Pedreira Junior J, Mioto B (2026). *cnefetools: Access and Analysis of
-Brazilian CNEFE Address Data*. R package version 0.2.4,
+Brazilian CNEFE Address Data*. R package version 0.2.5,
 <https://github.com/pedreirajr/cnefetools>.
 
     @Manual{,
       title = {cnefetools: Access and Analysis of Brazilian CNEFE Address Data},
       author = {Jorge Ubirajara {Pedreira Junior} and Bruno Mioto},
       year = {2026},
-      note = {R package version 0.2.4},
+      note = {R package version 0.2.5},
       url = {https://github.com/pedreirajr/cnefetools},
     }
