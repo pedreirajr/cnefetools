@@ -342,6 +342,6 @@ clear_cache_tracts(2919207) # same, using a municipality code
 
 ## Citation
 
-If you use **{cnefetools}** in your work, please cite the associated preprint:
+If you use **{cnefetools}** in your work, please cite it as:
 
-> Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. *Measuring land use mix with address-level census data* (2025). engrXiv. <https://engrxiv.org/preprint/view/5975>
+> Pedreira Junior, J.U. & Stabile, B.H.M. (2026). cnefetools: Access and Analysis of Brazilian CNEFE Address Data. GitHub repository: <https://github.com/pedreirajr/cnefetools>
