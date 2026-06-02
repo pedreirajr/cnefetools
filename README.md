@@ -196,7 +196,8 @@ for details.
 
 `compute_lumi()` computes land-use mix indicators on spatial units for
 any municipality covered by the 2022 CNEFE dataset ([Pedreira Junior et
-al., 2025](https://engrxiv.org/preprint/view/5975/version/7846)).
+al.,
+2026](https://www.sciencedirect.com/science/article/pii/S026483772600219X?via%3Dihub)).
 Available indicators include the Entropy Index (`ei`), the
 Herfindahl-Hirschman Index (`hhi`), the Balance Index (`bal`), the Index
 of Concentration at Extremes (`ice`), an adapted HHI (`hhi_adp`), and
@@ -441,6 +442,15 @@ clear_cache_tracts(2919207) # same, using a municipality code
 
 If you use **{cnefetools}** in your work, please cite it as:
 
-> Pedreira Junior, J.U. & Stabile, B.H.M. (2026). cnefetools: Access
-> and Analysis of Brazilian CNEFE Address Data. GitHub repository:
+> Pedreira Junior, J.U. & Stabile, B.H.M. (2026). cnefetools: Access and
+> Analysis of Brazilian CNEFE Address Data. GitHub repository:
 > <https://github.com/pedreirajr/cnefetools>
+
+If you use the land use mix index functions in `compute_lumi()`,
+particularly the BGBI, please also cite:
+
+> Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+> Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional
+> land use mix index for planning and policy evaluation. **Land Use
+> Policy**, 169, 108135.
+> [DOI](https://doi.org/10.1016/j.landusepol.2026.108135)
