@@ -13,7 +13,7 @@ This article compares three of the indices produced by
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md):
 the **Entropy Index (EI)**, the **Balance Index (BAL)**, and the
 **Bidirectional Global-centered Balance Index (BGBI)**, proposed by
-Pedreira Jr. et al. (2025). We use the municipality of São Paulo at H3
+Pedreira Jr. et al. (2026). We use the municipality of São Paulo at H3
 resolution 8 and produce a synchronized three-panel map using the
 `leafsync` package.
 
@@ -309,12 +309,13 @@ In addition to EI, BAL, and BGBI,
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
 also produces the Index of Concentration at the Extremes (ICE), the
 Herfindahl–Hirschman Index (HHI), and an adapted HHI (aHHI), which
-converts the HHI into a directional index (Pedreira Jr. et al., 2025).
+converts the HHI into a directional index (Pedreira Jr. et al., 2026).
 All indices are returned in a single output, allowing comprehensive
 comparisons within the same workflow.
 
 ## References
 
-Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. (2025).
-Measuring land use mix with address-level census data. *engrXiv*.
-<https://engrxiv.org/preprint/view/5975>
+Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional land
+use mix index for planning and policy evaluation. **Land Use Policy**,
+169, 108135. <https://doi.org/10.1016/j.landusepol.2026.108135>
