@@ -382,7 +382,31 @@
     args$keep_areas_operacionais <- FALSE
   }
 
-  # 4. Safe execution with error handling
+  # 4. Isolate the RNG state around the geobr call.
+  # geobr (>= 2.0.0) reads boundaries lazily through duckspatial, and dbplyr
+  # derives its temporary table name from sample(), i.e. from the global RNG
+  # state. Under a fixed seed (e.g. R CMD check examples) repeated calls would
+  # generate the same name and collide on a reused DuckDB connection with
+  # "Table dbplyr_<...> already exists". Reseed from entropy so each call gets
+  # a unique name, then restore the caller's RNG state so we do not disturb
+  # their reproducibility.
+  if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+    old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit(
+      assign(".Random.seed", old_seed, envir = .GlobalEnv),
+      add = TRUE
+    )
+  } else {
+    on.exit(
+      if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      },
+      add = TRUE
+    )
+  }
+  set.seed(NULL)
+
+  # 5. Safe execution with error handling
   muni <- tryCatch(
     {
       suppressMessages(
@@ -402,7 +426,7 @@
     }
   )
 
-  # 5. Output Validation
+  # 6. Output Validation
   # Ensure we actually got a valid sf object back
   if (!inherits(muni, "sf") || nrow(muni) == 0L) {
     cli::cli_abort(c(
