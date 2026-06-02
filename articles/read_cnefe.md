@@ -23,6 +23,7 @@ avoid downloading the same file in all sections, you can cache the
 municipality of interest by setting the `cache` parameter to `TRUE`.
 
 ``` r
+
 library(cnefetools)
 library(dplyr)
 library(sf)
@@ -38,6 +39,7 @@ million records).
 ## Exploring available columns
 
 ``` r
+
 names(ssa_cnefe)
 #>  [1] "COD_UNICO_ENDERECO"             "COD_UF"                        
 #>  [3] "COD_MUNICIPIO"                  "COD_DISTRITO"                  
@@ -79,6 +81,7 @@ function. Currently, only the CNEFE from the 2022 Census is available in
 the package.
 
 ``` r
+
 ## Opens the bundled Excel data dictionary:
 cnefe_dictionary(year = 2022)
 
@@ -91,6 +94,7 @@ cnefe_doc(year = 2022)
 We can keep only health establishments (`COD_ESPECIE == 5`):
 
 ``` r
+
 ssa_health <- ssa_cnefe |>
   filter(COD_ESPECIE == 5)
 
@@ -105,6 +109,7 @@ We can use [`grepl()`](https://rdrr.io/r/base/grep.html) within
 to find records containing specific terms:
 
 ``` r
+
 ssa_hospitals <- ssa_health |>
   filter(grepl("hospital", DSC_ESTABELECIMENTO, ignore.case = TRUE))
 
@@ -222,6 +227,7 @@ Since we already have an `sf` object, we can visualise the locations
 directly with `mapview`:
 
 ``` r
+
 library(mapview)
 
 mapview(ssa_hospitals, layer.name = "Health facilities with 'hospital' term in their description column in Salvador")
@@ -237,6 +243,7 @@ better choice when you need to filter or transform the data before
 converting to a spatial format:
 
 ``` r
+
 ssa_arrow <- read_cnefe(code_muni = 2927408, cache = TRUE)
 
 class(ssa_arrow)
@@ -248,6 +255,7 @@ With Arrow, you can filter the data before loading it into memory with
 then convert only the subset you need to `sf`:
 
 ``` r
+
 ssa_hospitals_arrow <- ssa_arrow |>
   filter(COD_ESPECIE == 5) |>
   filter(grepl("hospital", DSC_ESTABELECIMENTO, ignore.case = TRUE)) |>

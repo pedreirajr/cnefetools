@@ -125,10 +125,10 @@ hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
 #> ✔ Step 1/3 (CNEFE ZIP ready) [1.3s]
 #> 
 #> ℹ Step 2/3: Building full H3 grid over municipality boundary...
-#> ✔ Step 2/3 (H3 grid built) [7.8s]
+#> ✔ Step 2/3 (H3 grid built) [7.6s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [713ms]
+#> ✔ Step 3/3 (Addresses counted) [924ms]
 #> 
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
@@ -138,7 +138,7 @@ nei_ldf <- subset(
   read_neighborhood(year = 2022),
   code_muni == 2919207
 )
-#> Using year/date 2022
+#> ℹ Using year/date 2022
 hex_counts <- cnefe_counts(
   code_muni = 2919207,
   polygon_type = "user",
@@ -147,13 +147,15 @@ hex_counts <- cnefe_counts(
 )
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
-#> ✔ Step 1/2 (Data and polygon ready) [2.7s]
+#> ✔ Step 1/2 (Data and polygon ready) [2s]
 #> 
 #> ℹ Step 2/2: Counting addresses per polygon...
-#> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
-#> ℹ 111103 of 111385 points are within the provided polygon.
-#> ℹ 282 points fell outside the polygon and were not counted.
-#> ✔ Step 2/2 (Addresses counted) [1.2s]
+#> Error in duckdb_result(connection = conn, stmt_lst = stmt_lst, arrow = arrow): Invalid Error: Binder Error: Table "user_polygons" does not have a column with name "geom"
+#> 
+#> Did you mean: "geometry"
+#> ℹ Context: rapi_execute
+#> ℹ Error type: INVALID
+#> ✖ Step 2/2: Counting addresses per polygon... [783ms]
 #> 
 # }
 ```
