@@ -581,7 +581,9 @@ cnefe_index <- .get_cnefe_index(year)
       suppressMessages(
         duckspatial::ddbs_write_vector(
           conn = con,
-          data = polygon_4326[, ".poly_row_id"],
+          # Normalize geometry column to "geom"; duckspatial preserves the
+          # input sf geometry name, but the SQL below hardcodes "geom".
+          data = sf::st_set_geometry(polygon_4326[, ".poly_row_id"], "geom"),
           name = "user_polygons",
           overwrite = TRUE
         )
