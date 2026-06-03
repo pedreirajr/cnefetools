@@ -89,10 +89,10 @@ cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Listing file contents
-#> ✔ Listing file contents [6ms]
+#> ✔ Listing file contents [7ms]
 #> 
 #> ℹ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv
-#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [14ms]
+#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [16ms]
 #> 
 #> ℹ Reading CSV with arrow
 #> ✔ Reading CSV with arrow [34ms]
@@ -104,17 +104,17 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Listing file contents
-#> ✔ Listing file contents [6ms]
+#> ✔ Listing file contents [7ms]
 #> 
 #> ℹ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv
-#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [13ms]
+#> ✔ Extracting 2929057_SAO_FELIX_DO_CORIBE.csv [15ms]
 #> 
 #> ℹ Reading CSV with arrow
-#> ✔ Reading CSV with arrow [14ms]
+#> ✔ Reading CSV with arrow [27ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object
-#> ✔ Converting to sf object [21ms]
+#> ✔ Converting to sf object [23ms]
 #> 
 #> ✔ Created <sf> object with 9354 points (CRS: EPSG:4674)
 # }
