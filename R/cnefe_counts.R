@@ -651,7 +651,9 @@ g., 4674, 31983) or a CRS object."
       suppressMessages(
         duckspatial::ddbs_write_vector(
           conn = con,
-          data = polygon[, ".poly_row_id"],
+          # Normalize geometry column to "geom"; duckspatial preserves the
+          # input sf geometry name, but the SQL below hardcodes "geom".
+          data = sf::st_set_geometry(polygon[, ".poly_row_id"], "geom"),
           name = "user_polygons",
           overwrite = TRUE
         )
