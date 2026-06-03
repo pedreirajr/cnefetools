@@ -8,7 +8,7 @@ downloads](https://cranlogs.r-pkg.org/badges/grand-total/cnefetools)](https://CR
 [![License:
 MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 
 **{cnefetools}** provides helper functions to efficiently work with the
 Brazilian National Address File for Statistical Purposes (*Cadastro
@@ -21,12 +21,14 @@ dataset released by the Brazilian Institute of Geography and Statistics
 Install the stable version from CRAN:
 
 ``` r
+
 install.packages("cnefetools")
 ```
 
 To install the development version from GitHub:
 
 ``` r
+
 # install.packages("pak")
 pak::pak("pedreirajr/cnefetools")
 
@@ -37,15 +39,16 @@ remotes::install_github("pedreirajr/cnefetools")
 
 ## Overview
 
-| Function                                                                                            | Description                                                                                            |
-|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/dev/reference/read_cnefe.md)               | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object               |
-| [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)           | Aggregates address counts to H3 hexagons or user-provided polygons                                     |
-| [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)           | Computes land-use mix indices on H3 hexagons or user-provided polygons                                 |
-| [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)           | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points             |
+| Function | Description |
+|----|----|
+| [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/dev/reference/read_cnefe.md) | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object |
+| [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md) | Aggregates address counts to H3 hexagons or user-provided polygons |
+| [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md) | Computes land-use mix indices on H3 hexagons or user-provided polygons |
+| [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md) | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points |
 | [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md) | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
-| [`cnefe_doc()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_doc.md)                 | Opens the official CNEFE methodological note (PDF)                                                     |
-| [`cnefe_dictionary()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_dictionary.md)   | Opens the official CNEFE variable dictionary (Excel)                                                   |
+| [`cnefe_doc()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_doc.md) | Opens the official CNEFE methodological note (PDF) |
+| [`cnefe_dictionary()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_dictionary.md) | Opens the official CNEFE variable dictionary (Excel) |
+| [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md), [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md) | Delete cached CNEFE ZIP files or census tract Parquet files from the user cache directory |
 
 ## Reading CNEFE data
 
@@ -54,6 +57,7 @@ downloads and reads the CNEFE CSV for a municipality, returning an Arrow
 table by default:
 
 ``` r
+
 library(cnefetools)
 library(dplyr)
 
@@ -87,6 +91,7 @@ below reads data for Salvador, filters religious facilities
 (`COD_ESPECIE == 8`), and plots them:
 
 ``` r
+
 library(sf)
 library(ggplot2)
 
@@ -122,6 +127,7 @@ user-level cache directory specific to this package. If you prefer to
 avoid persistent caching, set:
 
 ``` r
+
 tab_ssa <- read_cnefe(code_muni = 2927408, cache = FALSE)
 ```
 
@@ -134,6 +140,7 @@ after reading.
 note and the variable dictionary for the 2022 CNEFE released by IBGE.
 
 ``` r
+
 # Open the official methodological note (PDF)
 cnefe_doc(year = 2022)
 
@@ -149,6 +156,7 @@ object with counts by address category (`addr_type1` to `addr_type8`).
 Below is an example using H3 hexagons for São Paulo at resolution 9:
 
 ``` r
+
 library(cnefetools)
 library(sf)
 library(ggplot2)
@@ -157,6 +165,7 @@ library(ggplot2)
 hex_sp <- cnefe_counts(
   code_muni = 3550308,
   h3_resolution = 9,
+  cache = TRUE,
   verbose = TRUE
   )
 ```
@@ -165,6 +174,7 @@ Below we plot the count of private households (`addr_type1`) per
 hexagon:
 
 ``` r
+
 # Plotting private households (addr_type1) for São Paulo
 ggplot(hex_sp) +
   geom_sf(aes(fill = addr_type1), color = NA) +
@@ -196,15 +206,16 @@ for details.
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
 computes land-use mix indicators on spatial units for any municipality
 covered by the 2022 CNEFE dataset ([Pedreira Junior et al.,
-2025](https://engrxiv.org/preprint/view/5975/version/7846)). Available
-indicators include the Entropy Index (`ei`), the Herfindahl-Hirschman
-Index (`hhi`), the Balance Index (`bal`), the Index of Concentration at
-Extremes (`ice`), an adapted HHI (`hhi_adp`), and the Bidirectional
-Global-centered Balance Index (`bgbi`).
+2026](https://www.sciencedirect.com/science/article/pii/S026483772600219X?via%3Dihub)).
+Available indicators include the Entropy Index (`ei`), the
+Herfindahl-Hirschman Index (`hhi`), the Balance Index (`bal`), the Index
+of Concentration at Extremes (`ice`), an adapted HHI (`hhi_adp`), and
+the Bidirectional Global-centered Balance Index (`bgbi`).
 
 Below is an example for Fortaleza at H3 resolution 8:
 
 ``` r
+
 library(cnefetools)
 library(sf)
 library(ggplot2)
@@ -213,6 +224,7 @@ library(ggplot2)
 lumi_ftl <- compute_lumi(
   code_muni = 2304400,
   h3_resolution = 8,
+  cache = TRUE,
   verbose = TRUE
   )
 ```
@@ -222,6 +234,7 @@ where positive values indicate residential dominance and negative values
 indicate non-residential dominance:
 
 ``` r
+
 # Plotting the BGBI index
 ggplot(lumi_ftl) +
   geom_sf(aes(fill = bgbi), color = NA) +
@@ -263,6 +276,7 @@ distribution of addresses in CNEFE to produce more realistic sub-tract
 estimates than simple areal weighting.
 
 ``` r
+
 library(cnefetools)
 library(ggplot2)
 
@@ -281,6 +295,7 @@ distribution of each variable. Below we plot the private-household
 population (`pop_ph`):
 
 ``` r
+
 ggplot(rec_hex) +
   geom_sf(aes(fill = pop_ph), color = NA) +
   scale_fill_viridis_c() +
@@ -303,6 +318,7 @@ ggplot(rec_hex) +
 And the average income of the household head (`avg_inc_resp`):
 
 ``` r
+
 ggplot(rec_hex) +
   geom_sf(aes(fill = avg_inc_resp), color = NA) +
   scale_fill_viridis_c() +
@@ -341,6 +357,7 @@ function from the `geobr` package and interpolate the average income of
 household heads per neighborhood:
 
 ``` r
+
 library(geobr)
 
 # Reading neighborhoods from geobr package
@@ -352,6 +369,7 @@ rec_poly <- tracts_to_polygon(
   code_muni = 2611606,
   polygon = rec_nei,
   vars = c("pop_ph", "avg_inc_resp"),
+  cache = TRUE,
   verbose = F
 )
 ```
@@ -360,6 +378,7 @@ Below we plot the interpolated average income of the household head
 (`avg_inc_resp`) at the neighborhood level:
 
 ``` r
+
 # Plotting variables at the neighborhood level
 ggplot(rec_poly) +
   geom_sf(aes(fill = avg_inc_resp), color = NA) +
@@ -415,11 +434,52 @@ and
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
 functions (slower, but without the DuckDB dependency).
 
+## Managing the local cache
+
+While caching speeds up repeated analyses by avoiding redundant
+downloads, users may want to free up disk space or force a fresh
+download. **{cnefetools}** provides two dedicated functions for
+fine-grained control over the local cache, allowing you to remove cached
+files selectively or all at once.
+
+[`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
+deletes cached CNEFE ZIP files from the user cache directory. You can
+remove all cached files at once or target a specific municipality by its
+seven-digit IBGE code:
+
+``` r
+
+clear_cache_muni()          # delete all cached CNEFE ZIPs
+clear_cache_muni(2919207)   # delete only the ZIP for Lauro de Freitas-BA
+```
+
+[`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
+removes cached census tract Parquet files. You can filter by state using
+a two-letter UF abbreviation, a two-digit numeric state code, or a
+seven-digit municipality code (resolved to its state automatically):
+
+``` r
+
+clear_cache_tracts()        # delete all cached census tract Parquets
+clear_cache_tracts("BA")    # delete only the Parquet for Bahia
+clear_cache_tracts(29)      # same, using the numeric state code
+clear_cache_tracts(2919207) # same, using a municipality code
+```
+
 ## Citation
 
-If you use **{cnefetools}** in your work, please cite the associated
-preprint:
+If you use **{cnefetools}** in your work, please cite it as:
 
-> Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
-> *Measuring land use mix with address-level census data* (2025).
-> engrXiv. <https://engrxiv.org/preprint/view/5975>
+> Pedreira Junior, J.U. & Stabile, B.H.M. (2026). cnefetools: Access and
+> Analysis of Brazilian CNEFE Address Data. GitHub repository:
+> <https://github.com/pedreirajr/cnefetools>
+
+If you use the land use mix index functions in
+[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md),
+particularly the BGBI, please also cite:
+
+> Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+> Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional
+> land use mix index for planning and policy evaluation. **Land Use
+> Policy**, 169, 108135.
+> [DOI](https://doi.org/10.1016/j.landusepol.2026.108135)

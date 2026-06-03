@@ -48,6 +48,7 @@ when aggregating CNEFE address points to H3 hexagons at resolution 8.
 ### Setup
 
 ``` r
+
 library(cnefetools)
 library(dplyr)
 library(ggplot2)
@@ -55,6 +56,7 @@ library(kableExtra)
 ```
 
 ``` r
+
 # Municipality codes
 cod_spo <- 3550308 # São Paulo
 cod_ctb <- 4106902 # Curitiba
@@ -105,6 +107,7 @@ benchmark_results_cities <- data.frame(
 ### Visualization
 
 ``` r
+
 ggplot(benchmark_results_cities
        |> mutate(
          city = factor(city, levels = c('Vitória da Conquista','Curitiba','São Paulo')),
@@ -154,6 +157,7 @@ when aggregating CNEFE address points at different H3 resolutions for
 the same city.
 
 ``` r
+
 h3_res <- c(7,9,11)
 
 # Benchmark DuckDB backend
@@ -199,6 +203,7 @@ benchmark_results_h3 <- data.frame(
 ### Visualization
 
 ``` r
+
 ggplot(benchmark_results_h3
        |> mutate(
          h3_res = as.factor(h3_res),
@@ -249,6 +254,7 @@ implementation, and the processing time depends on:
 - City size (number of CNEFE addresses):
 
 ``` r
+
 # Computing speedup for each city
 speedups_cities <- benchmark_results_cities |>
   group_by(city) |>
@@ -279,6 +285,7 @@ speedups_cities |>
 - Resolution of spatial units where CNEFE addresses are counted:
 
 ``` r
+
 # Computing speedup for each H3 resolution
 speedups_h3 <- benchmark_results_h3 |>
   group_by(h3_res) |>

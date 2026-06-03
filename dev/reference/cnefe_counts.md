@@ -119,16 +119,16 @@ The counts in the columns `addr_type1` to `addr_type8` correspond to:
 ``` r
 # \donttest{
 # Count addresses per H3 hexagon (resolution 9)
-hex_counts <- cnefe_counts(code_muni = 2929057)
+hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
-#> ✔ Step 1/3 (CNEFE ZIP ready) [960ms]
+#> ✔ Step 1/3 (CNEFE ZIP ready) [1.9s]
 #> 
 #> ℹ Step 2/3: Building full H3 grid over municipality boundary...
-#> ✔ Step 2/3 (H3 grid built) [7.8s]
+#> ✔ Step 2/3 (H3 grid built) [7.2s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [828ms]
+#> ✔ Step 3/3 (Addresses counted) [692ms]
 #> 
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
@@ -138,21 +138,22 @@ nei_ldf <- subset(
   read_neighborhood(year = 2022),
   code_muni == 2919207
 )
-#> Using year/date 2022
+#> ℹ Using year/date 2022
 hex_counts <- cnefe_counts(
   code_muni = 2919207,
   polygon_type = "user",
-  polygon = nei_ldf
+  polygon = nei_ldf,
+  cache = FALSE
 )
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
-#> ✔ Step 1/2 (Data and polygon ready) [2.4s]
+#> ✔ Step 1/2 (Data and polygon ready) [2.8s]
 #> 
 #> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
-#> ℹ 111103 of 111385 points are within the provided polygon.
-#> ℹ 282 points fell outside the polygon and were not counted.
-#> ✔ Step 2/2 (Addresses counted) [1.2s]
+#> ℹ 111100 of 111385 points are within the provided polygon.
+#> ℹ 285 points fell outside the polygon and were not counted.
+#> ✔ Step 2/2 (Addresses counted) [958ms]
 #> 
 # }
 ```

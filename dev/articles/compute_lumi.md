@@ -13,23 +13,26 @@ This article compares three of the indices produced by
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md):
 the **Entropy Index (EI)**, the **Balance Index (BAL)**, and the
 **Bidirectional Global-centered Balance Index (BGBI)**, proposed by
-Pedreira Jr. et al. (2025). We use the municipality of São Paulo at H3
+Pedreira Jr. et al. (2026). We use the municipality of São Paulo at H3
 resolution 8 and produce a synchronized three-panel map using the
 `leafsync` package.
 
 ## A brief overview of the indices
 
 All three indices are computed from the local residential share within
-each spatial unit $i$, $p_{i} = n_{\text{res},i}/n_{\text{tot},i}$,
-where $n_{\text{res},i}$ is the number of residential addresses and
-$n_{\text{tot},i}$ is the total number of addresses (excluding those
-under construction) for this spatial unit $i$. The local non-residential
-share is $q_{i} = 1 - p_{i}$, and the citywide residential share is
-denoted $P$.
+each spatial unit $`i`$,
+$`p_{i} = n_{\text{res},i} / n_{\text{tot},i}`$, where
+$`n_{\text{res},i}`$ is the number of residential addresses and
+$`n_{\text{tot},i}`$ is the total number of addresses (excluding those
+under construction) for this spatial unit $`{i}`$. The local
+non-residential share is $`q_{i} = 1 - p_{i}`$, and the citywide
+residential share is denoted $`P`$.
 
 ### Entropy Index (EI)
 
-$$\text{EI}_{i} = - \frac{p_{i}\ln p_{i} + q_{i}\ln q_{i}}{\ln 2}$$
+``` math
+\text{EI}_{i} = -\frac{p_{i} \ln p_{i} + q_{i} \ln q_{i}}{\ln 2}
+```
 
 EI ranges from 0 (complete homogeneity) to 1 (perfect 50/50 balance). It
 measures *how mixed* a unit is, but it does not indicate *which use
@@ -38,29 +41,34 @@ fully non-residential cell both receive EI = 0.
 
 ### Balance Index (BAL)
 
-$$\text{BAL}_{i} = 1 - \frac{\left| p_{i} - \frac{P}{1 - P} \cdot q_{i} \right|}{p_{i} + \frac{P}{1 - P} \cdot q_{i}}$$
+``` math
+\text{BAL}_{i} = 1 - \frac{\left| p_{i} - \frac{P}{1-P} \cdot q_{i} \right|}{p_{i} + \frac{P}{1-P} \cdot q_{i}}
+```
 
 BAL also ranges from 0 to 1, but it defines balance relative to the
 observed citywide composition rather than a fixed 50/50 split. This
-means BAL = 1 when $p_{i} = P$, not necessarily when $p_{i} = 0.5$. Like
-EI, however, BAL is **non-directional**: it does not indicate whether a
-low-balance cell is predominantly residential or non-residential.
+means BAL = 1 when $`p_{i} = P`$, not necessarily when $`p_{i} = 0.5`$.
+Like EI, however, BAL is **non-directional**: it does not indicate
+whether a low-balance cell is predominantly residential or
+non-residential.
 
 ### Bidirectional Global-centered Balance Index (BGBI)
 
-$$\text{BGBI}_{i} = \frac{\left( 2p_{i} - 1 \right) - (2P - 1)}{1 - \left( 2p_{i} - 1 \right)(2P - 1)}$$
+``` math
+\text{BGBI}_{i} = \frac{(2p_{i} - 1) - (2P - 1)}{1 - (2p_{i} - 1)(2P - 1)}
+```
 
 BGBI ranges from -1 to +1 and addresses two limitations of conventional
 indices:
 
 1.  **Directionality**: positive values indicate a local residential
-    share above the citywide reference ($p_{i} > P$), while negative
-    values indicate non-residential dominance ($p_{i} < P$). This allows
-    analysts to distinguish between functionally opposite patterns
-    without consulting auxiliary data.
-2.  **Citywide reference**: BGBI is centered at $p_{i} = P$ (BGBI = 0)
-    rather than at $p_{i} = 0.5$. When the citywide composition is
-    highly asymmetric (e.g., $P \approx 0.9$), treating 50/50 as the
+    share above the citywide reference ($`p_{i} > P`$), while negative
+    values indicate non-residential dominance ($`p_{i} < P`$). This
+    allows analysts to distinguish between functionally opposite
+    patterns without consulting auxiliary data.
+2.  **Citywide reference**: BGBI is centered at $`p_{i} = P`$ (BGBI = 0)
+    rather than at $`p_{i} = 0.5`$. When the citywide composition is
+    highly asymmetric (e.g., $`P \approx 0.9`$), treating 50/50 as the
     universal balance target can distort interpretation. BGBI instead
     evaluates local composition against the empirically observed
     baseline.
@@ -68,6 +76,7 @@ indices:
 ## Setup
 
 ``` r
+
 library(cnefetools)
 library(dplyr)
 library(tidyr)
@@ -80,10 +89,11 @@ library(leafsync)
 ## Visualizing the index domains
 
 Before generating these indices with real data, let’s examine how EI,
-BAL, and BGBI behave as a function of $p_{i}$ for a stylized city with
-$P = 0.75$, which is typical of Brazilian municipalities.
+BAL, and BGBI behave as a function of $`p_{i}`$ for a stylized city with
+$`P = 0.75`$, which is typical of Brazilian municipalities.
 
 ``` r
+
 P <- 0.75 # citywide residential proportion
 
 ## BGBI function:
@@ -140,11 +150,11 @@ ggplot(df_ind, aes(x = p, y = Value, color = Index)) +
 
 ![](compute_lumi_files/figure-html/unnamed-chunk-3-1.png)
 
-Notice that EI peaks at $p_{i} = 0.5$ (the 50/50 split) and is symmetric
-around that point, whereas BAL peaks at $p_{i} = P = 0.75$ (the citywide
-reference), reflecting its global centering. Both are non-negative and
-non-directional. BGBI, in contrast, crosses zero at $p_{i} = P$ and
-spans the full $\lbrack - 1, + 1\rbrack$ range, providing a signed
+Notice that EI peaks at $`p_{i} = 0.5`$ (the 50/50 split) and is
+symmetric around that point, whereas BAL peaks at $`p_{i} = P = 0.75`$
+(the citywide reference), reflecting its global centering. Both are
+non-negative and non-directional. BGBI, in contrast, crosses zero at
+$`p_{i} = P`$ and spans the full $`[-1, +1]`$ range, providing a signed
 measure that distinguishes residential-dominant from
 non-residential-dominant cells.
 
@@ -208,6 +218,7 @@ citywide-referenced balance (0), and blue indicates residential
 dominance (+1).
 
 ``` r
+
 map_ei <- mapview(
   spo_lumi,
   zcol = "ei",
@@ -247,8 +258,9 @@ baseline in its sign. This yields a three-part spatial interpretation:
 
 This directional information is especially useful when the citywide
 composition is highly asymmetric (as is typical in Brazilian cities,
-where $P \approx 0.9$), because conventional indices compress most cells
-into a narrow range and cannot indicate the direction of homogeneity.
+where $`P \approx 0.9`$), because conventional indices compress most
+cells into a narrow range and cannot indicate the direction of
+homogeneity.
 
 ## Producing indices for any user-supplied polygon
 
@@ -261,6 +273,7 @@ below for the neighborhoods of Maringá (IBGE code 4115200), downloaded
 with the [`geobr` package](https://github.com/ipeaGIT/geobr).
 
 ``` r
+
 library(geobr)
 
 mga_nei <- read_neighborhood(year = 2022) |>
@@ -296,12 +309,13 @@ In addition to EI, BAL, and BGBI,
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
 also produces the Index of Concentration at the Extremes (ICE), the
 Herfindahl–Hirschman Index (HHI), and an adapted HHI (aHHI), which
-converts the HHI into a directional index (Pedreira Jr. et al., 2025).
+converts the HHI into a directional index (Pedreira Jr. et al., 2026).
 All indices are returned in a single output, allowing comprehensive
 comparisons within the same workflow.
 
 ## References
 
-Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. (2025).
-Measuring land use mix with address-level census data. *engrXiv*.
-<https://engrxiv.org/preprint/view/5975>
+Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional land
+use mix index for planning and policy evaluation. **Land Use Policy**,
+169, 108135. <https://doi.org/10.1016/j.landusepol.2026.108135>

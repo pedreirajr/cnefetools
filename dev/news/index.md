@@ -1,6 +1,57 @@
 # Changelog
 
-## cnefetools 0.2.3.9000
+## cnefetools (development version)
+
+- [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md),
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md),
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  no longer fail in the DuckDB backend when the user-supplied `sf`
+  polygon has a geometry column not named `"geom"` (e.g. the sf default
+  `"geometry"`). The geometry column is now normalized before writing to
+  DuckDB, restoring compatibility with duckspatial (\>= 1.1.0)
+  ([\#70](https://github.com/pedreirajr/cnefetools/issues/70)).
+
+- cnefetools now works with geobr 2.0.0. geobr 2.0.0 reads boundaries
+  lazily through duckspatial, which under a fixed RNG seed (e.g. R CMD
+  check examples) could trigger a DuckDB temporary-table name collision
+  (`Table dbplyr_<...> already exists`). The RNG state is now isolated
+  around the geobr call in the H3-grid path, so the dependency is no
+  longer pinned and any geobr version works
+  ([\#74](https://github.com/pedreirajr/cnefetools/issues/74)).
+
+## cnefetools 0.2.5
+
+CRAN release: 2026-04-03
+
+- Fixed an RTREE spatial-index failure introduced by DuckDB 1.5 (which
+  moved the `GEOMETRY` type into core, with optional CRS parameters)
+  combined with duckspatial 1.0.0 (which writes CRS-parameterised
+  geometry columns). A WKB round-trip now strips the CRS parameter to
+  plain `GEOMETRY` before the RTREE index is created, in
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md),
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md),
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  ([\#68](https://github.com/pedreirajr/cnefetools/issues/68)).
+
+- Fixed a temporary ZIP file being deleted before its DuckDB view was
+  materialised when `cache = FALSE`, which caused
+  [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  to error at the CNEFE point preparation step
+  ([\#68](https://github.com/pedreirajr/cnefetools/issues/68)).
+
+## cnefetools 0.2.4
+
+- Added `cache = FALSE` to `\donttest` examples so they no longer write
+  to the user cache directory, resolving a CRAN check NOTE
+  ([\#66](https://github.com/pedreirajr/cnefetools/issues/66)).
+
+## cnefetools 0.2.3
+
+CRAN release: 2026-03-06
 
 - Fixed missing hexagons at the edges of the H3 grid.
   [`h3jsr::polygon_to_cells()`](https://obrl-soil.github.io/h3jsr/reference/polygon_to_cells.html)

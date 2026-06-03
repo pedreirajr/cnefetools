@@ -124,38 +124,42 @@ nei_ldf <- subset(
   read_neighborhood(year = 2022),
   code_muni == 2919207
 )
-#> Using year/date 2022
+#> ℹ Using year/date 2022
 poly_pop <- tracts_to_polygon(
   code_muni = 2919207,
   polygon = nei_ldf,
-  vars = c("pop_ph", "pop_ch")
+  vars = c("pop_ph", "pop_ch"),
+  cache = FALSE
 )
 #> ℹ Processing municipality code 2919207...
 #> ℹ Step 1/6: aligning CRS...
 #> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
 #> ℹ Step 1/6: aligning CRS...
-#> ✔ Step 1/6 (CRS alignment) [36ms]
+#> ✔ Step 1/6 (CRS alignment) [30ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Spatial extension loaded
+#> ✔ spatial extension loaded
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [251ms]
+#> ✔ Step 2/6 (DuckDB ready) [227ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ℹ Using cached file: sc_29.parquet
+#> ℹ Downloading sc_29.parquet from GitHub release
+#> ℹ All local files already up-to-date!
+#> ℹ Downloading sc_29.parquet from GitHub release
+#> ✔ Downloading sc_29.parquet from GitHub release [23ms]
+#> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ✔ Step 3/6 (Tracts ready) [188ms]
+#> ✔ Step 3/6 (Tracts ready) [189ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ℹ Using cached file: /home/runner/.cache/R/cnefetools/2919207_LAURO_DE_FREITAS.zip
-#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 4/6 (CNEFE points ready) [807ms]
+#> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
+#> ✔ Step 4/6 (CNEFE points ready) [2s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [1s]
+#> ✔ Step 5/6 (Join and allocation) [869ms]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [38ms]
+#> ✔ Step 6/6 (Polygon aggregation) [21ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
@@ -171,6 +175,6 @@ poly_pop <- tracts_to_polygon(
 #>   pop_ch in 6 of 354 tracts (1.69% of total tracts).
 #> 
 #> ── Stage 2: CNEFE points → Polygons 
-#> ℹ Polygon coverage: 95488 of 95553 allocated points captured (99.93%)
+#> ℹ Polygon coverage: 95492 of 95553 allocated points captured (99.94%)
 # }
 ```

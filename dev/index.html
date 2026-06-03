@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="favicon.ico">
 <link rel="manifest" href="site.webmanifest">
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Access and Analysis of Brazilian CNEFE Address Data">
 <meta name="description" content="Download, cache and read municipality-level address data from the Cadastro Nacional de Enderecos para Fins Estatisticos (CNEFE) of the 2022 Brazilian Census, published by the Instituto Brasileiro de Geografia e Estatistica (IBGE) &lt;https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/&gt;. Beyond data access, provides spatial aggregation of addresses, computation of land-use mix indices, and dasymetric interpolation of census tract variables using CNEFE dwelling points as ancillary data. Results can be produced on H3 hexagonal grids or user-supplied polygons, and heavy operations leverage a DuckDB backend with extensions for fast, in-process execution.">
@@ -29,7 +29,7 @@
 
     <a class="navbar-brand me-2" href="index.html">cnefetools</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.2.3.9000</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.3.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -72,7 +72,7 @@
 <a class="anchor" aria-label="anchor" href="#cnefetools-tools-for-working-with-brazilian-cnefe-address-data-"></a>
 </h1>
 </div>
-<p><a href="https://CRAN.R-project.org/package=cnefetools" class="external-link"><img src="https://www.r-pkg.org/badges/version/cnefetools" alt="CRAN status"></a> <a href="https://CRAN.R-project.org/package=cnefetools" class="external-link"><img src="https://cranlogs.r-pkg.org/badges/grand-total/cnefetools" alt="CRAN downloads"></a> <a href="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://opensource.org/licenses/MIT" class="external-link"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a> <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></p>
+<p><a href="https://CRAN.R-project.org/package=cnefetools" class="external-link"><img src="https://www.r-pkg.org/badges/version/cnefetools" alt="CRAN status"></a> <a href="https://CRAN.R-project.org/package=cnefetools" class="external-link"><img src="https://cranlogs.r-pkg.org/badges/grand-total/cnefetools" alt="CRAN downloads"></a> <a href="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/pedreirajr/cnefetools/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://opensource.org/licenses/MIT" class="external-link"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a> <a href="https://lifecycle.r-lib.org/articles/stages.html#stable" class="external-link"><img src="https://img.shields.io/badge/lifecycle-stable-brightgreen.svg" alt="Lifecycle: stable"></a></p>
 <p><strong>{cnefetools}</strong> provides helper functions to efficiently work with the Brazilian National Address File for Statistical Purposes (<em>Cadastro Nacional de Endereços para Fins Estatísticos</em>, CNEFE), an address-level dataset released by the Brazilian Institute of Geography and Statistics (<em>Instituto Brasileiro de Geografia e Estatística</em>, IBGE).</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -97,38 +97,44 @@
 <col width="50%">
 <col width="50%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Function</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code><a href="reference/read_cnefe.html">read_cnefe()</a></code></td>
 <td>Downloads and reads CNEFE data for a municipality; returns an Arrow table or <code>sf</code> object</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code></td>
 <td>Aggregates address counts to H3 hexagons or user-provided polygons</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code><a href="reference/compute_lumi.html">compute_lumi()</a></code></td>
 <td>Computes land-use mix indices on H3 hexagons or user-provided polygons</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code></td>
 <td>Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code></td>
 <td>Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code><a href="reference/cnefe_doc.html">cnefe_doc()</a></code></td>
 <td>Opens the official CNEFE methodological note (PDF)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code><a href="reference/cnefe_dictionary.html">cnefe_dictionary()</a></code></td>
 <td>Opens the official CNEFE variable dictionary (Excel)</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code>, <code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code>
+</td>
+<td>Delete cached CNEFE ZIP files or census tract Parquet files from the user cache directory</td>
 </tr>
 </tbody>
 </table>
@@ -221,6 +227,7 @@
 <span><span class="va">hex_sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
 <span>  code_muni <span class="op">=</span> <span class="fl">3550308</span>,</span>
 <span>  h3_resolution <span class="op">=</span> <span class="fl">9</span>,</span>
+<span>  cache <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <p>Below we plot the count of private households (<code>addr_type1</code>) per hexagon:</p>
@@ -248,7 +255,7 @@
 <h2 id="land-use-mix-indices-with-compute_lumi">Land-use mix indices with <code>compute_lumi()</code>
 <a class="anchor" aria-label="anchor" href="#land-use-mix-indices-with-compute_lumi"></a>
 </h2>
-<p><code><a href="reference/compute_lumi.html">compute_lumi()</a></code> computes land-use mix indicators on spatial units for any municipality covered by the 2022 CNEFE dataset (<a href="https://engrxiv.org/preprint/view/5975/version/7846" class="external-link">Pedreira Junior et al., 2025</a>). Available indicators include the Entropy Index (<code>ei</code>), the Herfindahl-Hirschman Index (<code>hhi</code>), the Balance Index (<code>bal</code>), the Index of Concentration at Extremes (<code>ice</code>), an adapted HHI (<code>hhi_adp</code>), and the Bidirectional Global-centered Balance Index (<code>bgbi</code>).</p>
+<p><code><a href="reference/compute_lumi.html">compute_lumi()</a></code> computes land-use mix indicators on spatial units for any municipality covered by the 2022 CNEFE dataset (<a href="https://www.sciencedirect.com/science/article/pii/S026483772600219X?via%3Dihub" class="external-link">Pedreira Junior et al., 2026</a>). Available indicators include the Entropy Index (<code>ei</code>), the Herfindahl-Hirschman Index (<code>hhi</code>), the Balance Index (<code>bal</code>), the Index of Concentration at Extremes (<code>ice</code>), an adapted HHI (<code>hhi_adp</code>), and the Bidirectional Global-centered Balance Index (<code>bgbi</code>).</p>
 <p>Below is an example for Fortaleza at H3 resolution 8:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedreirajr/cnefetools" class="external-link">cnefetools</a></span><span class="op">)</span></span>
@@ -259,6 +266,7 @@
 <span><span class="va">lumi_ftl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compute_lumi.html">compute_lumi</a></span><span class="op">(</span></span>
 <span>  code_muni <span class="op">=</span> <span class="fl">2304400</span>,</span>
 <span>  h3_resolution <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  cache <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <p>Below we plot the Bidirectional Global-centered Balance Index (BGBI), where positive values indicate residential dominance and negative values indicate non-residential dominance:</p>
@@ -358,6 +366,7 @@
 <span>  code_muni <span class="op">=</span> <span class="fl">2611606</span>,</span>
 <span>  polygon <span class="op">=</span> <span class="va">rec_nei</span>,</span>
 <span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pop_ph"</span>, <span class="st">"avg_inc_resp"</span><span class="op">)</span>,</span>
+<span>  cache <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">F</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Below we plot the interpolated average income of the household head (<code>avg_inc_resp</code>) at the neighborhood level:</p>
@@ -397,11 +406,30 @@
 <p>All extensions are installed and loaded automatically on first use. A pure-R fallback (<code>backend = "r"</code>) is also available, using <code>h3jsr</code> and <code>sf</code> for the same operations on <code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> functions (slower, but without the DuckDB dependency).</p>
 </div>
 <div class="section level2">
+<h2 id="managing-the-local-cache">Managing the local cache<a class="anchor" aria-label="anchor" href="#managing-the-local-cache"></a>
+</h2>
+<p>While caching speeds up repeated analyses by avoiding redundant downloads, users may want to free up disk space or force a fresh download. <strong>{cnefetools}</strong> provides two dedicated functions for fine-grained control over the local cache, allowing you to remove cached files selectively or all at once.</p>
+<p><code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code> deletes cached CNEFE ZIP files from the user cache directory. You can remove all cached files at once or target a specific municipality by its seven-digit IBGE code:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="op">)</span>          <span class="co"># delete all cached CNEFE ZIPs</span></span>
+<span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>   <span class="co"># delete only the ZIP for Lauro de Freitas-BA</span></span></code></pre></div>
+<p><code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> removes cached census tract Parquet files. You can filter by state using a two-letter UF abbreviation, a two-digit numeric state code, or a seven-digit municipality code (resolved to its state automatically):</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># delete all cached census tract Parquets</span></span>
+<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span>    <span class="co"># delete only the Parquet for Bahia</span></span>
+<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">29</span><span class="op">)</span>      <span class="co"># same, using the numeric state code</span></span>
+<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span> <span class="co"># same, using a municipality code</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
-<p>If you use <strong>{cnefetools}</strong> in your work, please cite the associated preprint:</p>
+<p>If you use <strong>{cnefetools}</strong> in your work, please cite it as:</p>
 <blockquote>
-<p>Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. <em>Measuring land use mix with address-level census data</em> (2025). engrXiv. <a href="https://engrxiv.org/preprint/view/5975" class="external-link uri">https://engrxiv.org/preprint/view/5975</a></p>
+<p>Pedreira Junior, J.U. &amp; Stabile, B.H.M. (2026). cnefetools: Access and Analysis of Brazilian CNEFE Address Data. GitHub repository: <a href="https://github.com/pedreirajr/cnefetools" class="external-link uri">https://github.com/pedreirajr/cnefetools</a></p>
+</blockquote>
+<p>If you use the land use mix index functions in <code><a href="reference/compute_lumi.html">compute_lumi()</a></code>, particularly the BGBI, please also cite:</p>
+<blockquote>
+<p>Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.; Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional land use mix index for planning and policy evaluation. <strong>Land Use Policy</strong>, 169, 108135. <a href="https://doi.org/10.1016/j.landusepol.2026.108135" class="external-link">DOI</a></p>
 </blockquote>
 </div>
 </div>

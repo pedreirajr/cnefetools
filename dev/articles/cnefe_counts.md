@@ -27,6 +27,7 @@ and religious establishments:
 ### Attaching libraries:
 
 ``` r
+
 library(cnefetools)
 library(geobr)
 library(dplyr)
@@ -37,6 +38,7 @@ library(mapview)
 ### Reading CNEFE data to visualize educational and religious establishments:
 
 ``` r
+
 poa_cnefe <- read_cnefe(
   code_muni = 4314902, # IBGE code for Porto Alegre)
   cache = T,
@@ -65,7 +67,9 @@ mapview(
 ICE was originally proposed by Booth & Crouter (2001) to measure spatial
 concentration between two groups. We adapt it here to compare
 educational (`addr_type4`) and religious (`addr_type8`) establishments:
-$$\text{ICE} = \frac{n_{\text{educational}} - n_{\text{religious}}}{n_{\text{educational}} + n_{\text{religious}}}$$
+``` math
+\text{ICE} = \frac{n_{\text{educational}} - n_{\text{religious}}}{n_{\text{educational}} + n_{\text{religious}}}
+```
 
 The index ranges from -1 to +1:
 
@@ -140,6 +144,7 @@ We compute ICE only for hexagons that have at least one educational or
 religious establishment:
 
 ``` r
+
 poa_hex_ice <- poa_hex_counts |>
   filter(addr_type4 > 0 | addr_type8 > 0) |>
   mutate(
@@ -158,6 +163,7 @@ educational establishments (+1), white indicates balance (0), and red
 indicates higher concentration of religious establishments (-1).
 
 ``` r
+
 mapview(
   poa_hex_ice,
   zcol = "ice",
@@ -174,6 +180,7 @@ package](https://github.com/ipeaGIT/geobr). The
 function accepts user-provided polygons via the `polygon` argument.
 
 ``` r
+
 # Load Porto Alegre neighborhoods
 poa_neighborhoods <- read_neighborhood(year = 2022, simplified = FALSE) |>
   filter(name_muni == "Porto Alegre")
@@ -257,6 +264,7 @@ head(poa_neigh_counts)
 ## Computing ICE by neighborhood
 
 ``` r
+
 poa_neigh_ice <- poa_neigh_counts |>
   filter(addr_type4 > 0 | addr_type8 > 0) |>
   mutate(
@@ -271,6 +279,7 @@ summary(poa_neigh_ice$ice)
 ## Mapping neighborhood results
 
 ``` r
+
 mapview(
   poa_neigh_ice,
   zcol = "ice",

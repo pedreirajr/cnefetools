@@ -40,40 +40,42 @@ tract codes) can be found using the `tracts_variables_ref` dataframe
 that accompanies the package:
 
 ``` r
+
 library(cnefetools)
 
 tracts_variables_ref |>
   knitr::kable()
 ```
 
-| var_cnefetools | code_var_ibge | desc_var_ibge                                                                                                                      | table_ibge       |
-|:---------------|:--------------|:-----------------------------------------------------------------------------------------------------------------------------------|:-----------------|
-| pop_ph         | V00005        | Domicilios Particulares Permanentes Ocupados, Quantidade de moradores                                                              | Domicilios       |
-| pop_ch         | V00007        | Domicilios Coletivos Com Morador, Quantidade de moradores                                                                          | Domicilios       |
-| male           | V01007        | Sexo masculino                                                                                                                     | Pessoas          |
-| female         | V01008        | Sexo feminino                                                                                                                      | Pessoas          |
-| age_0_4        | V01031        | 0 a 4 anos                                                                                                                         | Pessoas          |
-| age_5_9        | V01032        | 5 a 9 anos                                                                                                                         | Pessoas          |
-| age_10_14      | V01033        | 10 a 14 anos                                                                                                                       | Pessoas          |
-| age_15_19      | V01034        | 15 a 19 anos                                                                                                                       | Pessoas          |
-| age_20_24      | V01035        | 20 a 24 anos                                                                                                                       | Pessoas          |
-| age_25_29      | V01036        | 25 a 29 anos                                                                                                                       | Pessoas          |
-| age_30_39      | V01037        | 30 a 39 anos                                                                                                                       | Pessoas          |
-| age_40_49      | V01038        | 40 a 49 anos                                                                                                                       | Pessoas          |
-| age_50_59      | V01039        | 50 a 59 anos                                                                                                                       | Pessoas          |
-| age_60_69      | V01040        | 60 a 69 anos                                                                                                                       | Pessoas          |
-| age_70m        | V01041        | 70 anos ou mais                                                                                                                    | Pessoas          |
-| race_branca    | V01317        | Cor ou raca e branca                                                                                                               | Pessoas          |
-| race_preta     | V01318        | Cor ou raca e preta                                                                                                                | Pessoas          |
-| race_parda     | V01320        | Cor ou raca e parda                                                                                                                | Pessoas          |
-| race_amarela   | V01319        | Cor ou raca e amarela                                                                                                              | Pessoas          |
-| race_indigena  | V01321        | Cor ou raca e indigena                                                                                                             | Pessoas          |
-| n_resp         | V06001        | Pessoas responsaveis em domicilios particulares permanentes ocupados                                                               | ResponsavelRenda |
-| avg_inc_resp   | V06004        | Valor do rendimento nominal medio mensal das pessoas responsaveis com rendimentos por domicilios particulares permanentes ocupados | ResponsavelRenda |
+| var_cnefetools | code_var_ibge | desc_var_ibge | table_ibge |
+|:---|:---|:---|:---|
+| pop_ph | V00005 | Domicilios Particulares Permanentes Ocupados, Quantidade de moradores | Domicilios |
+| pop_ch | V00007 | Domicilios Coletivos Com Morador, Quantidade de moradores | Domicilios |
+| male | V01007 | Sexo masculino | Pessoas |
+| female | V01008 | Sexo feminino | Pessoas |
+| age_0_4 | V01031 | 0 a 4 anos | Pessoas |
+| age_5_9 | V01032 | 5 a 9 anos | Pessoas |
+| age_10_14 | V01033 | 10 a 14 anos | Pessoas |
+| age_15_19 | V01034 | 15 a 19 anos | Pessoas |
+| age_20_24 | V01035 | 20 a 24 anos | Pessoas |
+| age_25_29 | V01036 | 25 a 29 anos | Pessoas |
+| age_30_39 | V01037 | 30 a 39 anos | Pessoas |
+| age_40_49 | V01038 | 40 a 49 anos | Pessoas |
+| age_50_59 | V01039 | 50 a 59 anos | Pessoas |
+| age_60_69 | V01040 | 60 a 69 anos | Pessoas |
+| age_70m | V01041 | 70 anos ou mais | Pessoas |
+| race_branca | V01317 | Cor ou raca e branca | Pessoas |
+| race_preta | V01318 | Cor ou raca e preta | Pessoas |
+| race_parda | V01320 | Cor ou raca e parda | Pessoas |
+| race_amarela | V01319 | Cor ou raca e amarela | Pessoas |
+| race_indigena | V01321 | Cor ou raca e indigena | Pessoas |
+| n_resp | V06001 | Pessoas responsaveis em domicilios particulares permanentes ocupados | ResponsavelRenda |
+| avg_inc_resp | V06004 | Valor do rendimento nominal medio mensal das pessoas responsaveis com rendimentos por domicilios particulares permanentes ocupados | ResponsavelRenda |
 
 ## Setup
 
 ``` r
+
 library(dplyr) 
 library(ggplot2)
 library(sf)
@@ -179,6 +181,7 @@ We use
 to display the three variables side by side:
 
 ``` r
+
 map_pop <- mapview(
   ftl_h3,
   zcol = "pop_ph",
@@ -206,6 +209,7 @@ We can examine the relationship between average household head income
 and the proportion of Black population in each hexagon:
 
 ``` r
+
 ftl_h3_plot <- ftl_h3 |>
   st_drop_geometry() |>
   filter(pop_ph > 0) |>
@@ -241,6 +245,7 @@ metropolitan region (39 municipalities), we filter only the traffic
 zones within the municipality of São Paulo.
 
 ``` r
+
 library(odbr)
 
 # Load traffic zones for the São Paulo metropolitan region
@@ -354,6 +359,7 @@ as low-floor buses, accessible sidewalks, and demand-responsive transit
 services.
 
 ``` r
+
 sp_zones_ratio <- sp_zones_census |>
   filter(pop_ph > 0) |>
   mutate(pct_70m = age_70m / pop_ph)

@@ -24,6 +24,7 @@ smoothed out at coarser scales.
 The base function used in this example:
 
 ``` r
+
 library(cnefetools)
 
 tracts_to_h3(
