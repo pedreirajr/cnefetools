@@ -1,3 +1,36 @@
+# cnefetools (development version)
+
+* `cnefe_counts()`, `compute_lumi()`, and `tracts_to_polygon()` no longer fail
+  in the DuckDB backend when the user-supplied `sf` polygon has a geometry
+  column not named `"geom"` (e.g. the sf default `"geometry"`). The geometry
+  column is now normalized before writing to DuckDB, restoring compatibility
+  with duckspatial (>= 1.1.0) (#70).
+
+* cnefetools now works with geobr 2.0.0. geobr 2.0.0 reads boundaries lazily
+  through duckspatial, which under a fixed RNG seed (e.g. R CMD check examples)
+  could trigger a DuckDB temporary-table name collision
+  (`Table dbplyr_<...> already exists`). The RNG state is now isolated around
+  the geobr call in the H3-grid path, so the dependency is no longer pinned and
+  any geobr version works (#74).
+
+# cnefetools 0.2.5
+
+* Fixed an RTREE spatial-index failure introduced by DuckDB 1.5 (which moved
+  the `GEOMETRY` type into core, with optional CRS parameters) combined with
+  duckspatial 1.0.0 (which writes CRS-parameterised geometry columns). A WKB
+  round-trip now strips the CRS parameter to plain `GEOMETRY` before the RTREE
+  index is created, in `cnefe_counts()`, `compute_lumi()`, and
+  `tracts_to_polygon()` (#68).
+
+* Fixed a temporary ZIP file being deleted before its DuckDB view was
+  materialised when `cache = FALSE`, which caused `tracts_to_h3()` and
+  `tracts_to_polygon()` to error at the CNEFE point preparation step (#68).
+
+# cnefetools 0.2.4
+
+* Added `cache = FALSE` to `\donttest` examples so they no longer write to the
+  user cache directory, resolving a CRAN check NOTE (#66).
+
 # cnefetools 0.2.3
 
 * Fixed missing hexagons at the edges of the H3 grid. `h3jsr::polygon_to_cells()`
