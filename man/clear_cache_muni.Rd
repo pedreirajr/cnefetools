@@ -4,7 +4,12 @@
 \alias{clear_cache_muni}
 \title{Delete cached CNEFE ZIP files}
 \usage{
-clear_cache_muni(code_muni = "all", verbose = TRUE, cache_dir = NULL)
+clear_cache_muni(
+  code_muni = "all",
+  verbose = TRUE,
+  cache_dir = NULL,
+  year = NULL
+)
 }
 \arguments{
 \item{code_muni}{Integer or \code{"all"}. If \code{"all"} (default), all cached CNEFE
@@ -18,6 +23,9 @@ deleted and the space freed.}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
 is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
 point large downloads at a secondary drive or a shared volume.}
+
+\item{year}{Integer. Restrict the deletion to one CNEFE edition. \code{NULL}
+(default) clears every edition, which is the previous behaviour.}
 }
 \value{
 Invisibly, the character vector of deleted file paths.

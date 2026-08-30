@@ -234,6 +234,7 @@ cnefe_index <- .get_cnefe_index(year)
     code_muni = code_muni,
     cache = cache,
     cache_dir = cache_dir,
+    year = year,
     verbose = verbose
   )
 
@@ -303,6 +304,7 @@ cnefe_index <- .get_cnefe_index(year)
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
+    year = year,
     verbose = verbose
   )
 

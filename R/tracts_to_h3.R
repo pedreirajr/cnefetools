@@ -168,6 +168,7 @@ tracts_to_h3 <- function(
     code_muni = code_muni,
     cache = cache,
     cache_dir = cache_dir,
+    year = year,
     verbose = verbose
   )
 
@@ -201,6 +202,7 @@ tracts_to_h3 <- function(
       index = cnefe_index,
       cache = cache,
       cache_dir = cache_dir,
+      year = year,
       verbose = verbose
     )
   )

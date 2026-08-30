@@ -126,7 +126,8 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       geoms <- h3jsr::cell_to_polygon(ids, simple = TRUE)
       sf::st_sf(id_hex = ids, geometry = sf::st_set_crs(geoms, 4326))
     },
-    .sc_create_views_in_duckdb = function(con, code_muni, cache, verbose, cache_dir = NULL) {
+    .sc_create_views_in_duckdb = function(con, code_muni, cache, verbose, cache_dir = NULL,
+                                          year = NULL) {
       # Two tracts. Only the first has CNEFE points in the mocked CNEFE view.
       DBI::dbExecute(
         con,
@@ -158,7 +159,8 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       index,
       cache,
       verbose,
-      cache_dir = NULL
+      cache_dir = NULL,
+      year = NULL
     ) {
       # 4 private points inside tract 1; 1 point outside any tract (unmatched)
       DBI::dbExecute(

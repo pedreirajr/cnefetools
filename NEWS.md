@@ -41,6 +41,15 @@
 
 ## New features
 
+* The download cache is now segregated by CNEFE edition, at
+  `<cache>/<year>/`. The ZIP names IBGE publishes carry no year, so
+  `2919207_LAURO_DE_FREITAS.zip` from a future census would be
+  indistinguishable from the 2022 one, and a cached 2022 file could be served
+  silently to someone who asked for another edition. `clear_cache_muni()` and
+  `clear_cache_tracts()` gain a `year` argument, with `NULL` clearing every
+  edition as before. Caches created by earlier versions are ignored and
+  re-downloaded once (#81).
+
 * New `cnefe_export()` writes a municipality to a persistent, optimised file at
   a location of your choosing, as Parquet (default), CSV or gzipped CSV. The
   package cache is transient by design, lives in a directory the package

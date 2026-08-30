@@ -118,7 +118,7 @@
 #'
 #' @keywords internal
 #' @noRd
-.cnefe_cache_dir <- function(cache_dir = NULL) {
+.cnefe_cache_dir <- function(cache_dir = NULL, year = NULL) {
   if (!is.null(cache_dir)) {
     if (!is.character(cache_dir) || length(cache_dir) != 1L || is.na(cache_dir)) {
       cli::cli_abort(c(
@@ -129,15 +129,53 @@
     if (!nzchar(cache_dir)) {
       cli::cli_abort("{.arg cache_dir} must not be an empty string.")
     }
-    return(path.expand(cache_dir))
+    return(.cnefe_year_dir(path.expand(cache_dir), year))
   }
 
   from_env <- Sys.getenv("CNEFETOOLS_CACHE_DIR", unset = "")
   if (nzchar(from_env)) {
-    return(path.expand(from_env))
+    return(.cnefe_year_dir(path.expand(from_env), year))
   }
 
-  tools::R_user_dir("cnefetools", which = "cache")
+  .cnefe_year_dir(tools::R_user_dir("cnefetools", which = "cache"), year)
+}
+
+
+#' Append the CNEFE edition to a cache root
+#'
+#' Cache entries are segregated per edition. The published ZIP names carry no
+#' year, so `2919207_LAURO_DE_FREITAS.zip` from a future census would be
+#' indistinguishable from the 2022 one, and the package would happily serve a
+#' cached 2022 file to someone who asked for another edition. A directory per
+#' year makes that collision impossible by construction.
+#'
+#' Coerce a cache-edition argument to a directory name
+#'
+#' Looser than [.validate_year()] on purpose. The cache cleaners operate on
+#' directories, so they must be able to reach an edition this version does not
+#' read.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_cache_year <- function(year) {
+  if (is.null(year)) {
+    return(NULL)
+  }
+  if (length(year) != 1L) {
+    cli::cli_abort("{.arg year} must be a single value.")
+  }
+  y <- suppressWarnings(as.integer(year))
+  if (is.na(y)) {
+    cli::cli_abort("{.arg year} must be coercible to an integer.")
+  }
+  y
+}
+
+
+#' @keywords internal
+#' @noRd
+.cnefe_year_dir <- function(root, year) {
+  if (is.null(year)) root else file.path(root, as.character(year))
 }
 
 # Named vector: two-letter UF abbreviation → numeric IBGE state code
@@ -195,6 +233,7 @@
   index,
   cache = TRUE,
   cache_dir = NULL,
+  year = NULL,
   verbose = TRUE,
   retry_timeouts = c(300L, 600L, 1800L)
 ) {
@@ -224,7 +263,7 @@
   }
 
   if (isTRUE(cache)) {
-    cache_dir <- .cnefe_cache_dir(cache_dir)
+    cache_dir <- .cnefe_cache_dir(cache_dir, year)
     if (!dir.exists(cache_dir)) {
       dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
     }
@@ -558,14 +597,14 @@
 
 #' @keywords internal
 #' @noRd
-.sc_cache_dir <- function(cache_dir = NULL) {
-  file.path(.cnefe_cache_dir(cache_dir), "sc_assets")
+.sc_cache_dir <- function(cache_dir = NULL, year = NULL) {
+  file.path(.cnefe_cache_dir(cache_dir, year), "sc_assets")
 }
 
 #' @keywords internal
 #' @noRd
-.sc_asset_local_path <- function(uf, cache_dir = NULL) {
-  file.path(.sc_cache_dir(cache_dir), .sc_asset_filename(uf))
+.sc_asset_local_path <- function(uf, cache_dir = NULL, year = NULL) {
+  file.path(.sc_cache_dir(cache_dir, year), .sc_asset_filename(uf))
 }
 
 
@@ -600,6 +639,7 @@
     uf,
     cache = TRUE,
     cache_dir = NULL,
+    year = NULL,
     verbose = TRUE,
     retry_timeouts = c(300L, 600L, 1800L)  # Ignored, kept for compatibility
 ) {
@@ -617,7 +657,7 @@
   }
 
   # Use piggyback to download the census tract assets
-  .sc_download_with_piggyback(uf = uf, cache = cache, cache_dir = cache_dir, verbose = verbose)
+  .sc_download_with_piggyback(uf = uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose)
 }
 
 #' Try to copy file to cache, return FALSE if file is locked
@@ -686,6 +726,7 @@
     uf,
     cache = TRUE,
     cache_dir = NULL,
+    year = NULL,
     verbose = TRUE
 ) {
 
@@ -701,7 +742,7 @@
   # Determine cache destination
   destfile <- NULL
   if (isTRUE(cache)) {
-    destfile <- normalizePath(.sc_asset_local_path(uf, cache_dir), winslash = "/", mustWork = FALSE)
+    destfile <- normalizePath(.sc_asset_local_path(uf, cache_dir, year), winslash = "/", mustWork = FALSE)
     dest_dir <- dirname(destfile)
 
     # Ensure cache directory exists
@@ -830,6 +871,7 @@
   code_muni,
   cache = TRUE,
   cache_dir = NULL,
+  year = NULL,
   verbose = TRUE
 ) {
 
@@ -837,7 +879,7 @@
   uf <- .uf_from_code_muni(code_muni)
 
   # Ensure UF parquet is available locally
-  parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, cache_dir = cache_dir, verbose = verbose)
+  parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose)
   parquet_path <- normalizePath(parquet_path, winslash = "/", mustWork = TRUE)
 
   # 7-digit municipality prefix inside 15-digit tract code
@@ -884,6 +926,7 @@
   index = cnefe_index_2022,
   cache = TRUE,
   cache_dir = NULL,
+  year = NULL,
   verbose = TRUE
 ) {
   code_muni <- .normalize_code_muni(code_muni)
@@ -910,6 +953,7 @@
     index = index,
     cache = cache,
     cache_dir = cache_dir,
+    year = year,
     verbose = verbose
   )
 

@@ -335,6 +335,7 @@ compute_lumi <- function(
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
+    year = year,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )
@@ -554,6 +555,7 @@ compute_lumi <- function(
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
+    year = year,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )

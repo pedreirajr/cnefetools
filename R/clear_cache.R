@@ -8,6 +8,8 @@
 #' @param code_muni Integer or `"all"`. If `"all"` (default), all cached CNEFE
 #'   ZIP files are deleted. If a seven-digit IBGE municipality code is provided,
 #'   only the ZIP file for that municipality is deleted.
+#' @param year Integer. Restrict the deletion to one CNEFE edition. `NULL`
+#'   (default) clears every edition, which is the previous behaviour.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
@@ -27,8 +29,13 @@
 #' }
 #'
 #' @export
-clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL) {
-  cache_dir <- .cnefe_cache_dir(cache_dir)
+clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL,
+                             year = NULL) {
+  # Deliberately not .validate_year(): this deletes directories, so it must be
+  # able to clear an edition this version no longer reads, or one left behind by
+  # a newer version the user downgraded from.
+  year <- .cnefe_cache_year(year)
+  cache_dir <- .cnefe_cache_dir(cache_dir, year)
 
   if (!dir.exists(cache_dir)) {
     if (verbose) {
@@ -42,7 +49,9 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
     path = cache_dir,
     pattern = "\\.zip$",
     full.names = TRUE,
-    recursive = FALSE
+    # Cache entries live under a directory per CNEFE edition, so clearing
+    # every edition (year = NULL) has to recurse to still mean everything.
+    recursive = is.null(year)
   )
 
   if (length(all_zips) == 0L) {
@@ -96,6 +105,8 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
 #'   numeric state code (e.g. `29L`), or a seven-digit IBGE municipality code
 #'   (e.g. `2919207`). If `"all"` (default), all cached Parquet files are
 #'   deleted. Otherwise, only the file for the resolved state is deleted.
+#' @param year Integer. Restrict the deletion to one CNEFE edition. `NULL`
+#'   (default) clears every edition, which is the previous behaviour.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
@@ -117,8 +128,19 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
 #' }
 #'
 #' @export
-clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL) {
-  sc_dir <- .sc_cache_dir(cache_dir)
+clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL,
+                               year = NULL) {
+  # Deliberately not .validate_year(): this deletes directories, so it must be
+  # able to clear an edition this version no longer reads, or one left behind by
+  # a newer version the user downgraded from.
+  year <- .cnefe_cache_year(year)
+  # Tract assets live at <cache>/<year>/sc_assets, so clearing every edition
+  # has to start from the cache root and recurse, not from a single sc_assets.
+  sc_dir <- if (is.null(year)) {
+    .cnefe_cache_dir(cache_dir)
+  } else {
+    .sc_cache_dir(cache_dir, year)
+  }
 
   if (!dir.exists(sc_dir)) {
     if (verbose) {
@@ -132,7 +154,9 @@ clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL) {
     path = sc_dir,
     pattern = "\\.parquet$",
     full.names = TRUE,
-    recursive = FALSE
+    # Cache entries live under a directory per CNEFE edition, so clearing
+    # every edition (year = NULL) has to recurse to still mean everything.
+    recursive = is.null(year)
   )
 
   if (length(all_parquets) == 0L) {
