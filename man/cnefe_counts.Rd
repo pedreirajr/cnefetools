@@ -7,7 +7,7 @@
 cnefe_counts(
   code_muni,
   year = 2022,
-  polygon_type = c("hex", "user"),
+  polygon_type = lifecycle::deprecated(),
   polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
@@ -23,12 +23,13 @@ cnefe_counts(
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
 
-\item{polygon_type}{Character. Type of polygon aggregation: \code{"hex"} (default)
-uses an H3 hexagonal grid; \code{"user"} uses polygons provided via the \code{polygon}
-parameter.}
+\item{polygon_type}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} The aggregation mode is
+now inferred from \code{polygon}: leave it \code{NULL} for an H3 grid, or pass an
+\code{\link[sf:sf]{sf::sf}} object for user polygons. Passing \code{polygon_type} still works and
+warns.}
 
-\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Required when
-\code{polygon_type = "user"}. A warning is issued reporting the percentage of
+\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Supplying it
+switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 CNEFE points covered by the polygon area. If no CNEFE points fall within
 the polygon, an error is raised.}
 

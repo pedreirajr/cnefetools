@@ -1563,3 +1563,57 @@
     geometry = sf::st_sfc(crs = 4326)
   )
 }
+
+
+## Theme: Aggregation mode
+
+#' Resolve the aggregation mode, honouring the deprecated `polygon_type`
+#'
+#' Referee 1 (R1.6) observed that `polygon_type` is redundant, since passing an
+#' `sf` object to `polygon` already states the intent. The argument is now
+#' soft-deprecated: the mode is inferred from whether `polygon` is `NULL`, and
+#' code that still passes `polygon_type` keeps working with a warning rather
+#' than breaking.
+#'
+#' Two cases are preserved deliberately. `polygon_type = "user"` with no
+#' `polygon` stays an error, because it states an intent the call cannot
+#' satisfy, and it was an error before. `polygon_type = "hex"` alongside a
+#' supplied `polygon` resolves to user polygons, which is what the previous
+#' inference did, only without the three alert lines it used to print.
+#'
+#' @param polygon The `polygon` argument as received by the caller.
+#' @param polygon_type The `polygon_type` argument as received by the caller.
+#' @param fn Name of the calling function, for the deprecation message.
+#'
+#' @return `"hex"` or `"user"`.
+#'
+#' @keywords internal
+#' @noRd
+.resolve_polygon_mode <- function(
+  polygon,
+  polygon_type = lifecycle::deprecated(),
+  fn
+) {
+  if (lifecycle::is_present(polygon_type)) {
+    lifecycle::deprecate_warn(
+      when = "0.3.0",
+      what = paste0(fn, "(polygon_type)"),
+      details = c(
+        "The aggregation mode is now inferred from {.arg polygon}.",
+        "i" = "Pass an {.cls sf} object to {.arg polygon} for user polygons, or leave it {.code NULL} for an H3 grid."
+      )
+    )
+
+    polygon_type <- match.arg(polygon_type, c("hex", "user"))
+
+    # Stating "user" without a polygon was an error before and stays one.
+    if (identical(polygon_type, "user") && is.null(polygon)) {
+      .validate_polygon_arg(
+        NULL,
+        required_when = "{.arg polygon_type} is {.val user}"
+      )
+    }
+  }
+
+  if (is.null(polygon)) "hex" else "user"
+}

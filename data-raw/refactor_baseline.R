@@ -66,10 +66,10 @@ cases <- list(
     cnefe_counts(CODE_MUNI, h3_resolution = H3_RES, backend = "r", verbose = FALSE)
   },
   counts_user_duckdb = function() {
-    cnefe_counts(CODE_MUNI, polygon_type = "user", polygon = nei, backend = "duckdb", verbose = FALSE)
+    cnefe_counts(CODE_MUNI, polygon = nei, backend = "duckdb", verbose = FALSE)
   },
   counts_user_r = function() {
-    cnefe_counts(CODE_MUNI, polygon_type = "user", polygon = nei, backend = "r", verbose = FALSE)
+    cnefe_counts(CODE_MUNI, polygon = nei, backend = "r", verbose = FALSE)
   },
   lumi_hex_duckdb = function() {
     compute_lumi(CODE_MUNI, h3_resolution = H3_RES, backend = "duckdb", verbose = FALSE)
@@ -78,10 +78,10 @@ cases <- list(
     compute_lumi(CODE_MUNI, h3_resolution = H3_RES, backend = "r", verbose = FALSE)
   },
   lumi_user_duckdb = function() {
-    compute_lumi(CODE_MUNI, polygon_type = "user", polygon = nei, backend = "duckdb", verbose = FALSE)
+    compute_lumi(CODE_MUNI, polygon = nei, backend = "duckdb", verbose = FALSE)
   },
   lumi_user_r = function() {
-    compute_lumi(CODE_MUNI, polygon_type = "user", polygon = nei, backend = "r", verbose = FALSE)
+    compute_lumi(CODE_MUNI, polygon = nei, backend = "r", verbose = FALSE)
   },
   tracts_h3 = function() {
     tracts_to_h3(CODE_MUNI, h3_resolution = H3_RES, vars = VARS, verbose = FALSE)

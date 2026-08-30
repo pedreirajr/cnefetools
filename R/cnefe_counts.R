@@ -9,11 +9,12 @@
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
-#' @param polygon_type Character. Type of polygon aggregation: `"hex"` (default)
-#'   uses an H3 hexagonal grid; `"user"` uses polygons provided via the `polygon`
-#'   parameter.
-#' @param polygon An [`sf::sf`] object with polygon geometries. Required when
-#'   `polygon_type = "user"`. A warning is issued reporting the percentage of
+#' @param polygon_type `r lifecycle::badge("deprecated")` The aggregation mode is
+#'   now inferred from `polygon`: leave it `NULL` for an H3 grid, or pass an
+#'   [`sf::sf`] object for user polygons. Passing `polygon_type` still works and
+#'   warns.
+#' @param polygon An [`sf::sf`] object with polygon geometries. Supplying it
+#'   switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 #'   CNEFE points covered by the polygon area. If no CNEFE points fall within
 #'   the polygon, an error is raised.
 #' @param crs_output The CRS for the output object. Only used when
@@ -84,7 +85,7 @@
 cnefe_counts <- function(
   code_muni,
   year = 2022,
-  polygon_type = c("hex", "user"),
+  polygon_type = lifecycle::deprecated(),
   polygon = NULL,
 
   crs_output = NULL,
@@ -94,28 +95,14 @@ cnefe_counts <- function(
   cache_dir = NULL,
   backend = c("duckdb", "r")
 ) {
-  polygon_type <- match.arg(polygon_type)
+  polygon_type <- .resolve_polygon_mode(polygon, polygon_type, fn = "cnefe_counts")
   backend <- match.arg(backend)
   code_muni <- .normalize_code_muni(code_muni)
   year <- .validate_year(year)
 
-  # If polygon is provided but polygon_type is "hex" (default), switch to "user" with warning
-  if (!is.null(polygon) && polygon_type == "hex") {
-    cli::cli_alert_warning(
-      "{.arg polygon} was provided but {.arg polygon_type} was not set to {.val user}."
-    )
-    cli::cli_alert_info("Setting {.arg polygon_type} to {.val user} automatically.")
-    cli::cli_alert_info("To use H3 hexagonal grid instead, set {.code polygon = NULL}.")
-    polygon_type <- "user"
-  }
-
   # Validate polygon argument
   if (polygon_type == "user") {
-    .validate_polygon_arg(
-      polygon,
-      crs_output = crs_output,
-      required_when = "{.arg polygon_type} is {.val user}"
-    )
+    .validate_polygon_arg(polygon, crs_output = crs_output)
   }
 
   # Get the appropriate index for the requested year

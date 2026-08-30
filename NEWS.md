@@ -29,6 +29,16 @@
   and Fortaleza-CE (2651 cells), the municipalities used in the package
   articles (#81).
 
+## Breaking changes
+
+* `polygon_type` is deprecated in `cnefe_counts()` and `compute_lumi()`. The
+  aggregation mode is now inferred from `polygon`: leave it `NULL` for an H3
+  grid, or pass an `sf` object for user polygons. Existing code that passes
+  `polygon_type` keeps working and emits a deprecation warning. Passing
+  `polygon_type = "user"` with no `polygon` remains an error. The previous
+  behaviour, where supplying a `polygon` printed three alert lines about
+  switching mode automatically, is gone: the inference is now silent (#90).
+
 ## New features
 
 * All functions that download or read cached data gain a `cache_dir` argument:
