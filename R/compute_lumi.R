@@ -795,7 +795,8 @@ compute_lumi <- function(
       FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
       WHERE
         LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
-        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8;
+        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8
+        AND try_cast(COD_ESPECIE AS INTEGER) != 7;
       ",
         uri_sql
       ))
