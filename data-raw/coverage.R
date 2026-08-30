@@ -50,7 +50,7 @@ utils::write.csv(res, out, row.names = FALSE)
 
 cat(sprintf("\n== coverage (%s) ==\n", mode))
 print(res, row.names = FALSE)
-cat(sprintf("\noverall: %.1f%%\n", overall))
+cat(sprintf("\noverall: %.1f%% with CRAN defaults, %.1f%% with NOT_CRAN=true\n", cran$overall, full$overall))
 cat("wrote", out, "\n")
 
 if (mode == "after" && file.exists("data-raw/coverage_before.csv")) {

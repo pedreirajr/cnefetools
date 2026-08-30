@@ -75,11 +75,11 @@ testthat::test_that("the zero-feature guard reaches all three exported callers (
   empty <- make_poly(0L)
 
   testthat::expect_error(
-    cnefe_counts(2919207, polygon_type = "user", polygon = empty, verbose = FALSE),
+    cnefe_counts(2919207, polygon = empty, verbose = FALSE),
     "at least one feature"
   )
   testthat::expect_error(
-    compute_lumi(2919207, polygon_type = "user", polygon = empty, verbose = FALSE),
+    compute_lumi(2919207, polygon = empty, verbose = FALSE),
     "at least one feature"
   )
   testthat::expect_error(

@@ -73,7 +73,6 @@ testthat::test_that("cnefe_counts works offline using ZIP fixture (backend r, po
   out <- testthat::with_mocked_bindings(
     cnefetools::cnefe_counts(
       code_muni,
-      polygon_type = "hex",
       h3_resolution = h3_res,
       backend = "r",
       verbose = FALSE
@@ -146,7 +145,6 @@ testthat::test_that("cnefe_counts works with user polygon (backend r, polygon_ty
     suppressWarnings(
       cnefetools::cnefe_counts(
         code_muni,
-        polygon_type = "user",
         polygon = test_polygon,
         backend = "r",
         verbose = FALSE
@@ -255,7 +253,6 @@ testthat::test_that("cnefe_counts (duckdb) handles polygon with 'geometry' colum
     suppressWarnings(
       cnefetools::cnefe_counts(
         code_muni,
-        polygon_type = "user",
         polygon = test_polygon,
         backend = "duckdb",
         verbose = FALSE
@@ -280,7 +277,10 @@ testthat::test_that("cnefe_counts validates polygon argument", {
 
   code_muni <- 2929057L
 
-  # Error when polygon_type = "user" but polygon is NULL
+  # polygon_type = "user" with no polygon is still an error, even though the
+  # argument is deprecated (#90). Without polygon_type, polygon = NULL is now
+  # simply H3 mode and correctly raises nothing.
+  withr::local_options(lifecycle_verbosity = "quiet")
   testthat::expect_error(
     cnefetools::cnefe_counts(
       code_muni,
@@ -295,7 +295,6 @@ testthat::test_that("cnefe_counts validates polygon argument", {
   testthat::expect_error(
     cnefetools::cnefe_counts(
       code_muni,
-      polygon_type = "user",
       polygon = data.frame(x = 1),
       verbose = FALSE
     ),

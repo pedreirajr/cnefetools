@@ -1714,9 +1714,13 @@
     lifecycle::deprecate_warn(
       when = "0.3.0",
       what = paste0(fn, "(polygon_type)"),
+      # lifecycle passes `details` through as-is, so cli markup would print
+      # literally. Expanded here instead.
       details = c(
-        "The aggregation mode is now inferred from {.arg polygon}.",
-        "i" = "Pass an {.cls sf} object to {.arg polygon} for user polygons, or leave it {.code NULL} for an H3 grid."
+        cli::format_inline("The aggregation mode is now inferred from {.arg polygon}."),
+        "i" = cli::format_inline(
+          "Pass an {.cls sf} object to {.arg polygon} for user polygons, or leave it {.code NULL} for an H3 grid."
+        )
       )
     )
 
