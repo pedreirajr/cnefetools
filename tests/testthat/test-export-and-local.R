@@ -115,3 +115,64 @@ testthat::test_that("cnefe_export() refuses to clobber without overwrite (#80 R1
     "already exists"
   )
 })
+
+
+testthat::test_that("cnefe_export() writes every format and names files by edition (#80 R1.11)", {
+  testthat::skip_if_not_installed("arrow")
+
+  d <- file.path(tempdir(), "exportfmt")
+  unlink(d, recursive = TRUE)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+
+  # A toy table stands in for the download, so this needs no network and no
+  # DuckDB extension, and therefore runs in the default configuration.
+  toy <- arrow::as_arrow_table(data.frame(
+    COD_UNICO_ENDERECO = 1:3,
+    COD_ESPECIE = c(1L, 2L, 1L),
+    LONGITUDE = c(-38.5, -38.4, -38.3),
+    LATITUDE = c(-12.9, -12.8, -12.7),
+    stringsAsFactors = FALSE
+  ))
+  testthat::local_mocked_bindings(
+    read_cnefe = function(...) toy,
+    .package = "cnefetools"
+  )
+
+  for (fmt in c("parquet", "csv", "csv.gz")) {
+    p <- cnefe_export(2919207, path = d, format = fmt, verbose = FALSE)
+
+    testthat::expect_true(file.exists(p), info = fmt)
+    # The edition is part of the name, so two censuses cannot collide (#81).
+    testthat::expect_identical(basename(p), paste0("cnefe_2022_2919207.", fmt), info = fmt)
+
+    back <- read_cnefe(file = p, verbose = FALSE)
+    testthat::expect_identical(nrow(back), 3L, info = fmt)
+    testthat::expect_true("LONGITUDE" %in% names(back), info = fmt)
+  }
+})
+
+
+testthat::test_that("cnefe_export() creates the target directory and overwrites on request", {
+  testthat::skip_if_not_installed("arrow")
+
+  d <- file.path(tempdir(), "exportmk", "nested")
+  unlink(dirname(d), recursive = TRUE)
+  on.exit(unlink(dirname(d), recursive = TRUE), add = TRUE)
+
+  toy <- arrow::as_arrow_table(data.frame(a = 1:2, LONGITUDE = c(1, 2)))
+  testthat::local_mocked_bindings(
+    read_cnefe = function(...) toy,
+    .package = "cnefetools"
+  )
+
+  testthat::expect_false(dir.exists(d))
+  p <- cnefe_export(2919207, path = d, verbose = FALSE)
+  testthat::expect_true(dir.exists(d))
+
+  # Second call refuses, third succeeds with overwrite.
+  testthat::expect_error(cnefe_export(2919207, path = d, verbose = FALSE), "already exists")
+  testthat::expect_identical(
+    cnefe_export(2919207, path = d, verbose = FALSE, overwrite = TRUE),
+    p
+  )
+})
