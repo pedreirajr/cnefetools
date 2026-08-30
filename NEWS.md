@@ -1,5 +1,22 @@
 # cnefetools (development version)
 
+## Breaking changes
+
+* cnefetools now requires **R (>= 4.4.0)**, raised from 4.1.0. duckspatial
+  (>= 1.1.0) calls the null-coalescing operator `%||%` without importing it, so
+  it resolves only against the base R version added in 4.4.0. On older R the
+  failure surfaced from geobr as a misleading "a file must have been corrupted
+  during download" message. Declaring the requirement turns a confusing runtime
+  error into a clear message at install time (#78).
+
+* cnefetools now requires **geobr (>= 2.0.0)**. The data server behind geobr 1.x
+  no longer responds: `read_municipality()` on geobr 1.9.1 returns `NULL` for
+  every year tested (2020, 2022 and 2024), while geobr 2.0.1 serves them
+  normally. Since the failure is a silent `NULL` rather than an error, leaving
+  the dependency unpinned meant users on geobr 1.x hit an obscure downstream
+  error instead of a clear one (#87). This supersedes the note under #74 below,
+  which stated that any geobr version works.
+
 * `cnefe_counts()`, `compute_lumi()`, and `tracts_to_polygon()` no longer fail
   in the DuckDB backend when the user-supplied `sf` polygon has a geometry
   column not named `"geom"` (e.g. the sf default `"geometry"`). The geometry
@@ -10,8 +27,8 @@
   through duckspatial, which under a fixed RNG seed (e.g. R CMD check examples)
   could trigger a DuckDB temporary-table name collision
   (`Table dbplyr_<...> already exists`). The RNG state is now isolated around
-  the geobr call in the H3-grid path, so the dependency is no longer pinned and
-  any geobr version works (#74).
+  the geobr call in the H3-grid path (#74). Note that geobr is nonetheless
+  pinned to (>= 2.0.0), for the unrelated reason given above.
 
 # cnefetools 0.2.5
 

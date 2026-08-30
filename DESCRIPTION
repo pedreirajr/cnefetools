@@ -42,13 +42,13 @@ Suggests:
     testthat (>= 3.0.0),
     zip
 Config/testthat/edition: 3
-Depends: 
-    R (>= 4.1.0)
+Depends:
+    R (>= 4.4.0)
 Imports:
     arrow,
     dplyr,
     sf,
-    geobr,
+    geobr (>= 2.0.0),
     lifecycle,
     rlang,
     h3jsr,
