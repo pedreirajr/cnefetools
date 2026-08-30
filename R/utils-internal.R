@@ -513,7 +513,7 @@
     uf,
     cache = TRUE,
     verbose = TRUE,
-    retry_timeouts = c(300L, 600L, 1800L)  # Ignorado, mantido para compatibilidade
+    retry_timeouts = c(300L, 600L, 1800L)  # Ignored, kept for compatibility
 ) {
 
   uf <- as.character(uf)
@@ -528,7 +528,7 @@
     rlang::abort("`uf` must be a two-digit string like '29'.")
   }
 
-  # Usa piggyback para download dos assets do SC
+  # Use piggyback to download the census tract assets
   .sc_download_with_piggyback(uf = uf, cache = cache, verbose = verbose)
 }
 

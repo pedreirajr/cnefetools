@@ -71,11 +71,7 @@ tracts_to_h3 <- function(
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  if (exists(".normalize_code_muni", mode = "function")) {
-    code_muni <- .normalize_code_muni(code_muni)
-  } else {
-    code_muni <- as.integer(code_muni)
-  }
+  code_muni <- .normalize_code_muni(code_muni)
 
   year <- .validate_year(year)
 
@@ -509,7 +505,7 @@ tracts_to_h3 <- function(
     code_muni     = code_muni
   )
 
-  # capture.output para capturar TUDO (output E messages)
+  # capture.output to swallow everything (both output and messages)
   invisible(utils::capture.output({
     invisible(utils::capture.output({
       hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
