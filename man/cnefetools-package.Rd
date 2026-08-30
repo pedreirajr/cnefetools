@@ -6,6 +6,8 @@
 \alias{cnefetools-package}
 \title{cnefetools: Access and Analysis of Brazilian CNEFE Address Data}
 \description{
+\if{html}{\figure{logo.svg}{options: style='float: right' alt='logo' width='120'}}
+
 Download, cache and read municipality-level address data from the Cadastro Nacional de Enderecos para Fins Estatisticos (CNEFE) of the 2022 Brazilian Census, published by the Instituto Brasileiro de Geografia e Estatistica (IBGE) \url{https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/}. Beyond data access, provides spatial aggregation of addresses, computation of land-use mix indices, and dasymetric interpolation of census tract variables using CNEFE dwelling points as ancillary data. Results can be produced on 'H3' hexagonal grids or user-supplied polygons, and heavy operations leverage a 'DuckDB' backend with extensions for fast, in-process execution.
 }
 \seealso{
@@ -22,6 +24,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Jorge Ubirajara Pedreira Junior \email{jorge.ubirajara@ufba.br} (\href{https://orcid.org/0000-0002-8243-5395}{ORCID}) [copyright holder]
   \item Bruno Mioto \email{brunomioto97@gmail.com}
 }
 

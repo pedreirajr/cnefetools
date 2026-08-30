@@ -26,11 +26,11 @@ user-level cache directory specific to this package. If \code{FALSE}, a
 temporary file is used and removed after reading.}
 
 \item{output}{Character. Output format. \code{"arrow"} (default) returns an
-\link[arrow:Table-class]{arrow::Table}, whereas \code{"sf"} returns an \link[sf:st_as_sf]{sf} point object
+\link[arrow:Table]{arrow::Table}, whereas \code{"sf"} returns an \link[sf:st_as_sf]{sf} point object
 with coordinates built from \code{LONGITUDE} / \code{LATITUDE} in CRS 4674.}
 }
 \value{
-If \code{output = "arrow"}, an \link[arrow:Table-class]{arrow::Table} containing all CNEFE records for
+If \code{output = "arrow"}, an \link[arrow:Table]{arrow::Table} containing all CNEFE records for
 the given municipality.
 
 If \code{output = "sf"}, an \link[sf:st_as_sf]{sf} object with point geometry in
@@ -40,7 +40,7 @@ EPSG:4674 (SIRGAS 2000), using the \code{LONGITUDE} and \code{LATITUDE} columns.
 Downloads and reads the CNEFE CSV file for a given
 IBGE municipality code, using the official IBGE FTP structure. The function
 relies on an internal index linking municipality codes to the corresponding
-ZIP URLs. Data are returned either as an Arrow \link[arrow:Table-class]{Table}
+ZIP URLs. Data are returned either as an Arrow \link[arrow:Table]{Table}
 (default) or as an \link[sf:st_as_sf]{sf} object with SIRGAS 2000 coordinates.
 }
 \details{
@@ -54,7 +54,7 @@ keeping these columns in the final object (\code{remove = FALSE}).
 
 When \code{cache = TRUE} (the default), the downloaded ZIP file is stored in a
 user-level cache directory specific to this package, created via
-\code{\link[tools:userdir]{tools::R_user_dir()}} with \code{which = "cache"}. This avoids re-downloading
+\code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. This avoids re-downloading
 the same municipality file across sessions.
 
 When \code{cache = FALSE}, the ZIP file is stored in a temporary location and
