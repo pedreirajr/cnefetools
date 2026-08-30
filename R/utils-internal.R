@@ -573,6 +573,30 @@
 #' by DuckDB or other processes. When the cache file cannot be updated, it falls
 #' back to using a temporary file for the current session.
 #'
+#' Detect a GitHub authentication failure
+#'
+#' The census tract assets live in public GitHub releases, so no token is
+#' needed. But `gh` sends whatever token it can find on every request, resolved
+#' from `GITHUB_PAT` / `GITHUB_TOKEN` / `GH_TOKEN` and then from the git
+#' credential store. An expired or invalid token there makes GitHub answer 401
+#' instead of falling back to anonymous access, which is why this has to be
+#' recognised and retried rather than reported.
+#'
+#' @keywords internal
+#' @noRd
+.is_github_auth_error <- function(cnd) {
+  if (!inherits(cnd, "condition")) {
+    return(FALSE)
+  }
+  msg <- paste(
+    conditionMessage(cnd),
+    if (!is.null(cnd$parent)) conditionMessage(cnd$parent) else "",
+    collapse = " "
+  )
+  grepl("401|bad credentials|requires authentication", msg, ignore.case = TRUE)
+}
+
+
 #' @keywords internal
 #' @noRd
 .sc_download_with_piggyback <- function(
@@ -620,8 +644,10 @@
     cli::cli_progress_step("Downloading {.file {filename}} from GitHub release")
   }
 
-  download_result <- tryCatch({
-    piggyback::pb_download(
+  # The first attempt keeps the default token, so users with a valid one still
+  # get the authenticated rate limit.
+  do_download <- function(token = NULL) {
+    args <- list(
       file = filename,
       repo = repo,
       tag = tag,
@@ -629,24 +655,45 @@
       overwrite = TRUE,
       show_progress = verbose
     )
-
-    if (verbose) {
-      cli::cli_progress_done()
+    if (!is.null(token)) {
+      args$.token <- token
     }
+    tryCatch(
+      {
+        do.call(piggyback::pb_download, args)
+        list(ok = TRUE, err = NULL)
+      },
+      error = function(e) list(ok = FALSE, err = e)
+    )
+  }
 
-    list(ok = TRUE, err = NULL)
-  }, error = function(e) {
-    if (verbose) {
-      cli::cli_progress_done()
-    }
-    list(ok = FALSE, err = e)
-  })
+  download_result <- do_download()
+
+  # A broken credential in the user environment makes GitHub reject a request
+  # that needs no credential at all, since the repo and its releases are public.
+  # Retry once anonymously before giving up.
+  retried_anonymously <- FALSE
+  if (!download_result$ok && .is_github_auth_error(download_result$err)) {
+    retried_anonymously <- TRUE
+    download_result <- do_download(token = "")
+  }
+
+  if (verbose) {
+    cli::cli_progress_done()
+  }
 
   if (!download_result$ok) {
     cli::cli_abort(
       c(
         "Failed to download {.file {filename}} from GitHub release.",
-        "i" = "Error: {conditionMessage(download_result$err)}"
+        "i" = "Error: {conditionMessage(download_result$err)}",
+        if (retried_anonymously) {
+          c(
+            "!" = "An anonymous retry was attempted and also failed.",
+            "i" = "A GitHub token in your environment may be expired or invalid. It can come from {.envvar GITHUB_PAT}, {.envvar GITHUB_TOKEN}, {.envvar GH_TOKEN} or from the git credential store.",
+            "i" = "Inspect it with {.run gh::gh_token()} and clear it with {.run gitcreds::gitcreds_delete()}, then restart R."
+          )
+        }
       ),
       parent = download_result$err
     )

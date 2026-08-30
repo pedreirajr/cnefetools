@@ -29,6 +29,20 @@
   and Fortaleza-CE (2651 cells), the municipalities used in the package
   articles (#81).
 
+## Bug fixes
+
+* `tracts_to_h3()` and `tracts_to_polygon()` no longer fail with
+  `GitHub API error (401): Bad credentials` when an expired or invalid GitHub
+  token is present in the environment. The census tract assets live in public
+  GitHub releases and need no credential, but `gh` sends whatever token it finds
+  in `GITHUB_PAT`, `GITHUB_TOKEN`, `GH_TOKEN` or the git credential store, and
+  GitHub then rejects the request instead of serving it anonymously. The
+  download now retries once without a token after an authentication failure.
+  A valid token is still tried first, so authenticated rate limits are
+  preserved, and if the anonymous retry also fails the error names the broken
+  credential as a likely cause and points at `gitcreds::gitcreds_delete()`
+  (#79).
+
 * `cnefe_counts()`, `compute_lumi()`, and `tracts_to_polygon()` no longer fail
   in the DuckDB backend when the user-supplied `sf` polygon has a geometry
   column not named `"geom"` (e.g. the sf default `"geometry"`). The geometry
