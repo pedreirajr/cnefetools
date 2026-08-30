@@ -303,6 +303,10 @@
 
   fs::dir_create(fs::path_dir(destfile))
 
+  # Fail fast and legibly before entering the retry ladder, which can otherwise
+  # spend 300 + 600 + 1800 seconds on a URL that will never resolve (R1.8c).
+  .cnefe_preflight(url)
+
   last_err <- NULL
 
   for (t in retry_timeouts) {
@@ -1616,4 +1620,84 @@
   }
 
   if (is.null(polygon)) "hex" else "user"
+}
+
+
+## Theme: Pre-flight availability check
+
+#' Check that a CNEFE URL is reachable before committing to the retry ladder
+#'
+#' Referee 1 (R1.8c) asked for the two failure modes to be told apart. Without
+#' this, a broken upstream path and a dead network connection produced the same
+#' message, after burning through retry timeouts of 300, 600 and 1800 seconds.
+#'
+#' A HEAD request separates them cheaply. The IBGE server answers HEAD
+#' correctly, returning 200 with a content-length for a file that exists and 404
+#' for one that does not, so a failure at transport level means the server could
+#' not be reached at all.
+#'
+#' The 404 case is the interesting one. The internal index is built from the
+#' published directory layout, so a 404 on a URL we generated means that layout
+#' changed upstream. That is a package problem rather than a user problem, and
+#' the message says so and points at the issue tracker.
+#'
+#' @param url The URL to probe.
+#' @param timeout Seconds to wait. Deliberately short: this is a probe, not the
+#'   download.
+#'
+#' @return `TRUE`, invisibly, when the URL is reachable. Aborts otherwise.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_preflight <- function(url, timeout = 15L) {
+  resp <- tryCatch(
+    httr2::request(url) |>
+      httr2::req_method("HEAD") |>
+      httr2::req_timeout(timeout) |>
+      httr2::req_error(is_error = function(resp) FALSE) |>
+      httr2::req_perform(),
+    error = function(e) e
+  )
+
+  # Transport-level failure: DNS, refused connection, timeout, TLS.
+  if (inherits(resp, "condition")) {
+    host <- httr2::url_parse(url)$hostname
+    cli::cli_abort(
+      c(
+        "Could not reach the IBGE server.",
+        "i" = "This usually means a connectivity problem on your side, such as no internet access, a proxy, or a firewall.",
+        "i" = "Server: {.url {host}}",
+        "i" = "If your connection is working, the server may be temporarily down. Try again later."
+      ),
+      parent = resp,
+      class = "cnefetools_unreachable"
+    )
+  }
+
+  status <- httr2::resp_status(resp)
+
+  if (identical(status, 404L)) {
+    cli::cli_abort(
+      c(
+        "The IBGE server is reachable, but the requested file was not found (HTTP 404).",
+        "i" = "The upstream directory structure has most likely changed, which makes this a problem with {.pkg cnefetools} rather than with your setup.",
+        "i" = "Please report it at {.url https://github.com/pedreirajr/cnefetools/issues}, quoting the URL below.",
+        "i" = "URL: {.url {url}}"
+      ),
+      class = "cnefetools_not_found"
+    )
+  }
+
+  if (status >= 400L) {
+    cli::cli_abort(
+      c(
+        "The IBGE server answered with HTTP {status}.",
+        "i" = "URL: {.url {url}}",
+        "i" = "If this persists, please report it at {.url https://github.com/pedreirajr/cnefetools/issues}."
+      ),
+      class = "cnefetools_http_error"
+    )
+  }
+
+  invisible(TRUE)
 }

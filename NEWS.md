@@ -41,6 +41,14 @@
 
 ## New features
 
+* Downloads now run a pre-flight availability check that tells two failures
+  apart. If the IBGE server cannot be reached, the message points at
+  connectivity. If the server answers but the file is missing (HTTP 404), the
+  message explains that the upstream directory layout has most likely changed,
+  which is a package problem rather than a user problem, and points at the issue
+  tracker. The check also aborts before the retry ladder, which previously spent
+  300, 600 and 1800 seconds on a URL that could never resolve (#91).
+
 * All functions that download or read cached data gain a `cache_dir` argument:
   `read_cnefe()`, `cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()`,
   `tracts_to_polygon()`, `clear_cache_muni()` and `clear_cache_tracts()`. The
