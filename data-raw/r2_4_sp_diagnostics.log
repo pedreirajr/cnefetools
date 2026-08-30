@@ -1,0 +1,52 @@
+run started: 2026-08-30 03:25:59 UTC
+cnefetools: 0.3.0.9000
+R: R version 4.6.0 (2026-04-24 ucrt)
+
+call: tracts_to_h3(code_muni = 3550308, h3_resolution = 9,
+                   vars = c("pop_ph", "race_preta"), cache = TRUE)
+
+i Processing code 3550308
+v Step 1/6 (DuckDB ready) [3.3s]
+i Using cached file: 'sc_35.parquet'
+v Step 2/6 (Tracts ready) [446ms]
+v Step 3/6 (CNEFE points ready) [17.4s]
+v Step 4/6 (Join and allocation) [4.4s]
+v Step 5/6 (Hex aggregation) [240ms]
+v Step 6/6 (sf output) [11s]
+
+-- Dasymetric interpolation diagnostics --
+
+-- Stage 1: Tracts -> CNEFE points
+! Unallocated total for population from private households (pop_ph): 86998 of
+  11394071 (0.76%)
+! Unallocated total for race_preta (race_preta): 5328 of 1156511 (0.46%)
+! Unmatched CNEFE points (no tract): 2935 of 4996529 points (0.06% of total
+  points)
+! Tracts with NA totals: pop_ph in 622 of 27301 tracts (2.28% of total tracts);
+  race_preta in 1621 of 27301 tracts (5.94% of total tracts)
+! Tracts with no eligible dwellings: pop_ph in 324 of 27301 tracts (1.19% of
+  total tracts); race_preta in 269 of 27301 tracts (0.99% of total tracts)
+
+-- Stage 2: CNEFE points -> H3 hexagons
+i CNEFE points mapped to H3 cells: 4993594 of 4993594 allocated points
+  (100.00%)
+
+elapsed (s):
+  user  system elapsed
+116.02    6.00   38.40
+
+hexagons returned: 14936
+
+column totals after interpolation:
+    pop_ph race_preta
+  11306622    1151128
+
+run finished: 2026-08-30 03:26:37 UTC
+
+--
+Note for the R2.4 reply. The Stage 1 unallocated total for pop_ph (86998,
+0.76%) is identical to the figure already printed in the submitted article for
+tracts_to_polygon() on Sao Paulo traffic zones. Unallocation happens in Stage 1,
+in the match between tracts and CNEFE points, so it does not depend on the
+target geometry. Comparable figures across the three worked examples:
+Lauro de Freitas 0.00%, Fortaleza 0.09%, Sao Paulo 0.76%.
