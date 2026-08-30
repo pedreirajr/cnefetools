@@ -41,6 +41,19 @@
 
 ## New features
 
+* New `cnefe_export()` writes a municipality to a persistent, optimised file at
+  a location of your choosing, as Parquet (default), CSV or gzipped CSV. The
+  package cache is transient by design, lives in a directory the package
+  manages and holds the ZIP exactly as IBGE published it, which is the wrong
+  shape for an analysis that must still run in a year (#93).
+
+* `read_cnefe()` gains a `file` argument that reads a CNEFE file already on
+  disk, skipping the download entirely. It accepts `.zip` as published by IBGE,
+  `.csv`, `.csv.gz` and `.parquet`, so data obtained by any means can be read
+  without the IBGE server being reachable. `code_muni` and `file` are mutually
+  exclusive, and both paths share the same output code, so they return the same
+  object for the same data (#93).
+
 * Downloads now recover from an upstream layout change. If the URL held in the
   internal index returns 404, the package scans the published IBGE directory
   listing to reconstruct the correct URL and retries once. The scan reads

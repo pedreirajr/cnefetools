@@ -5,16 +5,18 @@
 \title{Read CNEFE data for a given municipality}
 \usage{
 read_cnefe(
-  code_muni,
+  code_muni = NULL,
   year = 2022,
   verbose = TRUE,
   cache = TRUE,
   cache_dir = NULL,
-  output = c("arrow", "sf")
+  output = c("arrow", "sf"),
+  file = NULL
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Integer. Seven-digit IBGE municipality code. Omit it when
+reading a local file through \code{file}.}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -34,6 +36,11 @@ point large downloads at a secondary drive or a shared volume.}
 \item{output}{Character. Output format. \code{"arrow"} (default) returns an
 \link[arrow:Table]{arrow::Table}, whereas \code{"sf"} returns an \link[sf:st_as_sf]{sf} point object
 with coordinates built from \code{LONGITUDE} / \code{LATITUDE} in CRS 4674.}
+
+\item{file}{Character. Path to a CNEFE file already on disk, read instead of
+downloading. Accepts \code{.zip} as published by IBGE, \code{.csv}, \code{.csv.gz} and
+\code{.parquet}, which is what \code{\link[=cnefe_export]{cnefe_export()}} writes. Mutually exclusive with
+\code{code_muni}, and it makes the function independent of the IBGE server.}
 }
 \value{
 If \code{output = "arrow"}, an \link[arrow:Table]{arrow::Table} containing all CNEFE records for
@@ -72,8 +79,16 @@ removed when the function exits.
 # Read CNEFE data as an Arrow table
 cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 
+# Read a local file instead, with no network access
+path <- cnefe_export(2929057, path = tempdir(), cache = FALSE)
+cnefe_local <- read_cnefe(file = path)
+
 # Read as an sf spatial object
 cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 }
 
+}
+\seealso{
+\code{\link[=cnefe_export]{cnefe_export()}} to write a municipality to a persistent, optimised
+file that this function can read back through \code{file}.
 }

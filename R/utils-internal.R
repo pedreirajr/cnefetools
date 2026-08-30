@@ -1838,3 +1838,79 @@
 
   found
 }
+
+
+## Theme: Local file ingestion
+
+#' Read a CNEFE file already on disk into an Arrow table
+#'
+#' Referee 1 (R1.11) asked for a path from the transient cache to a persistent,
+#' optimised store, citing `spanishoddata` as a model. Referee 2 (R2.7) asked,
+#' from the other direction, whether `read_cnefe()` could ingest a locally
+#' obtained file independently of the FTP download step. Both are answered by
+#' separating retrieval from parsing, which this does.
+#'
+#' Supported formats, chosen by extension:
+#' - `.parquet`, read lazily by Arrow,
+#' - `.csv` and `.csv.gz`, read with the CNEFE delimiter,
+#' - `.zip`, the shape IBGE publishes, extracted to a temporary directory.
+#'
+#' @param file Path to a local file.
+#' @param verbose Whether to report progress.
+#'
+#' @return An [arrow::Table].
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_read_local <- function(file, verbose = TRUE) {
+  if (!is.character(file) || length(file) != 1L || is.na(file)) {
+    cli::cli_abort("{.arg file} must be a single path.")
+  }
+  if (!file.exists(file)) {
+    cli::cli_abort(c(
+      "{.arg file} does not exist.",
+      "i" = "Path: {.path {file}}"
+    ))
+  }
+
+  lower <- tolower(file)
+
+  if (endsWith(lower, ".parquet")) {
+    if (verbose) {
+      cli::cli_progress_step("Reading {.file {basename(file)}} as Parquet")
+    }
+    return(arrow::read_parquet(file, as_data_frame = FALSE))
+  }
+
+  if (endsWith(lower, ".zip")) {
+    if (verbose) {
+      cli::cli_progress_step("Extracting {.file {basename(file)}}")
+    }
+    tmp_dir <- tempfile("cnefe_local_")
+    dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+    on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+    csv_inside <- .cnefe_first_csv_in_zip(file)
+    utils::unzip(zipfile = file, files = csv_inside, exdir = tmp_dir)
+    file <- file.path(tmp_dir, csv_inside)
+  } else if (!grepl("[.]csv([.]gz)?$", lower)) {
+    cli::cli_abort(c(
+      "Unsupported file type: {.path {basename(file)}}",
+      "i" = "Supported extensions are {.val .zip}, {.val .csv}, {.val .csv.gz} and {.val .parquet}."
+    ))
+  }
+
+  if (verbose) {
+    cli::cli_progress_step("Reading {.file {basename(file)}} with {.pkg arrow}")
+  }
+
+  # Arrow decompresses .gz transparently from the extension.
+  suppressWarnings(
+    arrow::read_delim_arrow(
+      file,
+      delim = ";",
+      col_names = TRUE,
+      as_data_frame = FALSE
+    )
+  )
+}
