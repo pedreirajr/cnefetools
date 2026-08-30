@@ -582,6 +582,13 @@
   # of the 2022 ones, and they get their own release instead of new file names
   # inside this one. That keeps each edition independently re-cuttable and lets
   # the 2022 assets stay frozen once published.
+  # TODO: When new CNEFE editions become available, cut a release per edition
+  # and add it here. Do not rename the existing entry: once published, an
+  # edition's assets stay frozen so the provenance checksums keep matching.
+  #   tags <- c(
+  #     "2022" = "sc-assets-v2",
+  #     "2030" = "sc-assets-2030-v1"
+  #   )
   tags <- c("2022" = "sc-assets-v2")
 
   key <- as.character(as.integer(year %||% 2022L))
