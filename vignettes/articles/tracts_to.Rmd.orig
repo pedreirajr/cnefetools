@@ -224,6 +224,10 @@ The `odbr` traffic zones cover the entire São Paulo metropolitan region
 you can use `purrr::map()` to apply `tracts_to_polygon()` to each
 municipality and then combine the results with `dplyr::bind_rows()`.
 
+A worked example of this iterative workflow, applied to the whole São
+Paulo metropolitan region, is available
+[here](https://pedreirajr.github.io/website/posts/2026-02-18-census-tracts-rmsp/).
+
 ### Future versions
 
 In future versions of the package, `tracts_to_polygon()` will support

@@ -78,6 +78,11 @@ The counts in the columns \code{addr_type1} to \code{addr_type8} correspond to:
 \item \code{addr_type7}: Building under construction or renovation (Edificação em construção ou reforma)
 \item \code{addr_type8}: Religious establishment (Estabelecimento religioso)
 }
+
+All eight types are reported. In particular, \code{addr_type7} is retained here,
+whereas \code{\link[=compute_lumi]{compute_lumi()}} excludes it when computing land-use mix indices. The
+two functions therefore operate on slightly different subsets of the same
+municipality, by design.
 }
 \examples{
 \donttest{
@@ -99,4 +104,7 @@ hex_counts <- cnefe_counts(
 )
 }
 
+}
+\seealso{
+\code{\link[=compute_lumi]{compute_lumi()}} for land-use mix indices on the same spatial units.
 }

@@ -7,7 +7,7 @@
 #' indices, such as the Entropy Index (`ei`), the Herfindahl-Hirschman Index (`hhi`),
 #' the Balance Index (`bal`), the Index of Concentration at Extremes (`ice`), the adapted HHI (`hhi_adp`),
 #' and the Bidirectional Global-centered Index (`bgbi`), following the methodology proposed in
-#' Pedreira Jr. et al. (2025).
+#' Pedreira Junior et al. (2026).
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
@@ -52,10 +52,53 @@
 #'   }
 #' }
 #'
+#' @details
+#' ## Binary land-use classification
+#'
+#' The indices computed here rest on a binary split. An address is counted as
+#' residential when `COD_ESPECIE == 1` (private household), and as
+#' non-residential otherwise. This follows the formulation of the indices as
+#' published in Pedreira Junior et al. (2026), where the measures are defined
+#' and empirically validated on that two-category basis.
+#'
+#' ## Exclusion of buildings under construction
+#'
+#' `compute_lumi()` drops records with `COD_ESPECIE == 7` (building under
+#' construction or renovation), because such records describe a transitional
+#' state rather than a realised land use. Note that [cnefe_counts()] does **not**
+#' apply this exclusion and reports these records as `addr_type7`. The two
+#' functions therefore operate on slightly different subsets of the same
+#' municipality, by design.
+#'
+#' ## The citywide baseline P
+#'
+#' The `bgbi` and `hhi_adp` indices are referenced against a citywide
+#' residential share P. Two properties of P are worth stating.
+#'
+#' First, P is computed from CNEFE address-type counts rather than from census
+#' population, so it describes the distribution of address types and not the
+#' distribution of residents.
+#'
+#' Second, P is always computed over the full municipality, including when
+#' `polygon_type = "user"`, so it does not adapt to the area the supplied
+#' polygons happen to cover. This is intended, as P describes the context the
+#' addresses sit in, which is the municipality, and a sub-area of a city is
+#' still part of that wider context. A baseline recomputed over the sub-area
+#' would measure something different, namely mix relative to the sub-area
+#' itself rather than relative to the city.
+#'
 #' @references
+#' Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+#' Bomfim, F. G. (2026).
+#' BGBI: A citywide-referenced and bidirectional land use mix index for
+#' planning and policy evaluation.
+#' *Land Use Policy*, 169, 108135.
+#' https://doi.org/10.1016/j.landusepol.2026.108135
+#'
 #' Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 #' Measuring land use mix with address-level census data (2025).
 #' *engrXiv*. https://engrxiv.org/preprint/view/5975
+#' (preprint, where the adapted HHI (`hhi_adp`) is documented)
 #'
 #' Booth, A.; Crouter, A. C. (Eds.). (2001).
 #' *Does It Take a Village? Community Effects on Children, Adolescents, and Families*.

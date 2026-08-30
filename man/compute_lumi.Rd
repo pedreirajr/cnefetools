@@ -76,7 +76,45 @@ user-provided polygons), and computes the residential proportion (\code{p_res}) 
 indices, such as the Entropy Index (\code{ei}), the Herfindahl-Hirschman Index (\code{hhi}),
 the Balance Index (\code{bal}), the Index of Concentration at Extremes (\code{ice}), the adapted HHI (\code{hhi_adp}),
 and the Bidirectional Global-centered Index (\code{bgbi}), following the methodology proposed in
-Pedreira Jr. et al. (2025).
+Pedreira Junior et al. (2026).
+}
+\details{
+\subsection{Binary land-use classification}{
+
+The indices computed here rest on a binary split. An address is counted as
+residential when \code{COD_ESPECIE == 1} (private household), and as
+non-residential otherwise. This follows the formulation of the indices as
+published in Pedreira Junior et al. (2026), where the measures are defined
+and empirically validated on that two-category basis.
+}
+
+\subsection{Exclusion of buildings under construction}{
+
+\code{compute_lumi()} drops records with \code{COD_ESPECIE == 7} (building under
+construction or renovation), because such records describe a transitional
+state rather than a realised land use. Note that \code{\link[=cnefe_counts]{cnefe_counts()}} does \strong{not}
+apply this exclusion and reports these records as \code{addr_type7}. The two
+functions therefore operate on slightly different subsets of the same
+municipality, by design.
+}
+
+\subsection{The citywide baseline P}{
+
+The \code{bgbi} and \code{hhi_adp} indices are referenced against a citywide
+residential share P. Two properties of P are worth stating.
+
+First, P is computed from CNEFE address-type counts rather than from census
+population, so it describes the distribution of address types and not the
+distribution of residents.
+
+Second, P is always computed over the full municipality, including when
+\code{polygon_type = "user"}, so it does not adapt to the area the supplied
+polygons happen to cover. This is intended, as P describes the context the
+addresses sit in, which is the municipality, and a sub-area of a city is
+still part of that wider context. A baseline recomputed over the sub-area
+would measure something different, namely mix relative to the sub-area
+itself rather than relative to the city.
+}
 }
 \examples{
 \donttest{
@@ -100,9 +138,17 @@ lumi_poly <- compute_lumi(
 
 }
 \references{
+Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+Bomfim, F. G. (2026).
+BGBI: A citywide-referenced and bidirectional land use mix index for
+planning and policy evaluation.
+\emph{Land Use Policy}, 169, 108135.
+https://doi.org/10.1016/j.landusepol.2026.108135
+
 Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 Measuring land use mix with address-level census data (2025).
 \emph{engrXiv}. https://engrxiv.org/preprint/view/5975
+(preprint, where the adapted HHI (\code{hhi_adp}) is documented)
 
 Booth, A.; Crouter, A. C. (Eds.). (2001).
 \emph{Does It Take a Village? Community Effects on Children, Adolescents, and Families}.

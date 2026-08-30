@@ -8,6 +8,15 @@
 #'
 #' The function uses DuckDB with spatial extensions for the heavy work.
 #'
+#' Unlike [cnefe_counts()] and [compute_lumi()], this function does not expose a
+#' `backend` argument and relies on DuckDB exclusively. The dominant cost here is
+#' a spatial overlay between the full CNEFE point set of the municipality and the
+#' census tract polygons, which is a different workload from the tabular
+#' aggregation those other functions perform. Running that overlay in R would
+#' take prohibitively long in medium and large municipalities, so a pure-R
+#' fallback would offer users a path that does not finish rather than a slower
+#' one.
+#'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param polygon An [`sf::sf`] object with polygon geometries (POLYGON or
 #'   MULTIPOLYGON). The function will automatically align CRS and issue a warning
