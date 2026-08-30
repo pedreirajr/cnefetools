@@ -568,9 +568,31 @@
 
 #' @keywords internal
 #' @noRd
-.sc_assets_tag <- function() {
-  # Advanced users can override via options() without changing the API
-  getOption("cnefetools.sc_assets_tag", "sc-assets-v2")
+.sc_assets_tag <- function(year = 2022L) {
+  # Advanced users can override via options() without changing the API. The
+  # override is edition-agnostic on purpose, since it exists for pointing a
+  # single session at a test release.
+  override <- getOption("cnefetools.sc_assets_tag", NULL)
+  if (!is.null(override)) {
+    return(override)
+  }
+
+  # One GitHub release per census edition. Tract boundaries are redrawn every
+  # census, so the 2030 assets are a different dataset rather than a new version
+  # of the 2022 ones, and they get their own release instead of new file names
+  # inside this one. That keeps each edition independently re-cuttable and lets
+  # the 2022 assets stay frozen once published.
+  tags <- c("2022" = "sc-assets-v2")
+
+  key <- as.character(as.integer(year %||% 2022L))
+  if (!key %in% names(tags)) {
+    cli::cli_abort(c(
+      "No census tract assets are published for {.val {key}}.",
+      "i" = "Available editions: {.val {names(tags)}}."
+    ))
+  }
+
+  unname(tags[[key]])
 }
 
 
@@ -736,7 +758,7 @@
   )
 
   filename <- .sc_asset_filename(uf)
-  tag <- .sc_assets_tag()
+  tag <- .sc_assets_tag(year)
   repo <- "pedreirajr/cnefetools"
 
   # Determine cache destination
