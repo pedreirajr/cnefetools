@@ -1271,3 +1271,226 @@
 
   paste(alloc_exprs, collapse = ",\n")
 }
+
+
+## Theme: Dasymetric interpolation diagnostics
+
+#' Build the stage 1 diagnostic lines for a dasymetric interpolation
+#'
+#' `tracts_to_h3()` and `tracts_to_polygon()` carried near-identical copies of
+#' this, roughly 200 lines each, listed by Referee 2 under R2.C1. The two had
+#' already drifted: one ended the "Tracts with NA totals" line with a full stop
+#' and the other did not, and one wrapped every query in `suppressMessages()`
+#' while the other did not. That is exactly the divergence the referee warned
+#' about, and it is why this is now built once.
+#'
+#' Stage 1 covers the tracts-to-points half of the interpolation, which is
+#' identical for both targets. Stage 2 is left to each caller, since it reports
+#' on different things: H3 cell coverage in one case, polygon coverage in the
+#' other.
+#'
+#' Expects the tables both callers create: `sc_muni_tbl`, `sc_muni_w_dom`,
+#' `cnefe_sc` and `cnefe_alloc`.
+#'
+#' @param con A live DuckDB connection.
+#' @param vars Character vector of the interpolated variables.
+#' @param unmatched_pts Count of CNEFE points that matched no tract.
+#' @param total_pts Total CNEFE points considered.
+#'
+#' @return A character vector of preformatted cli lines, possibly empty.
+#'
+#' @keywords internal
+#' @noRd
+.build_interp_diagnostics <- function(con, vars, unmatched_pts, total_pts) {
+  q1 <- function(sql, col) .duckdb_quiet(DBI::dbGetQuery(con, sql))[[col]][1]
+
+  warn_lines <- character(0)
+
+  n_tracts <- q1("SELECT COUNT(*) AS n FROM sc_muni_tbl;", "n")
+
+  totals_vars <- setdiff(vars, "avg_inc_resp")
+
+  for (v in totals_vars) {
+    total_v <- q1(
+      sprintf("SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;", v, v),
+      "total"
+    )
+    alloc_v <- q1(
+      sprintf("SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;", v, v),
+      "alloc"
+    )
+
+    total_v <- if (is.null(total_v) || is.na(total_v)) 0 else as.numeric(total_v)
+    alloc_v <- if (is.null(alloc_v) || is.na(alloc_v)) 0 else as.numeric(alloc_v)
+
+    # Use threshold >= 0.5 to avoid floating point precision issues
+    unalloc <- max(total_v - alloc_v, 0)
+    unalloc <- if (unalloc < 0.5) 0 else round(unalloc)
+    pct <- if (total_v > 0) 100 * unalloc / total_v else 0
+
+    label <- switch(v,
+      "pop_ph" = "population from private households",
+      "pop_ch" = "population from collective households",
+      v # default: use variable name
+    )
+
+    # Always show all requested variables for consistency
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Unallocated total for {label} ({.field {v}}): {.strong {sprintf('%.0f', unalloc)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.2f%%', pct)}})"
+      )
+    )
+  }
+
+  if ("avg_inc_resp" %in% vars) {
+    eligible_avg <- q1(
+      "
+      SELECT COUNT(*) AS n
+      FROM cnefe_sc p
+      JOIN sc_muni_w_dom s USING (code_tract)
+      WHERE p.COD_ESPECIE = 1 AND s.n_dom_p > 0;
+      ",
+      "n"
+    )
+    assigned_avg <- q1(
+      "SELECT COUNT(*) AS n FROM cnefe_alloc WHERE avg_inc_resp_pt IS NOT NULL;",
+      "n"
+    )
+
+    assigned_pct <- if (eligible_avg > 0) 100 * assigned_avg / eligible_avg else 0
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
+      )
+    )
+
+    na_avg_tracts <- q1(
+      "SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE avg_inc_resp IS NULL;",
+      "n"
+    )
+
+    if (na_avg_tracts > 0) {
+      na_avg_pct <- if (n_tracts > 0) 100 * na_avg_tracts / n_tracts else 0
+      warn_lines <- c(
+        warn_lines,
+        cli::format_inline(
+          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
+        )
+      )
+    }
+  }
+
+  if (unmatched_pts > 0) {
+    unmatched_pct <- if (total_pts > 0) 100 * unmatched_pts / total_pts else 0
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
+      )
+    )
+  }
+
+  na_totals <- character(0)
+  for (v in totals_vars) {
+    n_na <- q1(
+      sprintf("SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;", v),
+      "n"
+    )
+    if (n_na > 0) {
+      na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
+      na_totals <- c(
+        na_totals,
+        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
+      )
+    }
+  }
+
+  if (length(na_totals) > 0) {
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Tracts with {.strong NA} totals: {paste(na_totals, collapse = '; ')}"
+      )
+    )
+  }
+
+  no_elig <- character(0)
+  for (v in totals_vars) {
+    sql <- if (v %in% c("pop_ph", "n_resp")) {
+      sprintf(
+        "SELECT COUNT(*) AS n FROM sc_muni_w_dom
+         WHERE %s IS NOT NULL AND %s > 0 AND n_dom_p = 0;",
+        v, v
+      )
+    } else if (v == "pop_ch") {
+      "SELECT COUNT(*) AS n FROM sc_muni_w_dom
+       WHERE pop_ch IS NOT NULL AND pop_ch > 0 AND n_dom_c = 0;"
+    } else {
+      sprintf(
+        "SELECT COUNT(*) AS n FROM sc_muni_w_dom
+         WHERE %s IS NOT NULL AND %s > 0
+           AND (CASE
+                  WHEN n_dom_p > 0 THEN n_dom_p
+                  WHEN n_dom_c > 0 THEN n_dom_c
+                  ELSE 0
+                END) = 0;",
+        v, v
+      )
+    }
+    n0 <- q1(sql, "n")
+
+    if (n0 > 0) {
+      n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
+      no_elig <- c(
+        no_elig,
+        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
+      )
+    }
+  }
+
+  if (length(no_elig) > 0) {
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Tracts with no eligible dwellings: {paste(no_elig, collapse = '; ')}"
+      )
+    )
+  }
+
+  warn_lines
+}
+
+
+#' Emit the two-stage dasymetric interpolation diagnostics
+#'
+#' The framing was duplicated alongside the stage 1 builder. Stage 2 lines and
+#' the label for that stage come from the caller, since they describe different
+#' targets.
+#'
+#' @param stage1_lines Character vector from `.build_interp_diagnostics()`.
+#' @param stage2_lines Character vector of preformatted stage 2 lines.
+#' @param stage2_label What the points were aggregated onto, e.g. `"H3 hexagons"`.
+#'
+#' @keywords internal
+#' @noRd
+.report_interp_diagnostics <- function(stage1_lines, stage2_lines, stage2_label) {
+  cli::cli_h2("Dasymetric interpolation diagnostics")
+
+  cli::cli_h3("Stage 1: Tracts \u2192 CNEFE points")
+  if (length(stage1_lines) > 0) {
+    cli::cli_bullets(
+      stats::setNames(stage1_lines, rep("!", length(stage1_lines)))
+    )
+  } else {
+    cli::cli_alert_success("All tract values fully allocated to CNEFE points.")
+  }
+
+  cli::cli_h3("Stage 2: CNEFE points \u2192 {stage2_label}")
+  cli::cli_bullets(
+    stats::setNames(stage2_lines, rep("i", length(stage2_lines)))
+  )
+
+  invisible(NULL)
+}
