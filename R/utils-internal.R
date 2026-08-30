@@ -356,7 +356,7 @@
 
 #' @keywords internal
 #' @noRd
-.read_muni_boundary_2024 <- function(code_muni) {
+.read_muni_boundary <- function(code_muni, year = 2022L) {
   # 1. Dependency check with specific reason
   rlang::check_installed(
     "geobr",
@@ -365,11 +365,16 @@
 
   # 2. Input normalization
   code_muni <- .normalize_code_muni(code_muni)
+  year <- .validate_year(year)
 
   # 3. Argument construction
+  # The boundary year follows the CNEFE data year. IBGE geocoded the CNEFE
+  # records against the territorial base of that year, and the census tracts of
+  # that year nest into the matching municipal mesh, so the grid has to share
+  # the same reference frame as the data being aggregated onto it.
   args <- list(
     code_muni = code_muni,
-    year = 2024L,
+    year = year,
     simplified = TRUE,
     showProgress = FALSE,
     cache = TRUE
@@ -418,7 +423,7 @@
     error = function(cnd) {
       cli::cli_abort(
         c(
-          "Could not read municipality boundary via {.pkg geobr} for 2024.",
+          "Could not read municipality boundary via {.pkg geobr} for {.val {year}}.",
           "i" = "Municipality code: {.val {code_muni}}"
         ),
         parent = cnd

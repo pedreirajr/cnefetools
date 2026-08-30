@@ -225,7 +225,8 @@ g., 4674, 31983) or a CRS object."
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    code_muni = code_muni
+    code_muni = code_muni,
+    year = year
   )
 
   if (verbose) {

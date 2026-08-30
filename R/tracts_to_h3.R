@@ -502,7 +502,8 @@ tracts_to_h3 <- function(
   # count variables coalesced to 0 and avg_inc_resp left as NA).
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    code_muni     = code_muni
+    code_muni     = code_muni,
+    year          = year
   )
 
   # capture.output to swallow everything (both output and messages)

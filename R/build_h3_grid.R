@@ -3,12 +3,16 @@
 #' @description
 #' Internal helper to build an H3 grid either:
 #' - from a vector of H3 cell ids (`id_hex`), or
-#' - from the municipality boundary (`code_muni`) using geobr (year fixed at 2024).
+#' - from the municipality boundary (`code_muni`) using geobr, for the
+#'   territorial base of `year`.
 #'
 #' @param h3_resolution Integer. H3 resolution.
 #' @param id_hex Character/integer vector of H3 cell ids (optional).
 #' @param code_muni Integer. Seven-digit IBGE municipality code (optional).
 #' @param boundary An sf polygon for the area of interest (optional).
+#' @param year Integer. Territorial base year for the municipality boundary.
+#'   Defaults to 2022, matching the CNEFE edition. Only used when the boundary
+#'   is read from `code_muni`.
 #'
 #' @return An sf object (CRS 4326) with columns `id_hex` and `geometry`.
 #'
@@ -17,7 +21,8 @@ build_h3_grid <- function(
   h3_resolution,
   id_hex = NULL,
   code_muni = NULL,
-  boundary = NULL
+  boundary = NULL,
+  year = 2022L
 ) {
   h3_resolution <- as.integer(h3_resolution)
   if (
@@ -39,7 +44,7 @@ build_h3_grid <- function(
       if (is.null(code_muni)) {
         rlang::abort("Provide either `id_hex` or `code_muni`/`boundary`.")
       }
-      boundary <- .read_muni_boundary_2024(code_muni)
+      boundary <- .read_muni_boundary(code_muni, year = year)
     }
 
     boundary <- boundary |>

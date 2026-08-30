@@ -110,7 +110,8 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       )
     },
     build_h3_grid = function(h3_resolution, code_muni = NULL,
-                             id_hex = NULL, boundary = NULL) {
+                             id_hex = NULL, boundary = NULL,
+                             year = 2022L) {
       # Mock: build a grid from the fake CNEFE point coordinates so no geobr
       # network call is needed. The 4 allocated points (0.2/0.8 lon/lat) map
       # to specific H3 cells; these are the only cells that need to be present

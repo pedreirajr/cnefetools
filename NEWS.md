@@ -17,6 +17,18 @@
   error instead of a clear one (#87). This supersedes the note under #74 below,
   which stated that any geobr version works.
 
+* The H3 grid is now built from the municipality boundary of the **CNEFE data
+  year** instead of a hardcoded 2024 boundary, affecting `cnefe_counts()`,
+  `compute_lumi()` and `tracts_to_h3()` in `polygon_type = "hex"` mode. IBGE
+  geocoded the CNEFE records against the territorial base of their own year, and
+  the census tracts of that year nest into the matching municipal mesh, so the
+  grid now shares the reference frame of the data aggregated onto it. In
+  principle the set of border hexagons can differ from previous releases for
+  municipalities whose limits changed between the two bases, though at
+  resolution 9 the grids come out identical for Lauro de Freitas-BA (550 cells)
+  and Fortaleza-CE (2651 cells), the municipalities used in the package
+  articles (#81).
+
 * `cnefe_counts()`, `compute_lumi()`, and `tracts_to_polygon()` no longer fail
   in the DuckDB backend when the user-supplied `sf` polygon has a geometry
   column not named `"geom"` (e.g. the sf default `"geometry"`). The geometry
