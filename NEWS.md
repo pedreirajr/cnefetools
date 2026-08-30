@@ -31,6 +31,16 @@
 
 ## Bug fixes
 
+* `compute_lumi()` now excludes `COD_ESPECIE == 7` (buildings under
+  construction or renovation) in **all** code paths. The DuckDB backend for
+  user-supplied polygons was missing that filter, so every index it returned
+  (`p_res`, `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`) was computed over a
+  denominator that still contained type 7, contradicting both the documented
+  behaviour and the other three code paths. Since `backend = "duckdb"` is the
+  default, this affected most users of `polygon_type = "user"`. On Lauro de
+  Freitas-BA, where type 7 is 3.7% of addresses, the error reached 0.13 in
+  `p_res` and 0.32 in `bgbi`. The two backends now agree exactly (#96).
+
 * `tracts_to_h3()` and `tracts_to_polygon()` no longer fail with
   `GitHub API error (401): Bad credentials` when an expired or invalid GitHub
   token is present in the environment. The census tract assets live in public
