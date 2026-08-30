@@ -106,42 +106,11 @@ cnefe_counts <- function(
 
   # Validate polygon argument
   if (polygon_type == "user") {
-    if (is.null(polygon)) {
-      cli::cli_abort(c(
-        "{.arg polygon} is required when {.arg polygon_type} is {.val user}.",
-        "i" = "Provide an {.cls sf} object with polygon geometries."
-      ))
-    }
-    if (!inherits(polygon, "sf")) {
-      cli::cli_abort(c(
-        "{.arg polygon} must be an {.cls sf} object.",
-        "i" = "Received: {.cls {class(polygon)[1]}}"
-      ))
-    }
-    geom_types <- unique(sf::st_geometry_type(polygon))
-    valid_types <- c("POLYGON", "MULTIPOLYGON")
-    if (!all(geom_types %in% valid_types)) {
-      cli::cli_abort(c(
-        "{.arg polygon} must contain only POLYGON or MULTIPOLYGON geometries.",
-        "i" = "Found: {.val {as.character(geom_types)}}"
-      ))
-    }
-
-    # Validate crs_output if provided
-    if (!is.null(crs_output)) {
-      test_crs <- tryCatch(
-        suppressWarnings(sf::st_crs(crs_output)),
-        error = function(e) NULL
-      )
-      if (is.null(test_crs) || is.na(test_crs$wkt)) {
-        cli::cli_abort(c(
-          "{.arg crs_output} is not a valid CRS.",
-          "i" = "Value received: {.val {crs_output}}",
-          "i" = "Use a valid EPSG code (e.
-g., 4674, 31983) or a CRS object."
-        ))
-      }
-    }
+    .validate_polygon_arg(
+      polygon,
+      crs_output = crs_output,
+      required_when = "{.arg polygon_type} is {.val user}"
+    )
   }
 
   # Get the appropriate index for the requested year

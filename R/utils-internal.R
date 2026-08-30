@@ -1057,3 +1057,95 @@
 
   invisible(TRUE)
 }
+
+
+## Theme: Polygon argument validation
+
+#' Validate a user-supplied polygon argument
+#'
+#' `cnefe_counts()`, `compute_lumi()` and `tracts_to_polygon()` each carried a
+#' near-identical copy of these checks, which Referee 2 flagged as duplication
+#' (R2.C1). Consolidating them also fixes GitHub issue #71 for all three
+#' functions at once rather than only for `tracts_to_polygon()`.
+#'
+#' The zero-feature check matters because an empty `sf` object survives every
+#' other check here and then fails deep inside the DuckDB step, where
+#' `sf::st_union()` on zero rows yields an empty geometry, `sf::st_centroid()`
+#' of that yields an empty POINT, and `sf::st_coordinates()` returns a zero-row
+#' matrix. The result was `valor ausente onde TRUE/FALSE necessário`, several
+#' steps away from the actual cause. Filtering a geobr dataset for a
+#' municipality it does not cover produces exactly this input.
+#'
+#' @param polygon The object to validate.
+#' @param crs_output Optional CRS to validate alongside it.
+#' @param required_when Optional string naming the condition that makes
+#'   `polygon` mandatory, used only to phrase the error. `NULL` means it is
+#'   unconditionally required.
+#'
+#' @return `polygon`, invisibly, so the call can be used inline.
+#'
+#' @keywords internal
+#' @noRd
+.validate_polygon_arg <- function(
+  polygon,
+  crs_output = NULL,
+  required_when = NULL
+) {
+  if (is.null(polygon)) {
+    # format_inline() first, otherwise the cli markup inside `required_when`
+    # would be pasted in literally rather than expanded.
+    head_msg <- if (is.null(required_when)) {
+      "{.arg polygon} is required."
+    } else {
+      paste0(
+        "{.arg polygon} is required when ",
+        cli::format_inline(required_when),
+        "."
+      )
+    }
+    cli::cli_abort(c(
+      head_msg,
+      "i" = "Provide an {.cls sf} object with polygon geometries."
+    ))
+  }
+
+  if (!inherits(polygon, "sf")) {
+    cli::cli_abort(c(
+      "{.arg polygon} must be an {.cls sf} object.",
+      "i" = "Received: {.cls {class(polygon)[1]}}"
+    ))
+  }
+
+  if (nrow(polygon) == 0L) {
+    cli::cli_abort(c(
+      "{.arg polygon} must contain at least one feature, but has 0 rows.",
+      "i" = "Check that your spatial filter returns features before calling this function.",
+      "i" = "Filtering a {.pkg geobr} dataset for a municipality it does not cover is a common cause."
+    ))
+  }
+
+  geom_types <- unique(sf::st_geometry_type(polygon))
+  valid_types <- c("POLYGON", "MULTIPOLYGON")
+  if (!all(geom_types %in% valid_types)) {
+    cli::cli_abort(c(
+      "{.arg polygon} must contain only POLYGON or MULTIPOLYGON geometries.",
+      "i" = "Found: {.val {as.character(geom_types)}}"
+    ))
+  }
+
+  if (!is.null(crs_output)) {
+    test_crs <- tryCatch(
+      suppressWarnings(sf::st_crs(crs_output)),
+      error = function(e) NULL
+    )
+    if (is.null(test_crs) || is.na(test_crs$wkt)) {
+      cli::cli_abort(c(
+        "{.arg crs_output} is not a valid CRS.",
+        "i" = "Value received: {.val {crs_output}}",
+        "i" = "Use a valid EPSG code (e.g., 4674, 31983) or a CRS object."
+      ))
+    }
+  }
+
+  invisible(polygon)
+}
