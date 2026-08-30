@@ -177,6 +177,9 @@ read_cnefe <- function(
     cli::cli_progress_step("Converting to {.pkg sf} object")
   }
 
+  # Materialised on purpose: output = "sf" asks for every column as an sf
+  # object, so there is nothing to push down (unlike the aggregation backends
+  # in #80 R1.10, which keep three columns out of 34).
   df <- as.data.frame(tab)
 
   if (!all(c("LONGITUDE", "LATITUDE") %in% names(df))) {

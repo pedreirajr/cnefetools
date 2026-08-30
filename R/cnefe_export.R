@@ -118,6 +118,7 @@ cnefe_export <- function(
     con <- gzfile(outfile, open = "wb")
     on.exit(close(con), add = TRUE)
     utils::write.table(
+      # Materialised on purpose: the whole table is what is being written.
       as.data.frame(tab), con,
       sep = ";", row.names = FALSE, qmethod = "double"
     )

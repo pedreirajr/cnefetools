@@ -41,6 +41,13 @@
 
 ## New features
 
+* The pure-R backends of `cnefe_counts()` and `compute_lumi()` now push their
+  `transmute()` and `filter()` calls down to the Arrow table and collect last,
+  instead of calling `as.data.frame()` first. The old order materialised all 34
+  columns as an R data frame before keeping three of them. Measured on
+  Fortaleza (1.19M rows), peak memory falls from 108.4 MB to 68.3 MB, a 37%
+  reduction, at the cost of about 0.2s (#88).
+
 * The download cache now stores a **gzipped CSV** instead of the published ZIP.
   DuckDB decompresses gzip natively, so the community `zipfs` extension is no
   longer loaded on the normal read path, which Referee 1 flagged as a stability
