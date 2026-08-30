@@ -341,7 +341,6 @@ compute_lumi <- function(
   )
   zip_path <- zip_info$zip_path
 
-  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   if (verbose) {
     cli::cli_progress_done("Step 1/3: Ensuring ZIP and inspecting archive...")
@@ -363,15 +362,19 @@ compute_lumi <- function(
       reason = "to use backend = 'duckdb' in `compute_lumi()`."
     )
     con <- .duckdb_connect(
-      extensions = c("zipfs", "h3"),
+      extensions = "h3",
       reason = "to use backend = 'duckdb' in `compute_lumi()`.",
       verbose = verbose
     )
 
     {
       {
-        zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-        uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+        src <- .cnefe_csv_uri(zip_path)
+        if (isTRUE(src$needs_zipfs)) {
+          # A cache written by an older version is still a ZIP.
+          .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+        }
+        uri <- src$uri
         uri_sql <- gsub("'", "''", uri)
 
         # only keep the columns needed; exclude COD_ESPECIE == 7
@@ -560,7 +563,6 @@ compute_lumi <- function(
     retry_timeouts = c(300L, 600L, 1800L)
   )
   zip_path <- zip_info$zip_path
-  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -723,15 +725,19 @@ compute_lumi <- function(
   res <- NULL
 
   con <- .duckdb_connect(
-    extensions = c("zipfs", "spatial"),
+      extensions = "spatial",
     reason = "to use backend = 'duckdb' in `compute_lumi()`.",
     verbose = verbose
   )
 
   .duckdb_quiet({
     {
-      zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-      uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+      src <- .cnefe_csv_uri(zip_path)
+      if (isTRUE(src$needs_zipfs)) {
+        # A cache written by an older version is still a ZIP.
+        .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+      }
+      uri <- src$uri
       uri_sql <- gsub("'", "''", uri)
 
       DBI::dbExecute(con, sprintf(

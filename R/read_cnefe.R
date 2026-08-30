@@ -142,49 +142,10 @@ read_cnefe <- function(
     add = TRUE
   )
 
-  # List files and find first CSV inside
-  if (verbose) {
-    cli::cli_progress_step("Listing file contents")
-  }
-
-  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
-
-  if (verbose) {
-    cli::cli_progress_done()
-  }
-
-  if (verbose) {
-    cli::cli_progress_step("Extracting {.file {csv_inside}}")
-  }
-
-  utils::unzip(
-    zipfile = zip_path,
-    files   = csv_inside,
-    exdir   = tmp_dir
-  )
-
-  csv_path <- file.path(tmp_dir, csv_inside)
-  if (!file.exists(csv_path)) {
-    cli::cli_abort("Failed to extract CSV to {.path {csv_path}}")
-  }
-
-  if (verbose) {
-    cli::cli_progress_done()
-  }
-
-  # Read with Arrow
-  if (verbose) {
-    cli::cli_progress_step("Reading CSV with {.pkg arrow}")
-  }
-
-  tab <- suppressWarnings(
-    arrow::read_delim_arrow(
-      csv_path,
-      delim = ";",
-      col_names = TRUE,
-      as_data_frame = FALSE
-    )
-  )
+  # The cache holds a gzipped CSV, which is read directly. A path written by an
+  # older version of the package may still be a ZIP, and .cnefe_read_local()
+  # handles both.
+  tab <- .cnefe_read_local(zip_path, verbose = verbose)
 
   if (verbose) {
     cli::cli_progress_done()

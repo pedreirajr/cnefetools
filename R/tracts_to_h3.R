@@ -145,7 +145,7 @@ tracts_to_h3 <- function(
   }
 
   con <- .duckdb_connect(
-    extensions = c("zipfs", "h3"),
+      extensions = "h3",
     spatial = TRUE,
     reason = "to run the dasymetric interpolation in `tracts_to_h3()`.",
     verbose = verbose

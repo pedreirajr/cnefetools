@@ -172,7 +172,6 @@ cnefe_counts <- function(
   )
   zip_path <- zip_info$zip_path
 
-  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   if (verbose) {
   cli::cli_progress_done("Step 1/3: Ensuring ZIP and inspecting archive...")
@@ -218,13 +217,17 @@ cnefe_counts <- function(
     )
 
     con <- .duckdb_connect(
-      extensions = c("zipfs", "h3"),
+      extensions = "h3",
       reason = "to use backend = 'duckdb' in `cnefe_counts()`.",
       verbose = verbose
     )
 
-    zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-    uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+    src <- .cnefe_csv_uri(zip_path)
+    if (isTRUE(src$needs_zipfs)) {
+      # A cache written by an older version is still a ZIP.
+      .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+    }
+    uri <- src$uri
     uri_sql <- gsub("'", "''", uri)
 
     sql <- sprintf(
@@ -393,7 +396,6 @@ cnefe_counts <- function(
     retry_timeouts = c(300L, 600L, 1800L)
   )
   zip_path <- zip_info$zip_path
-  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -561,13 +563,17 @@ cnefe_counts <- function(
   verbose
 ) {
   con <- .duckdb_connect(
-    extensions = c("zipfs", "spatial"),
+      extensions = "spatial",
     reason = "to use backend = 'duckdb' in `cnefe_counts()`.",
     verbose = verbose
   )
 
-  zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-  uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+  src <- .cnefe_csv_uri(zip_path)
+  if (isTRUE(src$needs_zipfs)) {
+    # A cache written by an older version is still a ZIP.
+    .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+  }
+  uri <- src$uri
   uri_sql <- gsub("'", "''", uri)
 
   # Create CNEFE points table in DuckDB with point geometry

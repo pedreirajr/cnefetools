@@ -212,7 +212,7 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
   con <- .duckdb_connect(
-    extensions = "zipfs",
+      extensions = character(0),
     spatial = TRUE,
     reason = "to run the dasymetric interpolation in `tracts_to_polygon()`.",
     verbose = verbose

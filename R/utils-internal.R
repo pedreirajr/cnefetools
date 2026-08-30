@@ -151,7 +151,7 @@
 #'
 #' Coerce a cache-edition argument to a directory name
 #'
-#' Looser than [.validate_year()] on purpose. The cache cleaners operate on
+#' Looser than `.validate_year()` on purpose. The cache cleaners operate on
 #' directories, so they must be able to reach an edition this version does not
 #' read.
 #'
@@ -257,48 +257,56 @@
     )
   }
 
-  ext <- tools::file_ext(url)
-  if (!nzchar(ext)) {
-    ext <- "zip"
-  }
+  # The cache stores a gzipped CSV rather than the published ZIP. DuckDB
+  # decompresses gzip natively, which removes the community `zipfs` extension
+  # from the read path and, measured in data-raw/bench_gz_vs_zip.R, reads 2.29x
+  # faster on Fortaleza at the same size on disk (#80 R1.11).
+  gz_name <- paste0(sub("[.]zip$", "", basename(url), ignore.case = TRUE), ".csv.gz")
 
   if (isTRUE(cache)) {
     cache_dir <- .cnefe_cache_dir(cache_dir, year)
     if (!dir.exists(cache_dir)) {
       dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
     }
-    zip_path <- file.path(cache_dir, basename(url))
+    zip_path <- file.path(cache_dir, gz_name)
     cleanup_zip <- FALSE
   } else {
-    zip_path <- tempfile(fileext = paste0(".", ext))
+    zip_path <- tempfile(fileext = ".csv.gz")
     cleanup_zip <- TRUE
   }
 
-  # If cached file exists, validate it; if invalid, delete and re-download
+  # A truncated or corrupt gzip stream fails on the first read, and a readable
+  # first line that is not the CNEFE header means the wrong file is cached.
   if (isTRUE(cache) && file.exists(zip_path)) {
     valid <- tryCatch(
       {
-        info <- utils::unzip(zip_path, list = TRUE)
-
-        any(grepl("\\.csv$", info$Name, ignore.case = TRUE))
+        con <- gzfile(zip_path, "rt")
+        on.exit(close(con), add = TRUE)
+        header <- readLines(con, n = 1L, warn = FALSE)
+        length(header) == 1L && grepl("COD_UNICO_ENDERECO|LONGITUDE", header)
       },
       error = function(e) FALSE
     )
 
     if (!valid) {
       if (verbose) {
-        message("Cached ZIP appears corrupted. Deleting it...")
+        cli::cli_alert_warning("Cached file appears corrupted. Deleting it...")
       }
       unlink(zip_path)
     }
   }
 
-  # Download if needed
+  # Download if needed. The published ZIP goes to a temporary file and is then
+  # converted to the gzipped CSV the cache actually holds, so an interrupted
+  # download never leaves a half-written cache entry behind.
   if (!file.exists(zip_path)) {
+    tmp_zip <- tempfile(fileext = ".zip")
+    on.exit(unlink(tmp_zip), add = TRUE)
+
     tryCatch(
       .cnefe_download_zip_with_retry(
         url = url,
-        destfile = zip_path,
+        destfile = tmp_zip,
         verbose = verbose,
         retry_timeouts = retry_timeouts
       ),
@@ -334,12 +342,15 @@
 
         .cnefe_download_zip_with_retry(
           url = recovered,
-          destfile = zip_path,
+          destfile = tmp_zip,
           verbose = verbose,
           retry_timeouts = retry_timeouts
         )
       }
     )
+
+    .cnefe_zip_to_gz(tmp_zip, zip_path, verbose = verbose)
+    unlink(tmp_zip)
   } else if (verbose) {
     cli::cli_alert_info("Using cached file: {zip_path}")
   }
@@ -960,22 +971,6 @@
 ) {
   code_muni <- .normalize_code_muni(code_muni)
 
-  # Ensure zipfs is available (community extension)
-  ok_zipfs <- tryCatch(
-    {
-      suppressMessages(DBI::dbExecute(con, "LOAD zipfs;"))
-      TRUE
-    },
-    error = function(e) FALSE
-  )
-
-  if (!ok_zipfs) {
-    suppressMessages({
-      DBI::dbExecute(con, "INSTALL zipfs FROM community;")
-      DBI::dbExecute(con, "LOAD zipfs;")
-    })
-  }
-
   # Ensure the municipality ZIP exists locally (reuses your existing cache logic)
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
@@ -989,10 +984,15 @@
   zip_path <- zip_info$zip_path
   zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
 
-  csv_inside <- .cnefe_first_csv_in_zip(zip_norm)
 
-  # DuckDB zipfs URI: zip://<zipfile>/<file_inside_zip>
-  uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+  # The cache holds a gzipped CSV, which DuckDB reads from a plain path. Only a
+  # legacy ZIP still needs the community zipfs extension, so it is loaded on
+  # demand rather than on every connection (#80 R1.11).
+  src <- .cnefe_csv_uri(zip_norm)
+  if (isTRUE(src$needs_zipfs)) {
+    .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+  }
+  uri <- src$uri
   uri_sql <- gsub("'", "''", uri)
 
   suppressMessages({
@@ -1986,4 +1986,107 @@
       as_data_frame = FALSE
     )
   )
+}
+
+
+## Theme: Cache storage format
+
+#' Convert a downloaded CNEFE ZIP into a gzipped CSV
+#'
+#' Referee 1 (R1.11) proposed re-compressing the cache to Gzip, which DuckDB
+#' decompresses natively, avoiding the community `zipfs` extension. Our own
+#' measurement, in `data-raw/bench_gz_vs_zip.R`, reproduces their figures: on
+#' Fortaleza a DuckDB read is 2.29x faster from `.csv.gz` than through `zipfs`,
+#' against their reported 2.2x, and the gzipped file is the same size on disk as
+#' the ZIP. Raw CSV is faster still but needs 6.7x the disk, so it is not a
+#' sensible cache format.
+#'
+#' The conversion is paid once, on first download. It is streamed in chunks so
+#' peak memory does not scale with the file: the CSV inside São Paulo's archive
+#' is roughly 900 MB.
+#'
+#' @param zip_path Path to the downloaded ZIP.
+#' @param gz_path Destination for the gzipped CSV.
+#' @param verbose Whether to report progress.
+#'
+#' @return `gz_path`, invisibly.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_zip_to_gz <- function(zip_path, gz_path, verbose = TRUE) {
+  if (verbose) {
+    cli::cli_progress_step("Converting the archive to {.file .csv.gz} (done once)")
+  }
+
+  tmp_dir <- tempfile("cnefe_convert_")
+  dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
+  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
+  utils::unzip(zipfile = zip_path, files = csv_inside, exdir = tmp_dir)
+  csv_path <- file.path(tmp_dir, csv_inside)
+
+  if (!file.exists(csv_path)) {
+    cli::cli_abort("Failed to extract {.file {csv_inside}} from the archive.")
+  }
+
+  # Write to a temporary name first, so an interrupted conversion cannot leave a
+  # truncated file behind that later looks like a valid cache entry.
+  part <- paste0(gz_path, ".part")
+  inc <- file(csv_path, "rb")
+  outc <- gzfile(part, "wb")
+  on.exit(
+    {
+      try(close(inc), silent = TRUE)
+      try(close(outc), silent = TRUE)
+      if (file.exists(part)) unlink(part)
+    },
+    add = TRUE
+  )
+
+  repeat {
+    buf <- readBin(inc, "raw", n = 1e7)
+    if (length(buf) == 0L) break
+    writeBin(buf, outc)
+  }
+  close(inc)
+  close(outc)
+
+  if (!file.rename(part, gz_path)) {
+    file.copy(part, gz_path, overwrite = TRUE)
+    unlink(part)
+  }
+
+  if (verbose) {
+    cli::cli_progress_done()
+  }
+
+  invisible(gz_path)
+}
+
+
+#' Build the URI DuckDB should read a cached CNEFE file from
+#'
+#' The cache holds `.csv.gz`, which DuckDB reads natively from a plain path.
+#' ZIP is still understood so that a cache written by an older version, or a
+#' file the user supplies directly, keeps working through the `zipfs` route.
+#'
+#' @param path Path to a cached or user-supplied CNEFE file.
+#'
+#' @return A list with the `uri` to read and whether `zipfs` is needed.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_csv_uri <- function(path) {
+  norm <- normalizePath(path, winslash = "/", mustWork = TRUE)
+
+  if (grepl("[.]zip$", norm, ignore.case = TRUE)) {
+    csv_inside <- .cnefe_first_csv_in_zip(norm)
+    return(list(
+      uri = sprintf("zip://%s/%s", norm, csv_inside),
+      needs_zipfs = TRUE
+    ))
+  }
+
+  list(uri = norm, needs_zipfs = FALSE)
 }

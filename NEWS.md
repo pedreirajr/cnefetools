@@ -41,6 +41,18 @@
 
 ## New features
 
+* The download cache now stores a **gzipped CSV** instead of the published ZIP.
+  DuckDB decompresses gzip natively, so the community `zipfs` extension is no
+  longer loaded on the normal read path, which Referee 1 flagged as a stability
+  risk (reported macOS code-signing delays of 4 to 5 seconds per load). Our own
+  measurement, in `data-raw/bench_gz_vs_zip.R`, reproduces the referee's
+  figures: on Fortaleza a DuckDB read is 2.29x faster from `.csv.gz` than
+  through `zipfs`, at the same size on disk (27.6 MB either way). Raw CSV would
+  be 4.86x faster but needs 6.7x the disk, so it is not a sensible cache format.
+  The conversion is done once, on first download, and is streamed in chunks so
+  peak memory does not scale with the file. Caches written by earlier versions
+  are still readable, through the `zipfs` route loaded on demand (#93).
+
 * The download cache is now segregated by CNEFE edition, at
   `<cache>/<year>/`. The ZIP names IBGE publishes carry no year, so
   `2919207_LAURO_DE_FREITAS.zip` from a future census would be
