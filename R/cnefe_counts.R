@@ -446,7 +446,6 @@ cnefe_counts <- function(
 
     join_result <- .cnefe_counts_user_poly_duckdb(
       zip_path = zip_path,
-      csv_inside = csv_inside,
       polygon = polygon_4326,
       verbose = verbose
     )
@@ -563,7 +562,6 @@ cnefe_counts <- function(
 # -----------------------------------------------------------------------------
 .cnefe_counts_user_poly_duckdb <- function(
   zip_path,
-  csv_inside,
   polygon,
   verbose
 ) {

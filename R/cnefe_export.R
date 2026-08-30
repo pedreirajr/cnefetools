@@ -48,7 +48,7 @@
 #' @examples
 #' \donttest{
 #' # Write a municipality to a project directory as Parquet
-#' path <- cnefe_export(2929057, path = tempdir(), cache = FALSE)
+#' path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #'
 #' # Read it back without touching the network
 #' cnefe <- read_cnefe(file = path)

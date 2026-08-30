@@ -60,8 +60,9 @@
 #' # Read CNEFE data as an Arrow table
 #' cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #'
-#' # Read a local file instead, with no network access
-#' path <- cnefe_export(2929057, path = tempdir(), cache = FALSE)
+#' # Read a local file instead, with no network access. overwrite = TRUE because
+#' # cnefe_export() refuses to clobber an existing export by default.
+#' path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #' cnefe_local <- read_cnefe(file = path)
 #'
 #' # Read as an sf spatial object

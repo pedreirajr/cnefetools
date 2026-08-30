@@ -613,7 +613,6 @@ compute_lumi <- function(
 
     join_result <- .compute_lumi_user_poly_duckdb(
       zip_path = zip_path,
-      csv_inside = csv_inside,
       polygon = polygon_4326,
       verbose = verbose
     )
@@ -723,7 +722,6 @@ compute_lumi <- function(
 # -----------------------------------------------------------------------------
 .compute_lumi_user_poly_duckdb <- function(
   zip_path,
-  csv_inside,
   polygon,
   verbose
 ) {
