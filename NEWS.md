@@ -31,6 +31,14 @@
 
 ## Bug fixes
 
+* `compute_lumi()` no longer returns `NULL` when no hexagon survives
+  filtering. Both backends now return a zero-row `sf` carrying the documented
+  columns, so downstream code can pipe the result without a `NULL` check (#85).
+
+* `read_cnefe(output = "sf")` now reports, under `verbose`, how many rows were
+  dropped for missing coordinates. They were previously discarded silently,
+  which hid data quality problems (#85).
+
 * `compute_lumi()` now excludes `COD_ESPECIE == 7` (buildings under
   construction or renovation) in **all** code paths. The DuckDB backend for
   user-supplied polygons was missing that filter, so every index it returned

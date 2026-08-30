@@ -879,3 +879,643 @@
   # CREATE TABLE ... AS SELECT * FROM cnefe_pts in the caller would fail.
   invisible(zip_info)
 }
+
+
+## Theme: DuckDB connection and extensions
+
+#' Run an expression while suppressing DuckDB console noise
+#'
+#' DuckDB writes progress output to stdout and emits startup messages, and both
+#' are noise in an interactive session. The previous idiom for silencing them
+#' was a nested `capture.output(capture.output(expr, type = "message"),
+#' type = "output")`, which also captured the message of any error raised inside
+#' `expr`. Failures therefore surfaced with no text at all, which made the
+#' DuckDB backend effectively undebuggable (GitHub issue #57).
+#'
+#' `suppressMessages()` muffles messages while leaving conditions of class
+#' `error` untouched, so errors keep propagating with their message intact.
+#'
+#' @param expr Expression to evaluate. Its value is returned.
+#'
+#' @keywords internal
+#' @noRd
+.duckdb_quiet <- function(expr) {
+  # `expr` is a promise, so it is forced in the caller's frame. Assignments made
+  # inside it therefore land in the caller, which is what the migrated call
+  # sites rely on. The local name is dotted to avoid shadowing anything there.
+  utils::capture.output(.value <- suppressMessages(expr), type = "output")
+  .value
+}
+
+
+#' Open an in-memory DuckDB connection with cleanup registered immediately
+#'
+#' Both referees noted that the previous pattern registered
+#' `on.exit(DBI::dbDisconnect(...))` only after the whole connect-and-load block
+#' had completed, so any failure inside it (a failed extension install, a SQL
+#' error, a user interrupt) left the connection and its file handles behind.
+#'
+#' Cleanup is registered here through `withr::defer()` on the caller's frame,
+#' immediately after `dbConnect()` returns and before anything that can fail.
+#' Referee 1 suggested exactly this pattern. The guard on `DBI::dbIsValid()`
+#' prevents a secondary error during cleanup if the connection died earlier.
+#'
+#' @param extensions Character vector of DuckDB extensions to ensure. Community
+#'   extensions by default, `"spatial"` is treated as a core extension.
+#' @param spatial Logical. Whether to load duckspatial, installing it into the
+#'   connection if the load fails.
+#' @param reason Passed to [rlang::check_installed()] to explain the dependency.
+#' @param verbose Logical, forwarded to the extension loader.
+#' @param .envir Frame to attach the cleanup handler to. Defaults to the caller,
+#'   which is what every call site wants.
+#'
+#' @return A live DuckDB connection.
+#'
+#' @keywords internal
+#' @noRd
+.duckdb_connect <- function(
+  extensions = character(0),
+  spatial = FALSE,
+  reason = "to use the DuckDB backend.",
+  verbose = TRUE,
+  .envir = parent.frame()
+) {
+  rlang::check_installed("duckdb", reason = reason)
+
+  con <- .duckdb_quiet(
+    DBI::dbConnect(
+      duckdb::duckdb(),
+      dbdir = ":memory:",
+      config = list(
+        enable_progress_bar = FALSE,
+        enable_print_progress = FALSE,
+        print_progress_bar = FALSE
+      )
+    )
+  )
+
+  # Registered before anything else can fail. This is the whole point.
+  withr::defer(
+    {
+      if (!is.null(con) && DBI::dbIsValid(con)) {
+        DBI::dbDisconnect(con, shutdown = TRUE)
+      }
+    },
+    envir = .envir
+  )
+
+  if (isTRUE(spatial)) {
+    rlang::check_installed("duckspatial", reason = reason)
+    .duckdb_quiet(
+      tryCatch(
+        duckspatial::ddbs_load(con),
+        error = function(e) {
+          duckspatial::ddbs_install(con)
+          duckspatial::ddbs_load(con)
+        }
+      )
+    )
+  }
+
+  for (ext in extensions) {
+    .duckdb_quiet(
+      .duckdb_ensure_extension(
+        con,
+        ext,
+        repo = if (identical(ext, "spatial")) NULL else "community",
+        verbose = verbose
+      )
+    )
+  }
+
+  con
+}
+
+
+# -----------------------------------------------------------------------------
+# Internal: Helper to ensure DuckDB extension is loaded
+# -----------------------------------------------------------------------------
+.duckdb_ensure_extension <- function(
+  con,
+  ext,
+  repo = "community",
+  verbose = TRUE
+) {
+  # repo = NULL means core extension (no FROM clause needed)
+
+  info <- tryCatch(
+    DBI::dbGetQuery(
+      con,
+      sprintf(
+        "SELECT installed, loaded FROM duckdb_extensions() WHERE extension_name = '%s';",
+        ext
+      )
+    ),
+    error = function(e) NULL
+  )
+
+  if (!is.null(info) && nrow(info) == 1) {
+    if (isTRUE(info$loaded[[1]])) {
+      # if (verbose) {
+      #   message("DuckDB: extension '", ext, "' already loaded.")
+      # }
+      return(invisible(TRUE))
+    }
+    if (isTRUE(info$installed[[1]])) {
+      # if (verbose) {
+      #   message("DuckDB: loading extension '", ext, "'...")
+      # }
+      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+      return(invisible(TRUE))
+    }
+  }
+
+  ok_load <- tryCatch(
+    {
+      # if (verbose) {
+      #   message("DuckDB: trying to LOAD extension '", ext, "'...")
+      # }
+      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+
+  if (ok_load) {
+    return(invisible(TRUE))
+  }
+
+  # if (verbose) {
+  #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+  # }
+  if (is.null(repo)) {
+    DBI::dbExecute(con, sprintf("INSTALL %s;", ext))
+  } else {
+    DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
+  }
+  DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+
+  invisible(TRUE)
+}
+
+
+## Theme: Polygon argument validation
+
+#' Validate a user-supplied polygon argument
+#'
+#' `cnefe_counts()`, `compute_lumi()` and `tracts_to_polygon()` each carried a
+#' near-identical copy of these checks, which Referee 2 flagged as duplication
+#' (R2.C1). Consolidating them also fixes GitHub issue #71 for all three
+#' functions at once rather than only for `tracts_to_polygon()`.
+#'
+#' The zero-feature check matters because an empty `sf` object survives every
+#' other check here and then fails deep inside the DuckDB step, where
+#' `sf::st_union()` on zero rows yields an empty geometry, `sf::st_centroid()`
+#' of that yields an empty POINT, and `sf::st_coordinates()` returns a zero-row
+#' matrix. The result was `valor ausente onde TRUE/FALSE necessário`, several
+#' steps away from the actual cause. Filtering a geobr dataset for a
+#' municipality it does not cover produces exactly this input.
+#'
+#' @param polygon The object to validate.
+#' @param crs_output Optional CRS to validate alongside it.
+#' @param required_when Optional string naming the condition that makes
+#'   `polygon` mandatory, used only to phrase the error. `NULL` means it is
+#'   unconditionally required.
+#'
+#' @return `polygon`, invisibly, so the call can be used inline.
+#'
+#' @keywords internal
+#' @noRd
+.validate_polygon_arg <- function(
+  polygon,
+  crs_output = NULL,
+  required_when = NULL
+) {
+  if (is.null(polygon)) {
+    # format_inline() first, otherwise the cli markup inside `required_when`
+    # would be pasted in literally rather than expanded.
+    head_msg <- if (is.null(required_when)) {
+      "{.arg polygon} is required."
+    } else {
+      paste0(
+        "{.arg polygon} is required when ",
+        cli::format_inline(required_when),
+        "."
+      )
+    }
+    cli::cli_abort(c(
+      head_msg,
+      "i" = "Provide an {.cls sf} object with polygon geometries."
+    ))
+  }
+
+  if (!inherits(polygon, "sf")) {
+    cli::cli_abort(c(
+      "{.arg polygon} must be an {.cls sf} object.",
+      "i" = "Received: {.cls {class(polygon)[1]}}"
+    ))
+  }
+
+  if (nrow(polygon) == 0L) {
+    cli::cli_abort(c(
+      "{.arg polygon} must contain at least one feature, but has 0 rows.",
+      "i" = "Check that your spatial filter returns features before calling this function.",
+      "i" = "Filtering a {.pkg geobr} dataset for a municipality it does not cover is a common cause."
+    ))
+  }
+
+  geom_types <- unique(sf::st_geometry_type(polygon))
+  valid_types <- c("POLYGON", "MULTIPOLYGON")
+  if (!all(geom_types %in% valid_types)) {
+    cli::cli_abort(c(
+      "{.arg polygon} must contain only POLYGON or MULTIPOLYGON geometries.",
+      "i" = "Found: {.val {as.character(geom_types)}}"
+    ))
+  }
+
+  if (!is.null(crs_output)) {
+    test_crs <- tryCatch(
+      suppressWarnings(sf::st_crs(crs_output)),
+      error = function(e) NULL
+    )
+    if (is.null(test_crs) || is.na(test_crs$wkt)) {
+      cli::cli_abort(c(
+        "{.arg crs_output} is not a valid CRS.",
+        "i" = "Value received: {.val {crs_output}}",
+        "i" = "Use a valid EPSG code (e.g., 4674, 31983) or a CRS object."
+      ))
+    }
+  }
+
+  invisible(polygon)
+}
+
+
+## Theme: Dasymetric allocation SQL
+
+#' Build the per-point allocation SQL for the dasymetric interpolation
+#'
+#' `tracts_to_h3()` and `tracts_to_polygon()` carried byte-identical copies of
+#' this builder, 90 lines each, which is the largest of the duplications Referee
+#' 2 lists under R2.C1. The two functions differ in what they aggregate the
+#' allocated points onto, not in how the allocation itself is expressed, so the
+#' builder is target-agnostic.
+#'
+#' The generated expressions assume the aliases used by both callers: `p` for
+#' the CNEFE points and `s` for the census tract aggregates, with `s.n_dom_p`
+#' and `s.n_dom_c` holding the counts of private and collective dwellings.
+#'
+#' Allocation rules, kept identical to the documented behaviour:
+#' - `pop_ph` and `n_resp` are split across private dwellings only.
+#' - `pop_ch` is split across collective dwellings only.
+#' - `avg_inc_resp` is assigned, not split, to each private dwelling point.
+#' - every other variable goes to private dwellings when the tract has any, and
+#'   falls back to collective dwellings when it has none.
+#'
+#' @param vars Character vector of tract variables to allocate.
+#'
+#' @return A single SQL string of comma-separated `CASE` expressions, each
+#'   aliased as `<var>_pt`.
+#'
+#' @keywords internal
+#' @noRd
+.build_alloc_sql <- function(vars) {
+  alloc_exprs <- character(0)
+
+  for (v in vars) {
+    if (v == "avg_inc_resp") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.avg_inc_resp IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.avg_inc_resp AS DOUBLE)
+          ELSE NULL
+        END AS avg_inc_resp_pt
+      "
+      )
+    } else if (v == "n_resp") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.n_resp IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.n_resp AS DOUBLE) / s.n_dom_p
+          ELSE NULL
+        END AS n_resp_pt
+      "
+      )
+    } else if (v == "pop_ph") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.pop_ph IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.pop_ph AS DOUBLE) / s.n_dom_p
+          ELSE NULL
+        END AS pop_ph_pt
+      "
+      )
+    } else if (v == "pop_ch") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 2
+           AND s.pop_ch IS NOT NULL
+           AND s.n_dom_c > 0
+          THEN CAST(s.pop_ch AS DOUBLE) / s.n_dom_c
+          ELSE NULL
+        END AS pop_ch_pt
+      "
+      )
+    } else {
+      alloc_exprs <- c(
+        alloc_exprs,
+        sprintf(
+          "
+        CASE
+          WHEN (CASE
+                  WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
+                  WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
+                  ELSE FALSE
+                END)
+           AND s.%s IS NOT NULL
+           AND (CASE
+                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
+                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
+                  ELSE 0
+                END) > 0
+          THEN CAST(s.%s AS DOUBLE) /
+               (CASE
+                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
+                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
+                  ELSE 0
+                END)
+          ELSE NULL
+        END AS %s_pt
+      ",
+          v,
+          v,
+          v
+        )
+      )
+    }
+  }
+
+  paste(alloc_exprs, collapse = ",\n")
+}
+
+
+## Theme: Dasymetric interpolation diagnostics
+
+#' Build the stage 1 diagnostic lines for a dasymetric interpolation
+#'
+#' `tracts_to_h3()` and `tracts_to_polygon()` carried near-identical copies of
+#' this, roughly 200 lines each, listed by Referee 2 under R2.C1. The two had
+#' already drifted: one ended the "Tracts with NA totals" line with a full stop
+#' and the other did not, and one wrapped every query in `suppressMessages()`
+#' while the other did not. That is exactly the divergence the referee warned
+#' about, and it is why this is now built once.
+#'
+#' Stage 1 covers the tracts-to-points half of the interpolation, which is
+#' identical for both targets. Stage 2 is left to each caller, since it reports
+#' on different things: H3 cell coverage in one case, polygon coverage in the
+#' other.
+#'
+#' Expects the tables both callers create: `sc_muni_tbl`, `sc_muni_w_dom`,
+#' `cnefe_sc` and `cnefe_alloc`.
+#'
+#' @param con A live DuckDB connection.
+#' @param vars Character vector of the interpolated variables.
+#' @param unmatched_pts Count of CNEFE points that matched no tract.
+#' @param total_pts Total CNEFE points considered.
+#'
+#' @return A character vector of preformatted cli lines, possibly empty.
+#'
+#' @keywords internal
+#' @noRd
+.build_interp_diagnostics <- function(con, vars, unmatched_pts, total_pts) {
+  q1 <- function(sql, col) .duckdb_quiet(DBI::dbGetQuery(con, sql))[[col]][1]
+
+  warn_lines <- character(0)
+
+  n_tracts <- q1("SELECT COUNT(*) AS n FROM sc_muni_tbl;", "n")
+
+  totals_vars <- setdiff(vars, "avg_inc_resp")
+
+  for (v in totals_vars) {
+    total_v <- q1(
+      sprintf("SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;", v, v),
+      "total"
+    )
+    alloc_v <- q1(
+      sprintf("SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;", v, v),
+      "alloc"
+    )
+
+    total_v <- if (is.null(total_v) || is.na(total_v)) 0 else as.numeric(total_v)
+    alloc_v <- if (is.null(alloc_v) || is.na(alloc_v)) 0 else as.numeric(alloc_v)
+
+    # Use threshold >= 0.5 to avoid floating point precision issues
+    unalloc <- max(total_v - alloc_v, 0)
+    unalloc <- if (unalloc < 0.5) 0 else round(unalloc)
+    pct <- if (total_v > 0) 100 * unalloc / total_v else 0
+
+    label <- switch(v,
+      "pop_ph" = "population from private households",
+      "pop_ch" = "population from collective households",
+      v # default: use variable name
+    )
+
+    # Always show all requested variables for consistency
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Unallocated total for {label} ({.field {v}}): {.strong {sprintf('%.0f', unalloc)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.2f%%', pct)}})"
+      )
+    )
+  }
+
+  if ("avg_inc_resp" %in% vars) {
+    eligible_avg <- q1(
+      "
+      SELECT COUNT(*) AS n
+      FROM cnefe_sc p
+      JOIN sc_muni_w_dom s USING (code_tract)
+      WHERE p.COD_ESPECIE = 1 AND s.n_dom_p > 0;
+      ",
+      "n"
+    )
+    assigned_avg <- q1(
+      "SELECT COUNT(*) AS n FROM cnefe_alloc WHERE avg_inc_resp_pt IS NOT NULL;",
+      "n"
+    )
+
+    assigned_pct <- if (eligible_avg > 0) 100 * assigned_avg / eligible_avg else 0
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
+      )
+    )
+
+    na_avg_tracts <- q1(
+      "SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE avg_inc_resp IS NULL;",
+      "n"
+    )
+
+    if (na_avg_tracts > 0) {
+      na_avg_pct <- if (n_tracts > 0) 100 * na_avg_tracts / n_tracts else 0
+      warn_lines <- c(
+        warn_lines,
+        cli::format_inline(
+          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
+        )
+      )
+    }
+  }
+
+  if (unmatched_pts > 0) {
+    unmatched_pct <- if (total_pts > 0) 100 * unmatched_pts / total_pts else 0
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
+      )
+    )
+  }
+
+  na_totals <- character(0)
+  for (v in totals_vars) {
+    n_na <- q1(
+      sprintf("SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;", v),
+      "n"
+    )
+    if (n_na > 0) {
+      na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
+      na_totals <- c(
+        na_totals,
+        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
+      )
+    }
+  }
+
+  if (length(na_totals) > 0) {
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Tracts with {.strong NA} totals: {paste(na_totals, collapse = '; ')}"
+      )
+    )
+  }
+
+  no_elig <- character(0)
+  for (v in totals_vars) {
+    sql <- if (v %in% c("pop_ph", "n_resp")) {
+      sprintf(
+        "SELECT COUNT(*) AS n FROM sc_muni_w_dom
+         WHERE %s IS NOT NULL AND %s > 0 AND n_dom_p = 0;",
+        v, v
+      )
+    } else if (v == "pop_ch") {
+      "SELECT COUNT(*) AS n FROM sc_muni_w_dom
+       WHERE pop_ch IS NOT NULL AND pop_ch > 0 AND n_dom_c = 0;"
+    } else {
+      sprintf(
+        "SELECT COUNT(*) AS n FROM sc_muni_w_dom
+         WHERE %s IS NOT NULL AND %s > 0
+           AND (CASE
+                  WHEN n_dom_p > 0 THEN n_dom_p
+                  WHEN n_dom_c > 0 THEN n_dom_c
+                  ELSE 0
+                END) = 0;",
+        v, v
+      )
+    }
+    n0 <- q1(sql, "n")
+
+    if (n0 > 0) {
+      n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
+      no_elig <- c(
+        no_elig,
+        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
+      )
+    }
+  }
+
+  if (length(no_elig) > 0) {
+    warn_lines <- c(
+      warn_lines,
+      cli::format_inline(
+        "Tracts with no eligible dwellings: {paste(no_elig, collapse = '; ')}"
+      )
+    )
+  }
+
+  warn_lines
+}
+
+
+#' Emit the two-stage dasymetric interpolation diagnostics
+#'
+#' The framing was duplicated alongside the stage 1 builder. Stage 2 lines and
+#' the label for that stage come from the caller, since they describe different
+#' targets.
+#'
+#' @param stage1_lines Character vector from `.build_interp_diagnostics()`.
+#' @param stage2_lines Character vector of preformatted stage 2 lines.
+#' @param stage2_label What the points were aggregated onto, e.g. `"H3 hexagons"`.
+#'
+#' @keywords internal
+#' @noRd
+.report_interp_diagnostics <- function(stage1_lines, stage2_lines, stage2_label) {
+  cli::cli_h2("Dasymetric interpolation diagnostics")
+
+  cli::cli_h3("Stage 1: Tracts \u2192 CNEFE points")
+  if (length(stage1_lines) > 0) {
+    cli::cli_bullets(
+      stats::setNames(stage1_lines, rep("!", length(stage1_lines)))
+    )
+  } else {
+    cli::cli_alert_success("All tract values fully allocated to CNEFE points.")
+  }
+
+  cli::cli_h3("Stage 2: CNEFE points \u2192 {stage2_label}")
+  cli::cli_bullets(
+    stats::setNames(stage2_lines, rep("i", length(stage2_lines)))
+  )
+
+  invisible(NULL)
+}
+
+
+#' An empty `sf` with the `compute_lumi()` hex schema
+#'
+#' `compute_lumi()` used to return `NULL` when no hexagon survived filtering,
+#' which Referee 2 flagged under R2.C6 because callers that pipe the result have
+#' no reason to expect it. Returning a zero-row `sf` with the documented columns
+#' keeps the contract stable: the shape is always the same, only the row count
+#' varies.
+#'
+#' @keywords internal
+#' @noRd
+.empty_lumi_sf <- function() {
+  sf::st_sf(
+    id_hex = character(0),
+    p_res = numeric(0),
+    ei = numeric(0),
+    hhi = numeric(0),
+    bal = numeric(0),
+    ice = numeric(0),
+    hhi_adp = numeric(0),
+    bgbi = numeric(0),
+    geometry = sf::st_sfc(crs = 4326)
+  )
+}

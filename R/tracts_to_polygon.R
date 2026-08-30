@@ -135,68 +135,12 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
   # validate polygon ----------------------------------------------------------
-  if (is.null(polygon)) {
-    cli::cli_abort(c(
-      "{.arg polygon} is required.",
-      "i" = "Provide an {.cls sf} object with polygon geometries."
-    ))
-  }
-
-  if (!inherits(polygon, "sf")) {
-    cli::cli_abort(c(
-      "{.arg polygon} must be an {.cls sf} object.",
-      "i" = "Received: {.cls {class(polygon)[1]}}"
-    ))
-  }
-
-  geom_types <- unique(sf::st_geometry_type(polygon))
-  valid_types <- c("POLYGON", "MULTIPOLYGON")
-  if (!all(geom_types %in% valid_types)) {
-    cli::cli_abort(c(
-      "{.arg polygon} must contain only POLYGON or MULTIPOLYGON geometries.",
-      "i" = "Found: {.val {as.character(geom_types)}}"
-    ))
-  }
-
-  # Validate crs_output if provided
-  if (!is.null(crs_output)) {
-    test_crs <- tryCatch(
-      suppressWarnings(sf::st_crs(crs_output)),
-      error = function(e) NULL
-    )
-    if (is.null(test_crs) || is.na(test_crs$wkt)) {
-      cli::cli_abort(c(
-        "{.arg crs_output} is not a valid CRS.",
-        "i" = "Value received: {.val {crs_output}}",
-        "i" = "Use a valid EPSG code (e.g., 4674, 31983) or a CRS object."
-      ))
-    }
-  }
+  .validate_polygon_arg(polygon, crs_output = crs_output)
 
   # helpers -------------------------------------------------------------------
 
   .duckdb_quiet_execute <- function(con, sql) {
-    invisible(utils::capture.output(
-      suppressMessages(DBI::dbExecute(con, sql)),
-      type = "output"
-    ))
-  }
-
-  .duckdb_load_ext <- function(con, ext) {
-    ok <- tryCatch(
-      {
-        .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-        TRUE
-      },
-      error = function(e) FALSE
-    )
-
-    if (!ok) {
-      # zipfs and h3 are community extensions
-      .duckdb_quiet_execute(con, sprintf("INSTALL %s FROM community;", ext))
-      .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-    }
-    invisible(TRUE)
+    invisible(.duckdb_quiet(DBI::dbExecute(con, sql)))
   }
 
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
@@ -262,33 +206,12 @@ cnefe_index <- .get_cnefe_index(year)
 
   }
 
-  #silent please
-  con <- NULL
-  utils::capture.output(
-    utils::capture.output({
-      con <- DBI::dbConnect(
-        duckdb::duckdb(),
-        dbdir = ":memory:",
-        config = list(
-          'enable_progress_bar' = FALSE,
-          'enable_print_progress' = FALSE,
-          'print_progress_bar' = FALSE
-        )
-      )
-
-      tryCatch(
-        duckspatial::ddbs_load(con),
-        error = function(e) {
-          duckspatial::ddbs_install(con)
-          duckspatial::ddbs_load(con)
-        }
-      )
-      .duckdb_load_ext(con, "zipfs")
-    }, type = "message"),
-    type = "output"
+  con <- .duckdb_connect(
+    extensions = "zipfs",
+    spatial = TRUE,
+    reason = "to run the dasymetric interpolation in `tracts_to_polygon()`.",
+    verbose = verbose
   )
-
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
   if (verbose) {
     cli::cli_progress_done("Step 2/6: connecting to DuckDB and loading extensions...")
@@ -457,96 +380,7 @@ cnefe_index <- .get_cnefe_index(year)
   )
 
   # Allocation expressions (reused from tracts_to_h3)
-  alloc_exprs <- character(0)
-
-  for (v in vars) {
-    if (v == "avg_inc_resp") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 1
-           AND s.avg_inc_resp IS NOT NULL
-           AND s.n_dom_p > 0
-          THEN CAST(s.avg_inc_resp AS DOUBLE)
-          ELSE NULL
-        END AS avg_inc_resp_pt
-      "
-      )
-    } else if (v == "n_resp") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 1
-           AND s.n_resp IS NOT NULL
-           AND s.n_dom_p > 0
-          THEN CAST(s.n_resp AS DOUBLE) / s.n_dom_p
-          ELSE NULL
-        END AS n_resp_pt
-      "
-      )
-    } else if (v == "pop_ph") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 1
-           AND s.pop_ph IS NOT NULL
-           AND s.n_dom_p > 0
-          THEN CAST(s.pop_ph AS DOUBLE) / s.n_dom_p
-          ELSE NULL
-        END AS pop_ph_pt
-      "
-      )
-    } else if (v == "pop_ch") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 2
-           AND s.pop_ch IS NOT NULL
-           AND s.n_dom_c > 0
-          THEN CAST(s.pop_ch AS DOUBLE) / s.n_dom_c
-          ELSE NULL
-        END AS pop_ch_pt
-      "
-      )
-    } else {
-      alloc_exprs <- c(
-        alloc_exprs,
-        sprintf(
-          "
-        CASE
-          WHEN (CASE
-                  WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
-                  WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
-                  ELSE FALSE
-                END)
-           AND s.%s IS NOT NULL
-           AND (CASE
-                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
-                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
-                  ELSE 0
-                END) > 0
-          THEN CAST(s.%s AS DOUBLE) /
-               (CASE
-                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
-                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
-                  ELSE 0
-                END)
-          ELSE NULL
-        END AS %s_pt
-      ",
-          v,
-          v,
-          v
-        )
-      )
-    }
-  }
-
-  alloc_sql <- paste(alloc_exprs, collapse = ",\n")
+  alloc_sql <- .build_alloc_sql(vars)
 
   # Create allocated points table with geometry for spatial join
   .duckdb_quiet_execute(
@@ -586,18 +420,15 @@ cnefe_index <- .get_cnefe_index(year)
 
   # Register user polygons in DuckDB using duckspatial (quiet)
   invisible(
-    utils::capture.output(
-      suppressMessages(
-        duckspatial::ddbs_write_vector(
-          conn = con,
-          # Normalize geometry column to "geom"; duckspatial preserves the
-          # input sf geometry name, but the SQL below hardcodes "geom".
-          data = sf::st_set_geometry(polygon_4326[, ".poly_row_id"], "geom"),
-          name = "user_polygons",
-          overwrite = TRUE
-        )
-      ),
-      type = "output"
+    .duckdb_quiet(
+      duckspatial::ddbs_write_vector(
+        conn = con,
+        # Normalize geometry column to "geom"; duckspatial preserves the
+        # input sf geometry name, but the SQL below hardcodes "geom".
+        data = sf::st_set_geometry(polygon_4326[, ".poly_row_id"], "geom"),
+        name = "user_polygons",
+        overwrite = TRUE
+      )
     )
   )
 
@@ -693,14 +524,7 @@ cnefe_index <- .get_cnefe_index(year)
     paste(agg_sql_exprs, collapse = ",\n      ")
   )
 
-  poly_vals <- NULL
-  utils::capture.output(
-    utils::capture.output(
-      poly_vals <- DBI::dbGetQuery(con, agg_sql),
-      type = "message"
-    ),
-    type = "output"
-  )
+  poly_vals <- .duckdb_quiet(DBI::dbGetQuery(con, agg_sql))
 
   # Join back to polygon
   out <- polygon_4326 |>
@@ -725,224 +549,8 @@ cnefe_index <- .get_cnefe_index(year)
 
 
   # diagnostics and warning ----------------------------------------------------
-  warn_lines <- character(0)
+  warn_lines <- .build_interp_diagnostics(con, vars, unmatched_pts, total_cnefe_pts)
 
-  n_tracts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM sc_muni_tbl;")$n[1]
-
-  totals_vars <- setdiff(vars, "avg_inc_resp")
-
-  for (v in totals_vars) {
-    total_v <- DBI::dbGetQuery(
-      con,
-      sprintf(
-        "SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;",
-        v,
-        v
-      )
-    )$total[1]
-    alloc_v <- DBI::dbGetQuery(
-      con,
-      sprintf(
-        "SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;",
-        v,
-        v
-      )
-    )$alloc[1]
-
-    total_v <- if (is.null(total_v) || is.na(total_v)) {
-      0
-    } else {
-      as.numeric(total_v)
-    }
-    alloc_v <- if (is.null(alloc_v) || is.na(alloc_v)) {
-      0
-    } else {
-      as.numeric(alloc_v)
-    }
-
-    # Use threshold >= 0.5 to avoid floating point precision issues
-    unalloc <- max(total_v - alloc_v, 0)
-    unalloc <- if (unalloc < 0.5) 0 else round(unalloc)
-    pct <- if (total_v > 0) 100 * unalloc / total_v else 0
-
-    label <- switch(v,
-                    "pop_ph" = "population from private households",
-                    "pop_ch" = "population from collective households",
-                    v  # default: use variable name
-    )
-
-    # Always show all requested variables for consistency
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Unallocated total for {label} ({.field {v}}): {.strong {sprintf('%.0f', unalloc)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.2f%%', pct)}})"
-      )
-    )
-  }
-
-  if ("avg_inc_resp" %in% vars) {
-    eligible_avg <- DBI::dbGetQuery(
-      con,
-      "
-      SELECT COUNT(*) AS n
-      FROM cnefe_sc p
-      JOIN sc_muni_w_dom s USING (code_tract)
-      WHERE p.COD_ESPECIE = 1 AND s.n_dom_p > 0;
-    "
-    )$n[1]
-
-    assigned_avg <- DBI::dbGetQuery(
-      con,
-      "
-      SELECT COUNT(*) AS n
-      FROM cnefe_alloc
-      WHERE avg_inc_resp_pt IS NOT NULL;
-    "
-    )$n[1]
-
-    assigned_pct <- if (eligible_avg > 0) 100 * assigned_avg / eligible_avg else 0
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
-      )
-    )
-
-    na_avg_tracts <- DBI::dbGetQuery(
-      con,
-      "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_tbl
-      WHERE avg_inc_resp IS NULL;
-    "
-    )$n[1]
-
-    if (na_avg_tracts > 0) {
-      na_avg_pct <- if (n_tracts > 0) 100 * na_avg_tracts / n_tracts else 0
-      warn_lines <- c(
-        warn_lines,
-        cli::format_inline(
-          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
-        )
-      )
-    }
-  }
-
-  if (unmatched_pts > 0) {
-    unmatched_pct <- if (total_cnefe_pts > 0) 100 * unmatched_pts / total_cnefe_pts else 0
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_cnefe_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
-      )
-    )
-  }
-
-  na_totals <- character(0)
-  for (v in totals_vars) {
-    n_na <- DBI::dbGetQuery(
-      con,
-      sprintf(
-        "SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;",
-        v
-      )
-    )$n[1]
-    if (n_na > 0) {
-      na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
-      na_totals <- c(
-        na_totals,
-        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
-      )
-    }
-  }
-
-  if (length(na_totals) > 0) {
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Tracts with {.strong NA} totals: {paste(na_totals, collapse = '; ')}."
-      )
-    )
-  }
-
-  no_elig <- character(0)
-  for (v in totals_vars) {
-    if (v %in% c("pop_ph", "n_resp")) {
-      n0 <- DBI::dbGetQuery(
-        con,
-        sprintf(
-          "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_w_dom
-      WHERE %s IS NOT NULL AND %s > 0 AND n_dom_p = 0;
-    ",
-          v,
-          v
-        )
-      )$n[1]
-    } else if (v == "pop_ch") {
-      n0 <- DBI::dbGetQuery(
-        con,
-        "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_w_dom
-      WHERE pop_ch IS NOT NULL AND pop_ch > 0 AND n_dom_c = 0;
-    "
-      )$n[1]
-    } else {
-      n0 <- DBI::dbGetQuery(
-        con,
-        sprintf(
-          "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_w_dom
-      WHERE %s IS NOT NULL AND %s > 0
-        AND (CASE
-               WHEN n_dom_p > 0 THEN n_dom_p
-               WHEN n_dom_c > 0 THEN n_dom_c
-               ELSE 0
-             END) = 0;
-    ",
-          v,
-          v
-        )
-      )$n[1]
-    }
-
-    if (n0 > 0) {
-      n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
-      no_elig <- c(
-        no_elig,
-        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
-      )
-    }
-  }
-
-  if (length(no_elig) > 0) {
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Tracts with no eligible dwellings: {paste(no_elig, collapse = '; ')}"
-      )
-    )
-  }
-
-
-  # --- emit diagnostics ---
-  cli::cli_h2("Dasymetric interpolation diagnostics")
-
-  # Stage 1
-  cli::cli_h3("Stage 1: Tracts \u2192 CNEFE points")
-  if (length(warn_lines) > 0) {
-    cli::cli_bullets(
-      stats::setNames(warn_lines, rep("!", length(warn_lines)))
-    )
-  } else {
-    cli::cli_alert_success("All tract values fully allocated to CNEFE points.")
-  }
-
-  # Stage 2
-  cli::cli_h3("Stage 2: CNEFE points \u2192 Polygons")
   total_polygons <- nrow(polygon_4326)
   polygons_with_values <- nrow(poly_vals)
   polygons_empty <- total_polygons - polygons_with_values
@@ -963,9 +571,8 @@ cnefe_index <- .get_cnefe_index(year)
       )
     )
   }
-  cli::cli_bullets(
-    stats::setNames(stage2_lines, rep("i", length(stage2_lines)))
-  )
+
+  .report_interp_diagnostics(warn_lines, stage2_lines, "Polygons")
 
   return(out)
 }

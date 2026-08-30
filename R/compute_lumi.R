@@ -160,41 +160,11 @@ compute_lumi <- function(
 
   # Validate polygon argument
   if (polygon_type == "user") {
-    if (is.null(polygon)) {
-      cli::cli_abort(c(
-        "{.arg polygon} is required when {.arg polygon_type} is {.val user}.",
-        "i" = "Provide an {.cls sf} object with polygon geometries."
-      ))
-    }
-    if (!inherits(polygon, "sf")) {
-      cli::cli_abort(c(
-        "{.arg polygon} must be an {.cls sf} object.",
-        "i" = "Received: {.cls {class(polygon)[1]}}"
-      ))
-    }
-    geom_types <- unique(sf::st_geometry_type(polygon))
-    valid_types <- c("POLYGON", "MULTIPOLYGON")
-    if (!all(geom_types %in% valid_types)) {
-      cli::cli_abort(c(
-        "{.arg polygon} must contain only POLYGON or MULTIPOLYGON geometries.",
-        "i" = "Found: {.val {as.character(geom_types)}}"
-      ))
-    }
-
-    # Validate crs_output if provided
-    if (!is.null(crs_output)) {
-      test_crs <- tryCatch(
-        suppressWarnings(sf::st_crs(crs_output)),
-        error = function(e) NULL
-      )
-      if (is.null(test_crs) || is.na(test_crs$wkt)) {
-        cli::cli_abort(c(
-          "{.arg crs_output} is not a valid CRS.",
-          "i" = "Value received: {.val {crs_output}}",
-          "i" = "Use a valid EPSG code (e.g., 4674, 31983) or a CRS object."
-        ))
-      }
-    }
+    .validate_polygon_arg(
+      polygon,
+      crs_output = crs_output,
+      required_when = "{.arg polygon_type} is {.val user}"
+    )
   }
 
   # Get the appropriate index for the requested year
@@ -395,24 +365,14 @@ compute_lumi <- function(
       "DBI",
       reason = "to use backend = 'duckdb' in `compute_lumi()`."
     )
-    rlang::check_installed(
-      "duckdb",
-      reason = "to use backend = 'duckdb' in `compute_lumi()`."
+    con <- .duckdb_connect(
+      extensions = c("zipfs", "h3"),
+      reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+      verbose = verbose
     )
 
-    con <- NULL
-    utils::capture.output(
-      utils::capture.output({
-        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                              config = list(
-                                'enable_progress_bar' = FALSE,
-                                'enable_print_progress' = FALSE,
-                                'print_progress_bar' = FALSE
-                              ))
-
-        .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-        .duckdb_ensure_extension(con, "h3", verbose = verbose)
-
+    {
+      {
         zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
         uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
         uri_sql <- gsub("'", "''", uri)
@@ -448,18 +408,15 @@ compute_lumi <- function(
           as.integer(h3_resolution)
         )
 
-        counts_hex <- DBI::dbGetQuery(con, sql) |>
+        counts_hex <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
           dplyr::as_tibble() |>
           dplyr::mutate(
             id_hex = as.character(.data$id_hex),
             n_res = as.integer(.data$n_res),
             n_tot = as.integer(.data$n_tot)
           )
-      }, type = "message"),
-      type = "output"
-    )
-
-    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+      }
+    }
 
   } else {
     # backend "r"
@@ -487,11 +444,11 @@ compute_lumi <- function(
 
     if (nrow(df) == 0L) {
       if (verbose) {
-        message(
-          "No valid CNEFE points after filtering (COD_ESPECIE 1:8 excluding 7). Returning NULL."
+        cli::cli_alert_warning(
+          "No valid CNEFE points after filtering (COD_ESPECIE 1:8, excluding 7). Returning an empty {.cls sf}."
         )
       }
-      return(NULL)
+      return(.empty_lumi_sf())
     }
 
     coords <- df |>
@@ -524,9 +481,9 @@ compute_lumi <- function(
 
   if (is.null(counts_hex) || nrow(counts_hex) == 0L) {
     if (verbose) {
-      message("No hexagons found after aggregation. Returning NULL.")
+      cli::cli_alert_warning("No hexagons found after aggregation. Returning an empty {.cls sf}.")
     }
-    return(NULL)
+    return(.empty_lumi_sf())
   }
 
   # ---------------------------------------------------------------------------
@@ -763,22 +720,14 @@ compute_lumi <- function(
 ) {
   res <- NULL
 
-  utils::capture.output(
-    utils::capture.output({
+  con <- .duckdb_connect(
+    extensions = c("zipfs", "spatial"),
+    reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+    verbose = verbose
+  )
 
-      con <- DBI::dbConnect(
-        duckdb::duckdb(),
-        dbdir = ":memory:",
-        config = list(
-          enable_progress_bar = FALSE,
-          enable_print_progress = FALSE,
-          print_progress_bar = FALSE
-        )
-      )
-
-      .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-      .duckdb_ensure_extension(con, "spatial", repo = NULL, verbose = verbose)
-
+  .duckdb_quiet({
+    {
       zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
       uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
       uri_sql <- gsub("'", "''", uri)
@@ -909,11 +858,8 @@ compute_lumi <- function(
     total_n_tot = total_n_tot
   )
 
-    }, type = "message"),
-  type = "output"
-  )
-
-  DBI::dbDisconnect(con, shutdown = TRUE)
+    }
+  })
 
   return(res)
 

@@ -172,7 +172,16 @@ read_cnefe <- function(
   df$LONGITUDE <- as.numeric(df$LONGITUDE)
   df$LATITUDE <- as.numeric(df$LATITUDE)
 
+  n_before <- nrow(df)
   df <- df[!is.na(df$LONGITUDE) & !is.na(df$LATITUDE), , drop = FALSE]
+  n_dropped <- n_before - nrow(df)
+
+  if (n_dropped > 0L && isTRUE(verbose)) {
+    pct <- if (n_before > 0L) 100 * n_dropped / n_before else 0
+    cli::cli_alert_warning(
+      "Dropped {.strong {n_dropped}} of {.strong {n_before}} rows ({.strong {sprintf('%.2f%%', pct)}}) with missing coordinates."
+    )
+  }
 
   if (nrow(df) == 0L) {
     cli::cli_abort(c(
