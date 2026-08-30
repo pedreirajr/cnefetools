@@ -7,3 +7,7 @@
 docs
 .claude/
 CLAUDE.md
+
+# Golden reference payloads for the shared-helpers refactor (#83).
+# The digests in data-raw/baseline_digests_*.csv are the committed artefact.
+data-raw/baseline/
