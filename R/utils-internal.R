@@ -1494,3 +1494,28 @@
 
   invisible(NULL)
 }
+
+
+#' An empty `sf` with the `compute_lumi()` hex schema
+#'
+#' `compute_lumi()` used to return `NULL` when no hexagon survived filtering,
+#' which Referee 2 flagged under R2.C6 because callers that pipe the result have
+#' no reason to expect it. Returning a zero-row `sf` with the documented columns
+#' keeps the contract stable: the shape is always the same, only the row count
+#' varies.
+#'
+#' @keywords internal
+#' @noRd
+.empty_lumi_sf <- function() {
+  sf::st_sf(
+    id_hex = character(0),
+    p_res = numeric(0),
+    ei = numeric(0),
+    hhi = numeric(0),
+    bal = numeric(0),
+    ice = numeric(0),
+    hhi_adp = numeric(0),
+    bgbi = numeric(0),
+    geometry = sf::st_sfc(crs = 4326)
+  )
+}

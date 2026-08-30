@@ -444,11 +444,11 @@ compute_lumi <- function(
 
     if (nrow(df) == 0L) {
       if (verbose) {
-        message(
-          "No valid CNEFE points after filtering (COD_ESPECIE 1:8 excluding 7). Returning NULL."
+        cli::cli_alert_warning(
+          "No valid CNEFE points after filtering (COD_ESPECIE 1:8, excluding 7). Returning an empty {.cls sf}."
         )
       }
-      return(NULL)
+      return(.empty_lumi_sf())
     }
 
     coords <- df |>
@@ -481,9 +481,9 @@ compute_lumi <- function(
 
   if (is.null(counts_hex) || nrow(counts_hex) == 0L) {
     if (verbose) {
-      message("No hexagons found after aggregation. Returning NULL.")
+      cli::cli_alert_warning("No hexagons found after aggregation. Returning an empty {.cls sf}.")
     }
-    return(NULL)
+    return(.empty_lumi_sf())
   }
 
   # ---------------------------------------------------------------------------
