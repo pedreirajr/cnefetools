@@ -41,6 +41,15 @@
 
 ## New features
 
+* Downloads now recover from an upstream layout change. If the URL held in the
+  internal index returns 404, the package scans the published IBGE directory
+  listing to reconstruct the correct URL and retries once. The scan reads
+  directory pages, never data files: recovering any municipality costs roughly
+  170 KB. It handles both a renamed file and a renamed UF directory, and it does
+  not mutate the internal index, so a successful scan repairs one call rather
+  than changing package state. If the scan finds nothing, the error says so and
+  points at the issue tracker (#92).
+
 * Downloads now run a pre-flight availability check that tells two failures
   apart. If the IBGE server cannot be reached, the message points at
   connectivity. If the server answers but the file is missing (HTTP 404), the

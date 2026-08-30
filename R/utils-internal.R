@@ -256,11 +256,50 @@
 
   # Download if needed
   if (!file.exists(zip_path)) {
-    .cnefe_download_zip_with_retry(
-      url = url,
-      destfile = zip_path,
-      verbose = verbose,
-      retry_timeouts = retry_timeouts
+    tryCatch(
+      .cnefe_download_zip_with_retry(
+        url = url,
+        destfile = zip_path,
+        verbose = verbose,
+        retry_timeouts = retry_timeouts
+      ),
+      # A 404 means the indexed URL no longer resolves, which is the exact
+      # failure Referee 1 raised in R1.8a. Try to recover it by scanning the
+      # published directory listing before giving up (#92).
+      cnefetools_not_found = function(cnd) {
+        if (isTRUE(verbose)) {
+          cli::cli_alert_info(
+            "Indexed URL returned 404. Scanning the IBGE directory listing for a replacement..."
+          )
+        }
+
+        recovered <- .cnefe_scan_ftp_url(
+          code_muni = code_muni,
+          known_url = url,
+          verbose = verbose
+        )
+
+        if (is.null(recovered)) {
+          cli::cli_abort(
+            c(
+              "Could not locate the CNEFE file for municipality {.val {code_muni}}.",
+              "i" = "The indexed URL returned 404 and scanning the published directory listing found no replacement.",
+              "i" = "The upstream layout has most likely changed in a way {.pkg cnefetools} cannot recover from automatically.",
+              "i" = "Please report it at {.url https://github.com/pedreirajr/cnefetools/issues}, quoting the URL below.",
+              "i" = "URL: {.url {url}}"
+            ),
+            parent = cnd,
+            class = "cnefetools_not_found"
+          )
+        }
+
+        .cnefe_download_zip_with_retry(
+          url = recovered,
+          destfile = zip_path,
+          verbose = verbose,
+          retry_timeouts = retry_timeouts
+        )
+      }
     )
   } else if (verbose) {
     cli::cli_alert_info("Using cached file: {zip_path}")
@@ -1700,4 +1739,102 @@
   }
 
   invisible(TRUE)
+}
+
+
+## Theme: Dynamic FTP fallback
+
+#' Recover a CNEFE download URL by scanning the IBGE directory listing
+#'
+#' Referee 1 (R1.8a) noted that the package resolves URLs entirely from a
+#' pre-built internal index, so a change to the IBGE directory layout would
+#' break every released version with no way to recover.
+#'
+#' The IBGE server publishes an Apache autoindex, so the layout can be walked at
+#' runtime. Probing it confirmed that the file names follow
+#' `<7-digit code>_<NAME>.zip` and that all 645 municipalities of São Paulo can
+#' be reconstructed from the listing, matching the internal index byte for byte.
+#' A UF listing is around 170 KB, so this reads a page, never a data file.
+#'
+#' Two levels are attempted, because a layout change can move either the file or
+#' the directory that holds it:
+#'
+#' 1. list the directory the index URL points into and look for the code there,
+#' 2. failing that, list its parent and look for a directory whose name starts
+#'    with the two-digit UF code, then list that.
+#'
+#' This is a recovery path, not the normal one. It runs only after a 404 on the
+#' indexed URL, and it never replaces the index, so a successful scan repairs a
+#' single call rather than mutating package state.
+#'
+#' @param code_muni Seven-digit IBGE municipality code, already normalised.
+#' @param known_url The URL from the internal index, used to locate the tree.
+#' @param timeout Seconds allowed per listing request.
+#' @param verbose Whether to report the attempt.
+#'
+#' @return The recovered URL, or `NULL` when the scan finds nothing.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_scan_ftp_url <- function(
+  code_muni,
+  known_url,
+  timeout = 30L,
+  verbose = TRUE
+) {
+  fetch <- function(u) {
+    tryCatch(
+      {
+        resp <- httr2::request(u) |>
+          httr2::req_timeout(timeout) |>
+          httr2::req_error(is_error = function(x) FALSE) |>
+          httr2::req_perform()
+        if (httr2::resp_status(resp) >= 400L) NULL else httr2::resp_body_string(resp)
+      },
+      error = function(e) NULL
+    )
+  }
+
+  # Apache autoindex entries are relative hrefs.
+  links <- function(html, pattern) {
+    if (is.null(html)) {
+      return(character(0))
+    }
+    hits <- regmatches(html, gregexpr('href="[^"]+"', html))[[1]]
+    hits <- gsub('^href="|"$', "", hits)
+    hits <- hits[!grepl("^([a-z]+:|/|[?])", hits)]
+    hits[grepl(pattern, hits)]
+  }
+
+  code_str <- sprintf("%07d", as.integer(code_muni))
+  uf_prefix <- substr(code_str, 1L, 2L)
+
+  find_in_dir <- function(dir_url) {
+    zips <- links(fetch(dir_url), "[.]zip$")
+    hit <- zips[startsWith(zips, paste0(code_str, "_"))]
+    if (length(hit) == 0L) NULL else paste0(dir_url, hit[[1]])
+  }
+
+  # Level 1: the directory the index URL already points into.
+  dir_url <- sub("[^/]+$", "", known_url)
+  found <- find_in_dir(dir_url)
+
+  # Level 2: the UF directory may have been renamed, so list the parent.
+  if (is.null(found)) {
+    parent_url <- sub("[^/]+/$", "", dir_url)
+    uf_dirs <- links(fetch(parent_url), "/$")
+    uf_dirs <- uf_dirs[startsWith(uf_dirs, uf_prefix)]
+    for (d in uf_dirs) {
+      found <- find_in_dir(paste0(parent_url, d))
+      if (!is.null(found)) break
+    }
+  }
+
+  if (!is.null(found) && isTRUE(verbose)) {
+    cli::cli_alert_success(
+      "Recovered the download URL by scanning the IBGE directory listing."
+    )
+  }
+
+  found
 }
