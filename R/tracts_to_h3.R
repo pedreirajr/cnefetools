@@ -47,6 +47,10 @@
 #'     tracts with no private dwellings receive no allocation.
 #'
 #' @param cache Logical. Whether to use the existing package cache for assets and CNEFE zips.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
 #' @param verbose Logical. Whether to print step messages and timing.
 #'
 #' @return An `sf` object (CRS 4326) with an H3 grid and the requested interpolated variables.
@@ -68,6 +72,7 @@ tracts_to_h3 <- function(
   h3_resolution = 9,
   vars = c("pop_ph", "pop_ch"),
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
@@ -162,6 +167,7 @@ tracts_to_h3 <- function(
     con,
     code_muni = code_muni,
     cache = cache,
+    cache_dir = cache_dir,
     verbose = verbose
   )
 
@@ -194,6 +200,7 @@ tracts_to_h3 <- function(
       code_muni = code_muni,
       index = cnefe_index,
       cache = cache,
+      cache_dir = cache_dir,
       verbose = verbose
     )
   )

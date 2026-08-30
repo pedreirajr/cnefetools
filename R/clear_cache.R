@@ -8,6 +8,10 @@
 #' @param code_muni Integer or `"all"`. If `"all"` (default), all cached CNEFE
 #'   ZIP files are deleted. If a seven-digit IBGE municipality code is provided,
 #'   only the ZIP file for that municipality is deleted.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
 #' @param verbose Logical; if `TRUE` (default), reports the number of files
 #'   deleted and the space freed.
 #'
@@ -23,8 +27,8 @@
 #' }
 #'
 #' @export
-clear_cache_muni <- function(code_muni = "all", verbose = TRUE) {
-  cache_dir <- .cnefe_cache_dir()
+clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL) {
+  cache_dir <- .cnefe_cache_dir(cache_dir)
 
   if (!dir.exists(cache_dir)) {
     if (verbose) {
@@ -92,6 +96,10 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE) {
 #'   numeric state code (e.g. `29L`), or a seven-digit IBGE municipality code
 #'   (e.g. `2919207`). If `"all"` (default), all cached Parquet files are
 #'   deleted. Otherwise, only the file for the resolved state is deleted.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
 #' @param verbose Logical; if `TRUE` (default), reports the number of files
 #'   deleted and the space freed.
 #'
@@ -109,8 +117,8 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE) {
 #' }
 #'
 #' @export
-clear_cache_tracts <- function(uf = "all", verbose = TRUE) {
-  sc_dir <- .sc_cache_dir()
+clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL) {
+  sc_dir <- .sc_cache_dir(cache_dir)
 
   if (!dir.exists(sc_dir)) {
     if (verbose) {

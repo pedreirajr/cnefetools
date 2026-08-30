@@ -9,6 +9,7 @@ read_cnefe(
   year = 2022,
   verbose = TRUE,
   cache = TRUE,
+  cache_dir = NULL,
   output = c("arrow", "sf")
 )
 }
@@ -24,6 +25,11 @@ download, extraction, and reading steps.}
 \item{cache}{Logical; if \code{TRUE}, cache the downloaded ZIP file in a
 user-level cache directory specific to this package. If \code{FALSE}, a
 temporary file is used and removed after reading.}
+
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
 
 \item{output}{Character. Output format. \code{"arrow"} (default) returns an
 \link[arrow:Table]{arrow::Table}, whereas \code{"sf"} returns an \link[sf:st_as_sf]{sf} point object

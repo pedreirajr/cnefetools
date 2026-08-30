@@ -4,7 +4,7 @@
 \alias{clear_cache_muni}
 \title{Delete cached CNEFE ZIP files}
 \usage{
-clear_cache_muni(code_muni = "all", verbose = TRUE)
+clear_cache_muni(code_muni = "all", verbose = TRUE, cache_dir = NULL)
 }
 \arguments{
 \item{code_muni}{Integer or \code{"all"}. If \code{"all"} (default), all cached CNEFE
@@ -13,6 +13,11 @@ only the ZIP file for that municipality is deleted.}
 
 \item{verbose}{Logical; if \code{TRUE} (default), reports the number of files
 deleted and the space freed.}
+
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
 }
 \value{
 Invisibly, the character vector of deleted file paths.

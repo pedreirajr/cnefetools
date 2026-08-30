@@ -4,7 +4,7 @@
 \alias{clear_cache_tracts}
 \title{Delete cached census tract Parquet files}
 \usage{
-clear_cache_tracts(uf = "all", verbose = TRUE)
+clear_cache_tracts(uf = "all", verbose = TRUE, cache_dir = NULL)
 }
 \arguments{
 \item{uf}{\code{"all"}, a two-letter UF abbreviation (e.g. \code{"BA"}), a two-digit
@@ -14,6 +14,11 @@ deleted. Otherwise, only the file for the resolved state is deleted.}
 
 \item{verbose}{Logical; if \code{TRUE} (default), reports the number of files
 deleted and the space freed.}
+
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
 }
 \value{
 Invisibly, the character vector of deleted file paths.

@@ -32,6 +32,10 @@
 #' @param cache Logical; if `TRUE`, cache the downloaded ZIP file in a
 #'   user-level cache directory specific to this package. If `FALSE`, a
 #'   temporary file is used and removed after reading.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
 #' @param output Character. Output format. `"arrow"` (default) returns an
 #'   [arrow::Table], whereas `"sf"` returns an [sf][sf::st_as_sf] point object
 #'   with coordinates built from `LONGITUDE` / `LATITUDE` in CRS 4674.
@@ -58,6 +62,7 @@ read_cnefe <- function(
   year = 2022,
   verbose = TRUE,
   cache = TRUE,
+  cache_dir = NULL,
   output = c("arrow", "sf")
 ) {
   output <- match.arg(output)
@@ -76,6 +81,7 @@ read_cnefe <- function(
     code_muni = code_muni,
     index = cnefe_index,
     cache = cache,
+    cache_dir = cache_dir,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )

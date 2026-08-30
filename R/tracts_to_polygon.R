@@ -53,6 +53,10 @@
 #'   the original CRS of the `polygon` argument. Can be an EPSG code (e.g., 4326,
 #'   31983) or any CRS object accepted by [sf::st_transform()].
 #' @param cache Logical. Whether to use the existing package cache for assets and CNEFE zips.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
 #' @param verbose Logical. Whether to print step messages and timing.
 #'
 #' @return An `sf` object with the user-provided polygons and the requested
@@ -85,6 +89,7 @@ tracts_to_polygon <- function(
   vars = c("pop_ph", "pop_ch"),
   crs_output = NULL,
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
@@ -228,6 +233,7 @@ cnefe_index <- .get_cnefe_index(year)
     con,
     code_muni = code_muni,
     cache = cache,
+    cache_dir = cache_dir,
     verbose = verbose
   )
 
@@ -296,6 +302,7 @@ cnefe_index <- .get_cnefe_index(year)
     code_muni = code_muni,
     index = cnefe_index,
     cache = cache,
+    cache_dir = cache_dir,
     verbose = verbose
   )
 

@@ -13,6 +13,7 @@ cnefe_counts(
   h3_resolution = 9,
   verbose = TRUE,
   cache = TRUE,
+  cache_dir = NULL,
   backend = c("duckdb", "r")
 )
 }
@@ -44,6 +45,11 @@ object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 \item{cache}{Logical. If \code{TRUE} (default), the downloaded ZIP is stored
 in the user cache directory and reused in future calls. If \code{FALSE},
 a temporary file is used and deleted after the call.}
+
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
 
 \item{backend}{Character. \code{"duckdb"} (default) uses DuckDB with H3/spatial
 extensions. \code{"r"} uses h3jsr and sf in R (slower but no DuckDB dependency).}

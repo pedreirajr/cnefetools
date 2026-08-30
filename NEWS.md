@@ -29,6 +29,17 @@
   and Fortaleza-CE (2651 cells), the municipalities used in the package
   articles (#81).
 
+## New features
+
+* All functions that download or read cached data gain a `cache_dir` argument:
+  `read_cnefe()`, `cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()`,
+  `tracts_to_polygon()`, `clear_cache_muni()` and `clear_cache_tracts()`. The
+  cache location resolves from the argument first, then the
+  `CNEFETOOLS_CACHE_DIR` environment variable, then
+  `tools::R_user_dir("cnefetools", "cache")` as before. CNEFE ZIPs reach 901 MB
+  uncompressed, and the location was previously fixed to the user's primary
+  partition (#89).
+
 ## Bug fixes
 
 * `compute_lumi()` no longer returns `NULL` when no hexagon survives

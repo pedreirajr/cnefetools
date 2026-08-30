@@ -29,6 +29,10 @@
 #' @param cache Logical. If `TRUE` (default), the downloaded ZIP is stored
 #'   in the user cache directory and reused in future calls. If `FALSE`,
 #'   a temporary file is used and deleted after the call.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB + H3 extension
 #'   reading directly from the cached ZIP. `"r"` computes H3 in R using h3jsr.
 #'
@@ -141,6 +145,7 @@ compute_lumi <- function(
   h3_resolution = 9,
   verbose = TRUE,
   cache = TRUE,
+  cache_dir = NULL,
   backend = c("duckdb", "r")
 ) {
   polygon_type <- match.arg(polygon_type)
@@ -203,7 +208,8 @@ compute_lumi <- function(
       backend = backend,
       cnefe_index = cnefe_index,
       verbose = verbose,
-      cache = cache
+      cache = cache,
+      cache_dir = cache_dir
     )
   } else {
     out <- .compute_lumi_user_poly(
@@ -214,7 +220,8 @@ compute_lumi <- function(
       backend = backend,
       cnefe_index = cnefe_index,
       verbose = verbose,
-      cache = cache
+      cache = cache,
+      cache_dir = cache_dir
     )
   }
 
@@ -325,7 +332,8 @@ compute_lumi <- function(
   backend,
   cnefe_index,
   verbose,
-  cache = TRUE
+  cache = TRUE,
+  cache_dir = NULL
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure ZIP and find CSV inside
@@ -339,6 +347,7 @@ compute_lumi <- function(
     code_muni = code_muni,
     index = cnefe_index,
     cache = cache,
+    cache_dir = cache_dir,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )
@@ -425,6 +434,7 @@ compute_lumi <- function(
       year = year,
       output = "arrow",
       cache = cache,
+      cache_dir = cache_dir,
       verbose = FALSE
     )
 
@@ -541,7 +551,8 @@ compute_lumi <- function(
   backend,
   cnefe_index,
   verbose,
-  cache = TRUE
+  cache = TRUE,
+  cache_dir = NULL
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure ZIP exists in cache and prepare polygon
@@ -555,6 +566,7 @@ compute_lumi <- function(
     code_muni = code_muni,
     index = cnefe_index,
     cache = cache,
+    cache_dir = cache_dir,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )
@@ -615,7 +627,8 @@ compute_lumi <- function(
       year = year,
       polygon = polygon_4326,
       verbose = verbose,
-      cache = cache
+      cache = cache,
+      cache_dir = cache_dir
     )
   }
 
@@ -874,7 +887,8 @@ compute_lumi <- function(
   year,
   polygon,
   verbose,
-  cache = TRUE
+  cache = TRUE,
+  cache_dir = NULL
 ) {
   # Read CNEFE data via Arrow
   tab <- read_cnefe(
@@ -882,6 +896,7 @@ compute_lumi <- function(
     year = year,
     output = "arrow",
     cache = cache,
+    cache_dir = cache_dir,
     verbose = FALSE
   )
 

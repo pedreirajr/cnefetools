@@ -96,9 +96,47 @@
 
 ## Theme: Cache management
 
+#' Resolve the cache directory
+#'
+#' Referee 1 (R1.7) noted that the cache location was hardcoded to
+#' `tools::R_user_dir()`, which forces potentially large downloads onto the
+#' user's primary partition. The location is now resolvable, from the most
+#' specific source to the least:
+#'
+#' 1. the `cache_dir` argument of the calling function,
+#' 2. the `CNEFETOOLS_CACHE_DIR` environment variable,
+#' 3. `tools::R_user_dir("cnefetools", which = "cache")`, the previous default.
+#'
+#' Both mechanisms are offered on purpose. The referee points at `osmextract`,
+#' which uses an environment variable, and also observes that an explicit
+#' argument is more discoverable for less experienced users. The argument wins
+#' so that a single call can be redirected without touching the session.
+#'
+#' @param cache_dir Optional path. `NULL` falls through to the next source.
+#'
+#' @return A normalised directory path. The directory is not created here.
+#'
 #' @keywords internal
 #' @noRd
-.cnefe_cache_dir <- function() {
+.cnefe_cache_dir <- function(cache_dir = NULL) {
+  if (!is.null(cache_dir)) {
+    if (!is.character(cache_dir) || length(cache_dir) != 1L || is.na(cache_dir)) {
+      cli::cli_abort(c(
+        "{.arg cache_dir} must be a single directory path.",
+        "i" = "Received: {.val {cache_dir}}"
+      ))
+    }
+    if (!nzchar(cache_dir)) {
+      cli::cli_abort("{.arg cache_dir} must not be an empty string.")
+    }
+    return(path.expand(cache_dir))
+  }
+
+  from_env <- Sys.getenv("CNEFETOOLS_CACHE_DIR", unset = "")
+  if (nzchar(from_env)) {
+    return(path.expand(from_env))
+  }
+
   tools::R_user_dir("cnefetools", which = "cache")
 }
 
@@ -156,6 +194,7 @@
   code_muni,
   index,
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE,
   retry_timeouts = c(300L, 600L, 1800L)
 ) {
@@ -185,7 +224,7 @@
   }
 
   if (isTRUE(cache)) {
-    cache_dir <- .cnefe_cache_dir()
+    cache_dir <- .cnefe_cache_dir(cache_dir)
     if (!dir.exists(cache_dir)) {
       dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
     }
@@ -476,14 +515,14 @@
 
 #' @keywords internal
 #' @noRd
-.sc_cache_dir <- function() {
-  file.path(.cnefe_cache_dir(), "sc_assets")
+.sc_cache_dir <- function(cache_dir = NULL) {
+  file.path(.cnefe_cache_dir(cache_dir), "sc_assets")
 }
 
 #' @keywords internal
 #' @noRd
-.sc_asset_local_path <- function(uf) {
-  file.path(.sc_cache_dir(), .sc_asset_filename(uf))
+.sc_asset_local_path <- function(uf, cache_dir = NULL) {
+  file.path(.sc_cache_dir(cache_dir), .sc_asset_filename(uf))
 }
 
 
@@ -517,6 +556,7 @@
 .sc_ensure_parquet_uf <- function(
     uf,
     cache = TRUE,
+    cache_dir = NULL,
     verbose = TRUE,
     retry_timeouts = c(300L, 600L, 1800L)  # Ignored, kept for compatibility
 ) {
@@ -534,7 +574,7 @@
   }
 
   # Use piggyback to download the census tract assets
-  .sc_download_with_piggyback(uf = uf, cache = cache, verbose = verbose)
+  .sc_download_with_piggyback(uf = uf, cache = cache, cache_dir = cache_dir, verbose = verbose)
 }
 
 #' Try to copy file to cache, return FALSE if file is locked
@@ -602,6 +642,7 @@
 .sc_download_with_piggyback <- function(
     uf,
     cache = TRUE,
+    cache_dir = NULL,
     verbose = TRUE
 ) {
 
@@ -617,7 +658,7 @@
   # Determine cache destination
   destfile <- NULL
   if (isTRUE(cache)) {
-    destfile <- normalizePath(.sc_asset_local_path(uf), winslash = "/", mustWork = FALSE)
+    destfile <- normalizePath(.sc_asset_local_path(uf, cache_dir), winslash = "/", mustWork = FALSE)
     dest_dir <- dirname(destfile)
 
     # Ensure cache directory exists
@@ -745,6 +786,7 @@
   con,
   code_muni,
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE
 ) {
 
@@ -752,7 +794,7 @@
   uf <- .uf_from_code_muni(code_muni)
 
   # Ensure UF parquet is available locally
-  parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, verbose = verbose)
+  parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, cache_dir = cache_dir, verbose = verbose)
   parquet_path <- normalizePath(parquet_path, winslash = "/", mustWork = TRUE)
 
   # 7-digit municipality prefix inside 15-digit tract code
@@ -798,6 +840,7 @@
   code_muni,
   index = cnefe_index_2022,
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE
 ) {
   code_muni <- .normalize_code_muni(code_muni)
@@ -823,6 +866,7 @@
     code_muni = code_muni,
     index = index,
     cache = cache,
+    cache_dir = cache_dir,
     verbose = verbose
   )
 
