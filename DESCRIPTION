@@ -60,6 +60,7 @@ Imports:
     checkmate,
     fs,
     httr2,
-    piggyback
+    piggyback,
+    withr
 LazyData: true
 Config/roxygen2/version: 8.0.0

@@ -176,27 +176,7 @@ cnefe_index <- .get_cnefe_index(year)
   # helpers -------------------------------------------------------------------
 
   .duckdb_quiet_execute <- function(con, sql) {
-    invisible(utils::capture.output(
-      suppressMessages(DBI::dbExecute(con, sql)),
-      type = "output"
-    ))
-  }
-
-  .duckdb_load_ext <- function(con, ext) {
-    ok <- tryCatch(
-      {
-        .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-        TRUE
-      },
-      error = function(e) FALSE
-    )
-
-    if (!ok) {
-      # zipfs and h3 are community extensions
-      .duckdb_quiet_execute(con, sprintf("INSTALL %s FROM community;", ext))
-      .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-    }
-    invisible(TRUE)
+    invisible(.duckdb_quiet(DBI::dbExecute(con, sql)))
   }
 
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
@@ -262,33 +242,12 @@ cnefe_index <- .get_cnefe_index(year)
 
   }
 
-  #silent please
-  con <- NULL
-  utils::capture.output(
-    utils::capture.output({
-      con <- DBI::dbConnect(
-        duckdb::duckdb(),
-        dbdir = ":memory:",
-        config = list(
-          'enable_progress_bar' = FALSE,
-          'enable_print_progress' = FALSE,
-          'print_progress_bar' = FALSE
-        )
-      )
-
-      tryCatch(
-        duckspatial::ddbs_load(con),
-        error = function(e) {
-          duckspatial::ddbs_install(con)
-          duckspatial::ddbs_load(con)
-        }
-      )
-      .duckdb_load_ext(con, "zipfs")
-    }, type = "message"),
-    type = "output"
+  con <- .duckdb_connect(
+    extensions = "zipfs",
+    spatial = TRUE,
+    reason = "to run the dasymetric interpolation in `tracts_to_polygon()`.",
+    verbose = verbose
   )
-
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
   if (verbose) {
     cli::cli_progress_done("Step 2/6: connecting to DuckDB and loading extensions...")
@@ -586,18 +545,15 @@ cnefe_index <- .get_cnefe_index(year)
 
   # Register user polygons in DuckDB using duckspatial (quiet)
   invisible(
-    utils::capture.output(
-      suppressMessages(
-        duckspatial::ddbs_write_vector(
-          conn = con,
-          # Normalize geometry column to "geom"; duckspatial preserves the
-          # input sf geometry name, but the SQL below hardcodes "geom".
-          data = sf::st_set_geometry(polygon_4326[, ".poly_row_id"], "geom"),
-          name = "user_polygons",
-          overwrite = TRUE
-        )
-      ),
-      type = "output"
+    .duckdb_quiet(
+      duckspatial::ddbs_write_vector(
+        conn = con,
+        # Normalize geometry column to "geom"; duckspatial preserves the
+        # input sf geometry name, but the SQL below hardcodes "geom".
+        data = sf::st_set_geometry(polygon_4326[, ".poly_row_id"], "geom"),
+        name = "user_polygons",
+        overwrite = TRUE
+      )
     )
   )
 
@@ -693,14 +649,7 @@ cnefe_index <- .get_cnefe_index(year)
     paste(agg_sql_exprs, collapse = ",\n      ")
   )
 
-  poly_vals <- NULL
-  utils::capture.output(
-    utils::capture.output(
-      poly_vals <- DBI::dbGetQuery(con, agg_sql),
-      type = "message"
-    ),
-    type = "output"
-  )
+  poly_vals <- .duckdb_quiet(DBI::dbGetQuery(con, agg_sql))
 
   # Join back to polygon
   out <- polygon_4326 |>

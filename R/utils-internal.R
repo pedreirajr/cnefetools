@@ -879,3 +879,181 @@
   # CREATE TABLE ... AS SELECT * FROM cnefe_pts in the caller would fail.
   invisible(zip_info)
 }
+
+
+## Theme: DuckDB connection and extensions
+
+#' Run an expression while suppressing DuckDB console noise
+#'
+#' DuckDB writes progress output to stdout and emits startup messages, and both
+#' are noise in an interactive session. The previous idiom for silencing them
+#' was a nested `capture.output(capture.output(expr, type = "message"),
+#' type = "output")`, which also captured the message of any error raised inside
+#' `expr`. Failures therefore surfaced with no text at all, which made the
+#' DuckDB backend effectively undebuggable (GitHub issue #57).
+#'
+#' `suppressMessages()` muffles messages while leaving conditions of class
+#' `error` untouched, so errors keep propagating with their message intact.
+#'
+#' @param expr Expression to evaluate. Its value is returned.
+#'
+#' @keywords internal
+#' @noRd
+.duckdb_quiet <- function(expr) {
+  # `expr` is a promise, so it is forced in the caller's frame. Assignments made
+  # inside it therefore land in the caller, which is what the migrated call
+  # sites rely on. The local name is dotted to avoid shadowing anything there.
+  utils::capture.output(.value <- suppressMessages(expr), type = "output")
+  .value
+}
+
+
+#' Open an in-memory DuckDB connection with cleanup registered immediately
+#'
+#' Both referees noted that the previous pattern registered
+#' `on.exit(DBI::dbDisconnect(...))` only after the whole connect-and-load block
+#' had completed, so any failure inside it (a failed extension install, a SQL
+#' error, a user interrupt) left the connection and its file handles behind.
+#'
+#' Cleanup is registered here through `withr::defer()` on the caller's frame,
+#' immediately after `dbConnect()` returns and before anything that can fail.
+#' Referee 1 suggested exactly this pattern. The guard on `DBI::dbIsValid()`
+#' prevents a secondary error during cleanup if the connection died earlier.
+#'
+#' @param extensions Character vector of DuckDB extensions to ensure. Community
+#'   extensions by default, `"spatial"` is treated as a core extension.
+#' @param spatial Logical. Whether to load duckspatial, installing it into the
+#'   connection if the load fails.
+#' @param reason Passed to [rlang::check_installed()] to explain the dependency.
+#' @param verbose Logical, forwarded to the extension loader.
+#' @param .envir Frame to attach the cleanup handler to. Defaults to the caller,
+#'   which is what every call site wants.
+#'
+#' @return A live DuckDB connection.
+#'
+#' @keywords internal
+#' @noRd
+.duckdb_connect <- function(
+  extensions = character(0),
+  spatial = FALSE,
+  reason = "to use the DuckDB backend.",
+  verbose = TRUE,
+  .envir = parent.frame()
+) {
+  rlang::check_installed("duckdb", reason = reason)
+
+  con <- .duckdb_quiet(
+    DBI::dbConnect(
+      duckdb::duckdb(),
+      dbdir = ":memory:",
+      config = list(
+        enable_progress_bar = FALSE,
+        enable_print_progress = FALSE,
+        print_progress_bar = FALSE
+      )
+    )
+  )
+
+  # Registered before anything else can fail. This is the whole point.
+  withr::defer(
+    {
+      if (!is.null(con) && DBI::dbIsValid(con)) {
+        DBI::dbDisconnect(con, shutdown = TRUE)
+      }
+    },
+    envir = .envir
+  )
+
+  if (isTRUE(spatial)) {
+    rlang::check_installed("duckspatial", reason = reason)
+    .duckdb_quiet(
+      tryCatch(
+        duckspatial::ddbs_load(con),
+        error = function(e) {
+          duckspatial::ddbs_install(con)
+          duckspatial::ddbs_load(con)
+        }
+      )
+    )
+  }
+
+  for (ext in extensions) {
+    .duckdb_quiet(
+      .duckdb_ensure_extension(
+        con,
+        ext,
+        repo = if (identical(ext, "spatial")) NULL else "community",
+        verbose = verbose
+      )
+    )
+  }
+
+  con
+}
+
+
+# -----------------------------------------------------------------------------
+# Internal: Helper to ensure DuckDB extension is loaded
+# -----------------------------------------------------------------------------
+.duckdb_ensure_extension <- function(
+  con,
+  ext,
+  repo = "community",
+  verbose = TRUE
+) {
+  # repo = NULL means core extension (no FROM clause needed)
+
+  info <- tryCatch(
+    DBI::dbGetQuery(
+      con,
+      sprintf(
+        "SELECT installed, loaded FROM duckdb_extensions() WHERE extension_name = '%s';",
+        ext
+      )
+    ),
+    error = function(e) NULL
+  )
+
+  if (!is.null(info) && nrow(info) == 1) {
+    if (isTRUE(info$loaded[[1]])) {
+      # if (verbose) {
+      #   message("DuckDB: extension '", ext, "' already loaded.")
+      # }
+      return(invisible(TRUE))
+    }
+    if (isTRUE(info$installed[[1]])) {
+      # if (verbose) {
+      #   message("DuckDB: loading extension '", ext, "'...")
+      # }
+      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+      return(invisible(TRUE))
+    }
+  }
+
+  ok_load <- tryCatch(
+    {
+      # if (verbose) {
+      #   message("DuckDB: trying to LOAD extension '", ext, "'...")
+      # }
+      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+
+  if (ok_load) {
+    return(invisible(TRUE))
+  }
+
+  # if (verbose) {
+  #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
+  # }
+  if (is.null(repo)) {
+    DBI::dbExecute(con, sprintf("INSTALL %s;", ext))
+  } else {
+    DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
+  }
+  DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+
+  invisible(TRUE)
+}

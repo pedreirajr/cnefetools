@@ -120,35 +120,7 @@ tracts_to_h3 <- function(
   # helpers -------------------------------------------------------------------
 
   .duckdb_quiet_execute <- function(con, sql) {
-    invisible(utils::capture.output(
-      utils::capture.output(
-        DBI::dbExecute(con, sql),
-        type = "message"
-      ),
-      type = "output"
-    ))
-  }
-
-  .duckdb_load_ext <- function(con, ext) {
-    utils::capture.output(
-      utils::capture.output({
-        ok <- tryCatch(
-          {
-            .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-            TRUE
-          },
-          error = function(e) FALSE
-        )
-
-        if (!ok) {
-          .duckdb_quiet_execute(con, sprintf("INSTALL %s FROM community;", ext))
-          .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-        }
-      }, type = "message"),
-      type = "output"
-    )
-
-    invisible(TRUE)
+    invisible(.duckdb_quiet(DBI::dbExecute(con, sql)))
   }
 
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
@@ -167,30 +139,12 @@ tracts_to_h3 <- function(
 
   }
 
-  con <- NULL
-  utils::capture.output(
-    utils::capture.output({
-      con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                            config = list(
-                              'enable_progress_bar' = FALSE,
-                              'enable_print_progress' = FALSE,
-                              'print_progress_bar' = FALSE
-                            ))
-
-      tryCatch(
-        duckspatial::ddbs_load(con),
-        error = function(e) {
-          duckspatial::ddbs_install(con)
-          duckspatial::ddbs_load(con)
-        }
-      )
-      .duckdb_load_ext(con, "zipfs")
-      .duckdb_load_ext(con, "h3")
-    }, type = "message"),
-    type = "output"
+  con <- .duckdb_connect(
+    extensions = c("zipfs", "h3"),
+    spatial = TRUE,
+    reason = "to run the dasymetric interpolation in `tracts_to_h3()`.",
+    verbose = verbose
   )
-
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
   if (verbose) {
     cli::cli_progress_done("Step 1/6: connecting to DuckDB and loading extensions...")
@@ -245,8 +199,8 @@ tracts_to_h3 <- function(
   )
 
   # Materialise the lazy view into a table (reads ZIP data into DuckDB memory).
-  invisible(utils::capture.output({
-    invisible(utils::capture.output({
+  .duckdb_quiet({
+    {
       .duckdb_quiet_execute(
         con,
         "
@@ -264,8 +218,8 @@ tracts_to_h3 <- function(
         con,
         "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
       )$n[1]
-    }, type = "message"))
-  }, type = "output"))
+    }
+  })
 
   # ZIP data is now fully in DuckDB — safe to delete the temp file.
   if (is.list(zip_info_cnefe) && isTRUE(zip_info_cnefe$cleanup_zip)) {
@@ -506,9 +460,8 @@ tracts_to_h3 <- function(
     year          = year
   )
 
-  # capture.output to swallow everything (both output and messages)
-  invisible(utils::capture.output({
-    invisible(utils::capture.output({
+  .duckdb_quiet({
+    {
       hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
       out <- hex_grid |>
@@ -521,8 +474,8 @@ tracts_to_h3 <- function(
       for (v in count_vars) {
         out[[v]] <- dplyr::coalesce(out[[v]], 0)
       }
-    }, type = "message"))
-  }, type = "output"))
+    }
+  })
 
   sf::st_crs(out) <- 4326
 

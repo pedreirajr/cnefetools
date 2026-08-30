@@ -395,24 +395,14 @@ compute_lumi <- function(
       "DBI",
       reason = "to use backend = 'duckdb' in `compute_lumi()`."
     )
-    rlang::check_installed(
-      "duckdb",
-      reason = "to use backend = 'duckdb' in `compute_lumi()`."
+    con <- .duckdb_connect(
+      extensions = c("zipfs", "h3"),
+      reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+      verbose = verbose
     )
 
-    con <- NULL
-    utils::capture.output(
-      utils::capture.output({
-        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                              config = list(
-                                'enable_progress_bar' = FALSE,
-                                'enable_print_progress' = FALSE,
-                                'print_progress_bar' = FALSE
-                              ))
-
-        .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-        .duckdb_ensure_extension(con, "h3", verbose = verbose)
-
+    {
+      {
         zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
         uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
         uri_sql <- gsub("'", "''", uri)
@@ -448,18 +438,15 @@ compute_lumi <- function(
           as.integer(h3_resolution)
         )
 
-        counts_hex <- DBI::dbGetQuery(con, sql) |>
+        counts_hex <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
           dplyr::as_tibble() |>
           dplyr::mutate(
             id_hex = as.character(.data$id_hex),
             n_res = as.integer(.data$n_res),
             n_tot = as.integer(.data$n_tot)
           )
-      }, type = "message"),
-      type = "output"
-    )
-
-    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+      }
+    }
 
   } else {
     # backend "r"
@@ -763,22 +750,14 @@ compute_lumi <- function(
 ) {
   res <- NULL
 
-  utils::capture.output(
-    utils::capture.output({
+  con <- .duckdb_connect(
+    extensions = c("zipfs", "spatial"),
+    reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+    verbose = verbose
+  )
 
-      con <- DBI::dbConnect(
-        duckdb::duckdb(),
-        dbdir = ":memory:",
-        config = list(
-          enable_progress_bar = FALSE,
-          enable_print_progress = FALSE,
-          print_progress_bar = FALSE
-        )
-      )
-
-      .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-      .duckdb_ensure_extension(con, "spatial", repo = NULL, verbose = verbose)
-
+  .duckdb_quiet({
+    {
       zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
       uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
       uri_sql <- gsub("'", "''", uri)
@@ -909,11 +888,8 @@ compute_lumi <- function(
     total_n_tot = total_n_tot
   )
 
-    }, type = "message"),
-  type = "output"
-  )
-
-  DBI::dbDisconnect(con, shutdown = TRUE)
+    }
+  })
 
   return(res)
 

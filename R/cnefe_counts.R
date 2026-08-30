@@ -250,29 +250,18 @@ g., 4674, 31983) or a CRS object."
       "DBI",
       reason = "to use backend = 'duckdb' in `cnefe_counts()`."
     )
-    rlang::check_installed(
-      "duckdb",
-      reason = "to use backend = 'duckdb' in `cnefe_counts()`."
+
+    con <- .duckdb_connect(
+      extensions = c("zipfs", "h3"),
+      reason = "to use backend = 'duckdb' in `cnefe_counts()`.",
+      verbose = verbose
     )
 
-    con <- NULL
-    utils::capture.output(
-      utils::capture.output({
-        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                              config = list(
-                                'enable_progress_bar' = FALSE,
-                                'enable_print_progress' = FALSE,
-                                'print_progress_bar' = FALSE
-                              ))
+    zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
+    uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+    uri_sql <- gsub("'", "''", uri)
 
-        .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-        .duckdb_ensure_extension(con, "h3", verbose = verbose)
-
-        zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-        uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
-        uri_sql <- gsub("'", "''", uri)
-
-        sql <- sprintf(
+    sql <- sprintf(
           "
         WITH src AS (
           SELECT
@@ -291,22 +280,17 @@ g., 4674, 31983) or a CRS object."
           AND cod BETWEEN 1 AND 8
         GROUP BY 1, 2;
       ",
-          uri_sql,
-          as.integer(h3_resolution)
-        )
-
-        counts_long <- DBI::dbGetQuery(con, sql) |>
-          dplyr::as_tibble() |>
-          dplyr::mutate(
-            id_hex = as.character(.data$id_hex),
-            COD_ESPECIE = as.integer(.data$COD_ESPECIE),
-            n = as.integer(.data$n)
-          )
-      }, type = "message"),
-      type = "output"
+      uri_sql,
+      as.integer(h3_resolution)
     )
 
-    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+    counts_long <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
+      dplyr::as_tibble() |>
+      dplyr::mutate(
+        id_hex = as.character(.data$id_hex),
+        COD_ESPECIE = as.integer(.data$COD_ESPECIE),
+        n = as.integer(.data$n)
+      )
 
   } else {
     # Backend "r" (slower): read Arrow, compute H3 in R
@@ -605,16 +589,11 @@ g., 4674, 31983) or a CRS object."
   polygon,
   verbose
 ) {
-  con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                        config = list(
-                          'enable_progress_bar' = FALSE,
-                          'enable_print_progress' = FALSE,
-                          'print_progress_bar' = FALSE
-                        ))
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
-
-  .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-  .duckdb_ensure_extension(con, "spatial", repo = NULL, verbose = verbose)
+  con <- .duckdb_connect(
+    extensions = c("zipfs", "spatial"),
+    reason = "to use backend = 'duckdb' in `cnefe_counts()`.",
+    verbose = verbose
+  )
 
   zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
   uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
@@ -655,18 +634,15 @@ g., 4674, 31983) or a CRS object."
 
   # Write user polygon to DuckDB via duckspatial
   invisible(
-    utils::capture.output(
-      suppressMessages(
-        duckspatial::ddbs_write_vector(
-          conn = con,
-          # Normalize geometry column to "geom"; duckspatial preserves the
-          # input sf geometry name, but the SQL below hardcodes "geom".
-          data = sf::st_set_geometry(polygon[, ".poly_row_id"], "geom"),
-          name = "user_polygons",
-          overwrite = TRUE
-        )
-      ),
-      type = "output"
+    .duckdb_quiet(
+      duckspatial::ddbs_write_vector(
+        conn = con,
+        # Normalize geometry column to "geom"; duckspatial preserves the
+        # input sf geometry name, but the SQL below hardcodes "geom".
+        data = sf::st_set_geometry(polygon[, ".poly_row_id"], "geom"),
+        name = "user_polygons",
+        overwrite = TRUE
+      )
     )
   )
 
@@ -816,69 +792,3 @@ g., 4674, 31983) or a CRS object."
   ))
 }
 
-
-# -----------------------------------------------------------------------------
-# Internal: Helper to ensure DuckDB extension is loaded
-# -----------------------------------------------------------------------------
-.duckdb_ensure_extension <- function(
-  con,
-  ext,
-  repo = "community",
-  verbose = TRUE
-) {
-  # repo = NULL means core extension (no FROM clause needed)
-
-  info <- tryCatch(
-    DBI::dbGetQuery(
-      con,
-      sprintf(
-        "SELECT installed, loaded FROM duckdb_extensions() WHERE extension_name = '%s';",
-        ext
-      )
-    ),
-    error = function(e) NULL
-  )
-
-  if (!is.null(info) && nrow(info) == 1) {
-    if (isTRUE(info$loaded[[1]])) {
-      # if (verbose) {
-      #   message("DuckDB: extension '", ext, "' already loaded.")
-      # }
-      return(invisible(TRUE))
-    }
-    if (isTRUE(info$installed[[1]])) {
-      # if (verbose) {
-      #   message("DuckDB: loading extension '", ext, "'...")
-      # }
-      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-      return(invisible(TRUE))
-    }
-  }
-
-  ok_load <- tryCatch(
-    {
-      # if (verbose) {
-      #   message("DuckDB: trying to LOAD extension '", ext, "'...")
-      # }
-      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-      TRUE
-    },
-    error = function(e) FALSE
-  )
-
-  if (ok_load) {
-    return(invisible(TRUE))
-  }
-
-  # if (verbose) {
-  #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
-  # }
-  if (is.null(repo)) {
-    DBI::dbExecute(con, sprintf("INSTALL %s;", ext))
-  } else {
-    DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-  }
-  DBI::dbExecute(con, sprintf("LOAD %s;", ext))
-
-  invisible(TRUE)
-}
