@@ -72,8 +72,10 @@
 #'
 #' ## The citywide baseline P
 #'
-#' The `bgbi` and `hhi_adp` indices are referenced against a citywide
-#' residential share P. Two properties of P are worth stating.
+#' The `bgbi` index is referenced against a citywide residential share P. It is
+#' the only index computed here that uses such a baseline, the others being
+#' computed entirely within each spatial unit. Two properties of P are worth
+#' stating.
 #'
 #' First, P is computed from CNEFE address-type counts rather than from census
 #' population, so it describes the distribution of address types and not the
