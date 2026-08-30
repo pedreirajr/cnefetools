@@ -1149,3 +1149,125 @@
 
   invisible(polygon)
 }
+
+
+## Theme: Dasymetric allocation SQL
+
+#' Build the per-point allocation SQL for the dasymetric interpolation
+#'
+#' `tracts_to_h3()` and `tracts_to_polygon()` carried byte-identical copies of
+#' this builder, 90 lines each, which is the largest of the duplications Referee
+#' 2 lists under R2.C1. The two functions differ in what they aggregate the
+#' allocated points onto, not in how the allocation itself is expressed, so the
+#' builder is target-agnostic.
+#'
+#' The generated expressions assume the aliases used by both callers: `p` for
+#' the CNEFE points and `s` for the census tract aggregates, with `s.n_dom_p`
+#' and `s.n_dom_c` holding the counts of private and collective dwellings.
+#'
+#' Allocation rules, kept identical to the documented behaviour:
+#' - `pop_ph` and `n_resp` are split across private dwellings only.
+#' - `pop_ch` is split across collective dwellings only.
+#' - `avg_inc_resp` is assigned, not split, to each private dwelling point.
+#' - every other variable goes to private dwellings when the tract has any, and
+#'   falls back to collective dwellings when it has none.
+#'
+#' @param vars Character vector of tract variables to allocate.
+#'
+#' @return A single SQL string of comma-separated `CASE` expressions, each
+#'   aliased as `<var>_pt`.
+#'
+#' @keywords internal
+#' @noRd
+.build_alloc_sql <- function(vars) {
+  alloc_exprs <- character(0)
+
+  for (v in vars) {
+    if (v == "avg_inc_resp") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.avg_inc_resp IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.avg_inc_resp AS DOUBLE)
+          ELSE NULL
+        END AS avg_inc_resp_pt
+      "
+      )
+    } else if (v == "n_resp") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.n_resp IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.n_resp AS DOUBLE) / s.n_dom_p
+          ELSE NULL
+        END AS n_resp_pt
+      "
+      )
+    } else if (v == "pop_ph") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 1
+           AND s.pop_ph IS NOT NULL
+           AND s.n_dom_p > 0
+          THEN CAST(s.pop_ph AS DOUBLE) / s.n_dom_p
+          ELSE NULL
+        END AS pop_ph_pt
+      "
+      )
+    } else if (v == "pop_ch") {
+      alloc_exprs <- c(
+        alloc_exprs,
+        "
+        CASE
+          WHEN p.COD_ESPECIE = 2
+           AND s.pop_ch IS NOT NULL
+           AND s.n_dom_c > 0
+          THEN CAST(s.pop_ch AS DOUBLE) / s.n_dom_c
+          ELSE NULL
+        END AS pop_ch_pt
+      "
+      )
+    } else {
+      alloc_exprs <- c(
+        alloc_exprs,
+        sprintf(
+          "
+        CASE
+          WHEN (CASE
+                  WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
+                  WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
+                  ELSE FALSE
+                END)
+           AND s.%s IS NOT NULL
+           AND (CASE
+                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
+                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
+                  ELSE 0
+                END) > 0
+          THEN CAST(s.%s AS DOUBLE) /
+               (CASE
+                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
+                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
+                  ELSE 0
+                END)
+          ELSE NULL
+        END AS %s_pt
+      ",
+          v,
+          v,
+          v
+        )
+      )
+    }
+  }
+
+  paste(alloc_exprs, collapse = ",\n")
+}
