@@ -12,7 +12,7 @@
 #'
 #' @return An sf object (CRS 4326) with columns `id_hex` and `geometry`.
 #'
-#' @keywords internal
+#' @noRd
 build_h3_grid <- function(
   h3_resolution,
   id_hex = NULL,
