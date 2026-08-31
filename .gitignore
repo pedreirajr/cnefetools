@@ -11,3 +11,7 @@ CLAUDE.md
 # Golden reference payloads for the shared-helpers refactor (#83).
 # The digests in data-raw/baseline_digests_*.csv are the committed artefact.
 data-raw/baseline/
+
+# Regenerated census tract assets (#80 R1.9). The checksums and the
+# verification table are the committed artefacts.
+data-raw/sc_assets/
