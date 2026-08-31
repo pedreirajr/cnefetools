@@ -99,6 +99,22 @@ build_uf <- function(uf, attrs, verbose = TRUE) {
   ))
   geo <- sf::st_transform(geo, 4326)
 
+  # geobr returns a few tracts as several rows, one per disjoint part, with
+  # identical attributes. Amapa has 1499 rows for 1492 codes. Left as they are
+  # they would duplicate a tract in the spatial join and double-count its
+  # points, so the parts are dissolved into one MULTIPOLYGON per code. This is
+  # what the published assets hold: for 160010505000008 the union of the two
+  # parts, 91.273 + 399.041, matches the published 490.313 km2 exactly.
+  if (anyDuplicated(geo$code_tract)) {
+    n_before <- nrow(geo)
+    geo <- geo |>
+      dplyr::group_by(code_tract) |>
+      dplyr::summarise(.groups = "drop")
+    if (verbose) {
+      cat(sprintf("[dissolved %d multipart rows] ", n_before - nrow(geo)))
+    }
+  }
+
   out <- data.frame(
     code_tract = as.character(geo$code_tract),
     stringsAsFactors = FALSE
@@ -125,9 +141,16 @@ build_uf <- function(uf, attrs, verbose = TRUE) {
   num_cols <- setdiff(names(out), c("code_tract"))
   for (cc in num_cols) out[[cc]] <- suppressWarnings(as.numeric(as.character(out[[cc]])))
 
+  # The published assets are uniformly MULTIPOLYGON. Dissolving multipart rows
+  # can yield a plain POLYGON, so the type is normalised to keep the DuckDB
+  # spatial join seeing one geometry type.
+  geo <- sf::st_cast(geo, "MULTIPOLYGON")
+
   # Geometry travels as WKB so the parquet needs no spatial extension to read.
+  # unclass() drops sf's WKB class, which arrow cannot map to a type; the
+  # underlying list of raw vectors becomes a binary column.
   geo <- geo[match(out$code_tract, as.character(geo$code_tract)), ]
-  out$geom_wkb <- sf::st_as_binary(sf::st_geometry(geo))
+  out$geom_wkb <- unclass(sf::st_as_binary(sf::st_geometry(geo)))
 
   out <- out[, SCHEMA]
   if (verbose) cat(sprintf("%d tracts\n", nrow(out)))
