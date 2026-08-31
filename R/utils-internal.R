@@ -597,10 +597,15 @@
   # and add it here. Do not rename the existing entry: once published, an
   # edition's assets stay frozen so the provenance checksums keep matching.
   #   tags <- c(
-  #     "2022" = "sc-assets-v2",
+  #     "2022" = "sc-assets-v3",
   #     "2030" = "sc-assets-2030-v1"
   #   )
-  tags <- c("2022" = "sc-assets-v2")
+  #
+  # sc-assets-v3 replaced sc-assets-v2 for the 2022 edition. The data is
+  # identical, verified across all 27 states, but v3 is reproducible from
+  # data-raw/sc_assets_build.R and v2 was not. v2 stays published, so older
+  # package versions keep working, and its checksums stay valid.
+  tags <- c("2022" = "sc-assets-v3")
 
   key <- as.character(as.integer(year %||% 2022L))
   if (!key %in% names(tags)) {

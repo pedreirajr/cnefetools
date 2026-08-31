@@ -69,6 +69,13 @@
   edition as before. Caches created by earlier versions are ignored and
   re-downloaded once (#81).
 
+* Census tract assets now come from release `sc-assets-v3`, which is
+  reproducible from `data-raw/sc_assets_build.R`. The data is unchanged:
+  verified against the previous release across all 27 states, 468,097 tracts
+  and 3,144,868 values, with every value matching exactly. `sc-assets-v2`
+  remains published, so earlier versions of the package keep working (#80
+  R1.9).
+
 * New `cnefe_export()` writes a municipality to a persistent, optimised file at
   a location of your choosing, as Parquet (default), CSV or gzipped CSV. The
   package cache is transient by design, lives in a directory the package
