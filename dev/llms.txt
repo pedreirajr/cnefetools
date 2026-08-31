@@ -352,7 +352,7 @@ follows the same two-stage workflow as
 but aggregates the allocated values to user-provided polygons
 (e.g. neighborhoods, administrative divisions, or custom areas) instead
 of an H3 grid. Let’s generate the neighborhoods of Recife with the
-[`read_neighborhood()`](https://ipeagit.github.io/geobr/reference/read_neighborhood.html)
+[`read_neighborhood()`](https://rdrr.io/pkg/geobr/man/read_neighborhood.html)
 function from the `geobr` package and interpolate the average income of
 household heads per neighborhood:
 

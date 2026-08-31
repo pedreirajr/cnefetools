@@ -124,13 +124,21 @@ lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #> ℹ Processing municipality code 2929057...
 #> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
-#> ✔ Step 1/3 (CNEFE ZIP ready) [528ms]
+#> ✔ Step 1/3 (CNEFE ZIP ready) [541ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [194ms]
+#> duckdb keeps downloaded extensions and secrets in a temporary directory:
+#> ℹ /tmp/Rtmpw69KUK/duckdb
+#> This is removed when the R session ends.
+#> • Extensions are re-downloaded each session.
+#> • Secrets are lost.
+#> ℹ Run duckdb(shared_home = TRUE) (or create ~/.duckdb) to keep them (suitable for most users).
+#> ℹ Run duckdb(shared_home = FALSE) to accept the temporary directory (and silence this message).
+#> ℹ See ?duckdb_storage for details and alternatives.
+#> ✔ Step 2/3 (Addresses counted) [225ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [2.6s]
+#> ✔ Step 3/3 (Land use mix indices computed) [3.2s]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -153,17 +161,25 @@ lumi_poly <- compute_lumi(
 #> ✔ Step 1/3 (Data and polygon ready) [1.4s]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
+#> duckdb keeps downloaded extensions and secrets in a temporary directory:
+#> ℹ /tmp/Rtmpw69KUK/duckdb
+#> This is removed when the R session ends.
+#> • Extensions are re-downloaded each session.
+#> • Secrets are lost.
+#> ℹ Run duckdb(shared_home = TRUE) (or create ~/.duckdb) to keep them (suitable for most users).
+#> ℹ Run duckdb(shared_home = FALSE) to accept the temporary directory (and silence this message).
+#> ℹ See ?duckdb_storage for details and alternatives.
 #> ℹ Table <user_polygons> dropped
 #> ℹ Step 2/3: Counting addresses per polygon...
 #> ✔ Table user_polygons successfully imported
 #> ℹ Step 2/3: Counting addresses per polygon...
-#> ✔ Step 2/3 (Addresses counted) [895ms]
+#> ✔ Step 2/3 (Addresses counted) [1.2s]
 #> 
 #> ℹ Step 3/3: Computing land use mix indices...
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
 #> ℹ 111100 of 111385 points are within the provided polygon.
 #> ℹ 285 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [41ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [49ms]
 #> 
 # }
 ```

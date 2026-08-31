@@ -1,5 +1,5 @@
 pandoc: 3.8.3
-pkgdown: 2.2.0
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   articles/bench_duckdb: bench_duckdb.html
@@ -8,7 +8,7 @@ articles:
   articles/faq: faq.html
   articles/read_cnefe: read_cnefe.html
   articles/tracts_to: tracts_to.html
-last_built: 2026-06-03T01:03Z
+last_built: 2026-08-31T11:49Z
 urls:
   reference: https://pedreirajr.github.io/cnefetools/reference
   article: https://pedreirajr.github.io/cnefetools/articles

@@ -353,12 +353,12 @@
 <h2 id="dasymetric-interpolation-with-tracts_to_polygon">Dasymetric interpolation with <code>tracts_to_polygon()</code>
 <a class="anchor" aria-label="anchor" href="#dasymetric-interpolation-with-tracts_to_polygon"></a>
 </h2>
-<p><code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> follows the same two-stage workflow as <code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code>, but aggregates the allocated values to user-provided polygons (e.g. neighborhoods, administrative divisions, or custom areas) instead of an H3 grid. Let’s generate the neighborhoods of Recife with the <code><a href="https://ipeagit.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood()</a></code> function from the <code>geobr</code> package and interpolate the average income of household heads per neighborhood:</p>
+<p><code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> follows the same two-stage workflow as <code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code>, but aggregates the allocated values to user-provided polygons (e.g. neighborhoods, administrative divisions, or custom areas) instead of an H3 grid. Let’s generate the neighborhoods of Recife with the <code><a href="https://rdrr.io/pkg/geobr/man/read_neighborhood.html" class="external-link">read_neighborhood()</a></code> function from the <code>geobr</code> package and interpolate the average income of household heads per neighborhood:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ipeagit.github.io/geobr/" class="external-link">geobr</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Reading neighborhoods from geobr package</span></span>
-<span><span class="va">rec_nei</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ipeagit.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span>, simplified <span class="op">=</span> <span class="cn">F</span>, showProgress <span class="op">=</span> <span class="cn">F</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="va">rec_nei</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/geobr/man/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span>, simplified <span class="op">=</span> <span class="cn">F</span>, showProgress <span class="op">=</span> <span class="cn">F</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">name_muni</span> <span class="op">==</span> <span class="st">'Recife'</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Dasymetric interpolation to neighborhoods</span></span>
@@ -478,7 +478,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

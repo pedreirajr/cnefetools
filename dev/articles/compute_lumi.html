@@ -74,7 +74,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Computing land-use mix indices with CNEFE data</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/vignettes/articles/compute_lumi.Rmd" class="external-link"><code>vignettes/articles/compute_lumi.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v3/vignettes/articles/compute_lumi.Rmd" class="external-link"><code>vignettes/articles/compute_lumi.Rmd</code></a></small>
       <div class="d-none name"><code>compute_lumi.Rmd</code></div>
     </div>
 
@@ -413,7 +413,7 @@ package</a>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ipeagit.github.io/geobr/" class="external-link">geobr</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">mga_nei</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ipeagit.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="va">mga_nei</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/geobr/man/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">code_muni</span> <span class="op">==</span> <span class="fl">4115200</span><span class="op">)</span> <span class="co"># IBGE code for Maringá</span></span>
 <span></span>
 <span><span class="va">mga_lumi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_lumi.html">compute_lumi</a></span><span class="op">(</span></span>
@@ -472,7 +472,7 @@ Policy</strong>, 169, 108135. <a href="https://doi.org/10.1016/j.landusepol.2026
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
