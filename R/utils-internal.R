@@ -1073,6 +1073,75 @@
 }
 
 
+#' Apply the user's DuckDB resource limits to a fresh connection
+#'
+#' DuckDB sizes itself against the whole machine: it takes one thread per
+#' logical core and sets `memory_limit` to 80% of installed RAM. That is the
+#' right default on a dedicated machine and the wrong one on a shared node, a
+#' laptop running other work, or a CI runner. Referee 2 raised the same point
+#' from the reporting side (R2.8b, R2.8c), asking what the package actually
+#' needs and how it behaves on modest hardware.
+#'
+#' `options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))`
+#' holds it back. Names are passed to DuckDB's `SET` verbatim, so any setting
+#' DuckDB accepts works, not only these two.
+#'
+#' Exceeding `memory_limit` makes DuckDB spill to its temp directory rather
+#' than fail, so a low value costs time, not correctness.
+#'
+#' @param con A live DuckDB connection.
+#'
+#' @return `con`, invisibly.
+#'
+#' @keywords internal
+#' @noRd
+.duckdb_apply_user_config <- function(con) {
+  cfg <- getOption("cnefetools.duckdb_config", default = NULL)
+  if (is.null(cfg)) {
+    return(invisible(con))
+  }
+
+  if (!is.list(cfg) || is.null(names(cfg)) || any(!nzchar(names(cfg)))) {
+    cli::cli_abort(c(
+      "{.code options(cnefetools.duckdb_config)} must be a named list.",
+      "i" = 'For example {.code list(threads = 4, memory_limit = "4GB")}.'
+    ))
+  }
+
+  for (nm in names(cfg)) {
+    value <- cfg[[nm]]
+    if (length(value) != 1L || is.na(value)) {
+      cli::cli_abort(
+        "{.code cnefetools.duckdb_config${nm}} must be a single non-missing value."
+      )
+    }
+
+    # Quoted unconditionally: DuckDB accepts a quoted integer for `threads` and
+    # requires quoting for string settings such as `memory_limit`.
+    stmt <- sprintf(
+      "SET %s = '%s';",
+      nm,
+      gsub("'", "''", as.character(value))
+    )
+
+    tryCatch(
+      .duckdb_quiet(DBI::dbExecute(con, stmt)),
+      error = function(e) {
+        cli::cli_abort(
+          c(
+            "Could not apply {.code cnefetools.duckdb_config${nm}}.",
+            "x" = conditionMessage(e)
+          ),
+          parent = e
+        )
+      }
+    )
+  }
+
+  invisible(con)
+}
+
+
 #' Open an in-memory DuckDB connection with cleanup registered immediately
 #'
 #' Both referees noted that the previous pattern registered
@@ -1084,6 +1153,17 @@
 #' immediately after `dbConnect()` returns and before anything that can fail.
 #' Referee 1 suggested exactly this pattern. The guard on `DBI::dbIsValid()`
 #' prevents a secondary error during cleanup if the connection died earlier.
+#'
+#' Resource limits are read from the `cnefetools.duckdb_config` option, which
+#' Referee 2 (R2.8b, R2.8c) motivated: DuckDB sizes itself against the whole
+#' machine, taking every core and 80% of RAM, and a user on a small machine had
+#' no way to hold it back. `threads` and `memory_limit` are the two knobs that
+#' matter, and they are what the benchmark harness varies to report a
+#' constrained-hardware profile.
+#'
+#' They are applied with `SET` after connecting rather than through the
+#' `config` list so that an unrecognised name fails loudly here instead of
+#' aborting `dbConnect()` with a message that names no option.
 #'
 #' @param extensions Character vector of DuckDB extensions to ensure. Community
 #'   extensions by default, `"spatial"` is treated as a core extension.
@@ -1118,6 +1198,8 @@
       )
     )
   )
+
+  .duckdb_apply_user_config(con)
 
   # Registered before anything else can fail. This is the whole point.
   withr::defer(
