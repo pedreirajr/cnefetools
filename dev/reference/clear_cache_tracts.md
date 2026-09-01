@@ -9,7 +9,7 @@ and
 ## Usage
 
 ``` r
-clear_cache_tracts(uf = "all", verbose = TRUE)
+clear_cache_tracts(uf = "all", verbose = TRUE, cache_dir = NULL, year = NULL)
 ```
 
 ## Arguments
@@ -27,6 +27,20 @@ clear_cache_tracts(uf = "all", verbose = TRUE)
   Logical; if `TRUE` (default), reports the number of files deleted and
   the space freed.
 
+- cache_dir:
+
+  Character. Directory to use for cached downloads. If `NULL` (default),
+  the `CNEFETOOLS_CACHE_DIR` environment variable is used when it is
+  set, otherwise
+  [`tools::R_user_dir()`](https://rdrr.io/r/tools/userdir.html) with
+  `which = "cache"`. Use this to point large downloads at a secondary
+  drive or a shared volume.
+
+- year:
+
+  Integer. Restrict the deletion to one CNEFE edition. `NULL` (default)
+  clears every edition, which is the previous behaviour.
+
 ## Value
 
 Invisibly, the character vector of deleted file paths.
@@ -37,14 +51,14 @@ Invisibly, the character vector of deleted file paths.
 # \donttest{
 # Delete all cached census tract Parquets
 clear_cache_tracts()
-#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools/sc_assets
+#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools
 
 # Delete only the Parquet for Bahia (several equivalent calls)
 clear_cache_tracts("BA")
-#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools/sc_assets
+#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools
 clear_cache_tracts(29)
-#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools/sc_assets
+#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools
 clear_cache_tracts(2919207)  # municipality code → state resolved automatically
-#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools/sc_assets
+#> ℹ Cache directory does not exist: /home/runner/.cache/R/cnefetools
 # }
 ```

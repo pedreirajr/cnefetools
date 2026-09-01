@@ -2,6 +2,274 @@
 
 ## cnefetools (development version)
 
+### Breaking changes
+
+- cnefetools now requires **R (\>= 4.4.0)**, raised from 4.1.0.
+  duckspatial (\>= 1.1.0) calls the null-coalescing operator `%||%`
+  without importing it, so it resolves only against the base R version
+  added in 4.4.0. On older R the failure surfaced from geobr as a
+  misleading “a file must have been corrupted during download” message.
+  Declaring the requirement turns a confusing runtime error into a clear
+  message at install time
+  ([\#78](https://github.com/pedreirajr/cnefetools/issues/78)).
+
+- cnefetools now requires **geobr (\>= 2.0.0)**. The data server behind
+  geobr 1.x no longer responds:
+  [`read_municipality()`](https://rdrr.io/pkg/geobr/man/read_municipality.html)
+  on geobr 1.9.1 returns `NULL` for every year tested (2020, 2022 and
+  2024), while geobr 2.0.1 serves them normally. Since the failure is a
+  silent `NULL` rather than an error, leaving the dependency unpinned
+  meant users on geobr 1.x hit an obscure downstream error instead of a
+  clear one
+  ([\#87](https://github.com/pedreirajr/cnefetools/issues/87)). This
+  supersedes the note under
+  [\#74](https://github.com/pedreirajr/cnefetools/issues/74) below,
+  which stated that any geobr version works.
+
+- The H3 grid is now built from the municipality boundary of the **CNEFE
+  data year** instead of a hardcoded 2024 boundary, affecting
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md),
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  and
+  [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
+  in `polygon_type = "hex"` mode. IBGE geocoded the CNEFE records
+  against the territorial base of their own year, and the census tracts
+  of that year nest into the matching municipal mesh, so the grid now
+  shares the reference frame of the data aggregated onto it. In
+  principle the set of border hexagons can differ from previous releases
+  for municipalities whose limits changed between the two bases, though
+  at resolution 9 the grids come out identical for Lauro de Freitas-BA
+  (550 cells) and Fortaleza-CE (2651 cells), the municipalities used in
+  the package articles
+  ([\#81](https://github.com/pedreirajr/cnefetools/issues/81)).
+
+### Breaking changes
+
+- `polygon_type` is deprecated in
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
+  and
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md).
+  The aggregation mode is now inferred from `polygon`: leave it `NULL`
+  for an H3 grid, or pass an `sf` object for user polygons. Existing
+  code that passes `polygon_type` keeps working and emits a deprecation
+  warning. Passing `polygon_type = "user"` with no `polygon` remains an
+  error. The previous behaviour, where supplying a `polygon` printed
+  three alert lines about switching mode automatically, is gone: the
+  inference is now silent
+  ([\#90](https://github.com/pedreirajr/cnefetools/issues/90)).
+
+### New features
+
+- New `cnefetools.duckdb_config` option, a named list of DuckDB settings
+  applied to every connection the package opens. Unset, DuckDB sizes
+  itself against the whole machine, taking one thread per logical core
+  and 80% of installed RAM, and there was no way to hold it back on a
+  shared node, a laptop running other work, or a CI runner:
+
+  ``` r
+
+  options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
+  ```
+
+  Names are passed to DuckDB’s `SET` verbatim, so any setting DuckDB
+  accepts works. Exceeding `memory_limit` makes DuckDB spill to disk
+  rather than fail, so a low value costs time, not correctness
+  ([\#80](https://github.com/pedreirajr/cnefetools/issues/80), R2.8).
+
+- The pure-R backends of
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
+  and
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  now push their
+  [`transmute()`](https://dplyr.tidyverse.org/reference/transmute.html)
+  and [`filter()`](https://dplyr.tidyverse.org/reference/filter.html)
+  calls down to the Arrow table and collect last, instead of calling
+  [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) first.
+  The old order materialised all 34 columns as an R data frame before
+  keeping three of them. Measured on Fortaleza (1.19M rows), peak memory
+  falls from 108.4 MB to 68.3 MB, a 37% reduction, at the cost of about
+  0.2s ([\#88](https://github.com/pedreirajr/cnefetools/issues/88)).
+
+- The download cache now stores a **gzipped CSV** instead of the
+  published ZIP. DuckDB decompresses gzip natively, so the community
+  `zipfs` extension is no longer loaded on the normal read path, which
+  Referee 1 flagged as a stability risk (reported macOS code-signing
+  delays of 4 to 5 seconds per load). Our own measurement, in
+  `data-raw/bench_gz_vs_zip.R`, reproduces the referee’s figures: on
+  Fortaleza a DuckDB read is 2.29x faster from `.csv.gz` than through
+  `zipfs`, at the same size on disk (27.6 MB either way). Raw CSV would
+  be 4.86x faster but needs 6.7x the disk, so it is not a sensible cache
+  format. The conversion is done once, on first download, and is
+  streamed in chunks so peak memory does not scale with the file. Caches
+  written by earlier versions are still readable, through the `zipfs`
+  route loaded on demand
+  ([\#93](https://github.com/pedreirajr/cnefetools/issues/93)).
+
+- The download cache is now segregated by CNEFE edition, at
+  `<cache>/<year>/`. The ZIP names IBGE publishes carry no year, so
+  `2919207_LAURO_DE_FREITAS.zip` from a future census would be
+  indistinguishable from the 2022 one, and a cached 2022 file could be
+  served silently to someone who asked for another edition.
+  [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
+  and
+  [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
+  gain a `year` argument, with `NULL` clearing every edition as before.
+  Caches created by earlier versions are ignored and re-downloaded once
+  ([\#81](https://github.com/pedreirajr/cnefetools/issues/81)).
+
+- Census tract assets now come from release `sc-assets-v3`, which is
+  reproducible from `data-raw/sc_assets_build.R`. The data is unchanged:
+  verified against the previous release across all 27 states, 468,097
+  tracts and 3,144,868 values, with every value matching exactly.
+  `sc-assets-v2` remains published, so earlier versions of the package
+  keep working
+  ([\#80](https://github.com/pedreirajr/cnefetools/issues/80) R1.9).
+
+- New
+  [`cnefe_export()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_export.md)
+  writes a municipality to a persistent, optimised file at a location of
+  your choosing, as Parquet (default), CSV or gzipped CSV. The package
+  cache is transient by design, lives in a directory the package manages
+  and holds the ZIP exactly as IBGE published it, which is the wrong
+  shape for an analysis that must still run in a year
+  ([\#93](https://github.com/pedreirajr/cnefetools/issues/93)).
+
+- [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/dev/reference/read_cnefe.md)
+  gains a `file` argument that reads a CNEFE file already on disk,
+  skipping the download entirely. It accepts `.zip` as published by
+  IBGE, `.csv`, `.csv.gz` and `.parquet`, so data obtained by any means
+  can be read without the IBGE server being reachable. `code_muni` and
+  `file` are mutually exclusive, and both paths share the same output
+  code, so they return the same object for the same data
+  ([\#93](https://github.com/pedreirajr/cnefetools/issues/93)).
+
+- Downloads now recover from an upstream layout change. If the URL held
+  in the internal index returns 404, the package scans the published
+  IBGE directory listing to reconstruct the correct URL and retries
+  once. The scan reads directory pages, never data files: recovering any
+  municipality costs roughly 170 KB. It handles both a renamed file and
+  a renamed UF directory, and it does not mutate the internal index, so
+  a successful scan repairs one call rather than changing package state.
+  If the scan finds nothing, the error says so and points at the issue
+  tracker ([\#92](https://github.com/pedreirajr/cnefetools/issues/92)).
+
+- Downloads now run a pre-flight availability check that tells two
+  failures apart. If the IBGE server cannot be reached, the message
+  points at connectivity. If the server answers but the file is missing
+  (HTTP 404), the message explains that the upstream directory layout
+  has most likely changed, which is a package problem rather than a user
+  problem, and points at the issue tracker. The check also aborts before
+  the retry ladder, which previously spent 300, 600 and 1800 seconds on
+  a URL that could never resolve
+  ([\#91](https://github.com/pedreirajr/cnefetools/issues/91)).
+
+- All functions that download or read cached data gain a `cache_dir`
+  argument:
+  [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/dev/reference/read_cnefe.md),
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md),
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md),
+  [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md),
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md),
+  [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
+  and
+  [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md).
+  The cache location resolves from the argument first, then the
+  `CNEFETOOLS_CACHE_DIR` environment variable, then
+  `tools::R_user_dir("cnefetools", "cache")` as before. CNEFE ZIPs reach
+  901 MB uncompressed, and the location was previously fixed to the
+  user’s primary partition
+  ([\#89](https://github.com/pedreirajr/cnefetools/issues/89)).
+
+### Bug fixes
+
+- [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
+  works again. Since the cache moved to gzipped CSV it had been matching
+  `.zip` only, so it silently deleted nothing: it reported “No cached
+  CNEFE ZIP files found” with a full cache and returned an empty vector,
+  leaving users no working way to clear downloads. It now matches both
+  the current `.csv.gz` entries and the `.zip` archives left by versions
+  before 0.3.0, and leaves census tract Parquet files to
+  [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md),
+  which was never affected. The existing tests missed this because their
+  fixtures seeded the one format that still worked
+  ([\#93](https://github.com/pedreirajr/cnefetools/issues/93)).
+
+- DuckDB connections are no longer leaked when something fails between
+  connecting and the first query.
+  [`on.exit()`](https://rdrr.io/r/base/on.exit.html) was registered only
+  after the whole connect-and-load block had run, so a failed extension
+  install, a SQL error or a user interrupt left the connection and its
+  file handles behind. Cleanup is now registered through
+  [`withr::defer()`](https://withr.r-lib.org/reference/defer.html)
+  immediately after `dbConnect()` returns, guarded by
+  [`DBI::dbIsValid()`](https://dbi.r-dbi.org/reference/dbIsValid.html)
+  so a connection that died earlier cannot raise a second error during
+  cleanup ([\#84](https://github.com/pedreirajr/cnefetools/issues/84)).
+
+- DuckDB error messages are no longer swallowed. The old pattern wrapped
+  the queries in a nested
+  [`utils::capture.output()`](https://rdrr.io/r/utils/capture.output.html)
+  that captured both output and message streams, which also absorbed the
+  text of genuine errors and left users with a failure they could not
+  diagnose. The replacement muffles messages only, so errors propagate
+  with their message intact
+  ([\#57](https://github.com/pedreirajr/cnefetools/issues/57)).
+
+- [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md),
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  now give a clear error when `polygon` has zero features. An empty `sf`
+  object previously survived validation and failed much later with an
+  unrelated message, because
+  [`st_union()`](https://r-spatial.github.io/sf/reference/geos_combine.html)
+  on zero rows yields an empty geometry,
+  [`st_centroid()`](https://r-spatial.github.io/sf/reference/geos_unary.html)
+  of that yields an empty point, and
+  [`st_coordinates()`](https://r-spatial.github.io/sf/reference/st_coordinates.html)
+  returns no rows
+  ([\#71](https://github.com/pedreirajr/cnefetools/issues/71)).
+
+- [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  no longer returns `NULL` when no hexagon survives filtering. Both
+  backends now return a zero-row `sf` carrying the documented columns,
+  so downstream code can pipe the result without a `NULL` check
+  ([\#85](https://github.com/pedreirajr/cnefetools/issues/85)).
+
+- `read_cnefe(output = "sf")` now reports, under `verbose`, how many
+  rows were dropped for missing coordinates. They were previously
+  discarded silently, which hid data quality problems
+  ([\#85](https://github.com/pedreirajr/cnefetools/issues/85)).
+
+- [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  now excludes `COD_ESPECIE == 7` (buildings under construction or
+  renovation) in **all** code paths. The DuckDB backend for
+  user-supplied polygons was missing that filter, so every index it
+  returned (`p_res`, `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`) was
+  computed over a denominator that still contained type 7, contradicting
+  both the documented behaviour and the other three code paths. Since
+  `backend = "duckdb"` is the default, this affected most users of
+  `polygon_type = "user"`. On Lauro de Freitas-BA, where type 7 is 3.7%
+  of addresses, the error reached 0.13 in `p_res` and 0.32 in `bgbi`.
+  The two backends now agree exactly
+  ([\#96](https://github.com/pedreirajr/cnefetools/issues/96)).
+
+- [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  no longer fail with `GitHub API error (401): Bad credentials` when an
+  expired or invalid GitHub token is present in the environment. The
+  census tract assets live in public GitHub releases and need no
+  credential, but `gh` sends whatever token it finds in `GITHUB_PAT`,
+  `GITHUB_TOKEN`, `GH_TOKEN` or the git credential store, and GitHub
+  then rejects the request instead of serving it anonymously. The
+  download now retries once without a token after an authentication
+  failure. A valid token is still tried first, so authenticated rate
+  limits are preserved, and if the anonymous retry also fails the error
+  names the broken credential as a likely cause and points at
+  [`gitcreds::gitcreds_delete()`](https://gitcreds.r-lib.org/reference/gitcreds_get.html)
+  ([\#79](https://github.com/pedreirajr/cnefetools/issues/79)).
+
 - [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md),
   [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md),
   and
@@ -16,9 +284,10 @@
   lazily through duckspatial, which under a fixed RNG seed (e.g. R CMD
   check examples) could trigger a DuckDB temporary-table name collision
   (`Table dbplyr_<...> already exists`). The RNG state is now isolated
-  around the geobr call in the H3-grid path, so the dependency is no
-  longer pinned and any geobr version works
-  ([\#74](https://github.com/pedreirajr/cnefetools/issues/74)).
+  around the geobr call in the H3-grid path
+  ([\#74](https://github.com/pedreirajr/cnefetools/issues/74)). Note
+  that geobr is nonetheless pinned to (\>= 2.0.0), for the unrelated
+  reason given above.
 
 ## cnefetools 0.2.5
 
@@ -57,10 +326,9 @@ CRAN release: 2026-03-06
   [`h3jsr::polygon_to_cells()`](https://obrl-soil.github.io/h3jsr/reference/polygon_to_cells.html)
   only returns hexagons whose centroid falls inside the municipality
   boundary, so border hexagons that overlap the boundary without their
-  center being inside were silently excluded.
-  [`build_h3_grid()`](https://pedreirajr.github.io/cnefetools/dev/reference/build_h3_grid.md)
-  now adds those hexagons by checking the immediate neighbors of the
-  grid against the municipality boundary
+  center being inside were silently excluded. `build_h3_grid()` now adds
+  those hexagons by checking the immediate neighbors of the grid against
+  the municipality boundary
   ([\#62](https://github.com/pedreirajr/cnefetools/issues/62)).
 
 - [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)

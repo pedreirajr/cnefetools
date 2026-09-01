@@ -41,7 +41,7 @@ user cache directory by tracts_to_h3() and tracts_to_polygon()."><meta property=
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Delete cached census tract Parquet files</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v3/R/clear_cache.R" class="external-link"><code>R/clear_cache.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/R/clear_cache.R" class="external-link"><code>R/clear_cache.R</code></a></small>
       <div class="d-none name"><code>clear_cache_tracts.Rd</code></div>
     </div>
 
@@ -52,7 +52,7 @@ user cache directory by <code><a href="tracts_to_h3.html">tracts_to_h3()</a></co
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">clear_cache_tracts</span><span class="op">(</span>uf <span class="op">=</span> <span class="st">"all"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">clear_cache_tracts</span><span class="op">(</span>uf <span class="op">=</span> <span class="st">"all"</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, cache_dir <span class="op">=</span> <span class="cn">NULL</span>, year <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -70,6 +70,18 @@ deleted. Otherwise, only the file for the resolved state is deleted.</p></dd>
 <dd><p>Logical; if <code>TRUE</code> (default), reports the number of files
 deleted and the space freed.</p></dd>
 
+
+<dt id="arg-cache-dir">cache_dir<a class="anchor" aria-label="anchor" href="#arg-cache-dir"></a></dt>
+<dd><p>Character. Directory to use for cached downloads. If <code>NULL</code>
+(default), the <code>CNEFETOOLS_CACHE_DIR</code> environment variable is used when it
+is set, otherwise <code><a href="https://rdrr.io/r/tools/userdir.html" class="external-link">tools::R_user_dir()</a></code> with <code>which = "cache"</code>. Use this to
+point large downloads at a secondary drive or a shared volume.</p></dd>
+
+
+<dt id="arg-year">year<a class="anchor" aria-label="anchor" href="#arg-year"></a></dt>
+<dd><p>Integer. Restrict the deletion to one CNEFE edition. <code>NULL</code>
+(default) clears every edition, which is the previous behaviour.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -81,15 +93,15 @@ deleted and the space freed.</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># Delete all cached census tract Parquets</span></span></span>
 <span class="r-in"><span><span class="fu">clear_cache_tracts</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools/sc_assets</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Delete only the Parquet for Bahia (several equivalent calls)</span></span></span>
 <span class="r-in"><span><span class="fu">clear_cache_tracts</span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools/sc_assets</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools</span></span>
 <span class="r-in"><span><span class="fu">clear_cache_tracts</span><span class="op">(</span><span class="fl">29</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools/sc_assets</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools</span></span>
 <span class="r-in"><span><span class="fu">clear_cache_tracts</span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>  <span class="co"># municipality code → state resolved automatically</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools/sc_assets</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Cache directory does not exist: <span style="color: #0000BB;">/home/runner/.cache/R/cnefetools</span></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

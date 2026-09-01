@@ -93,22 +93,32 @@ poa_hex_counts <- cnefe_counts(
   polygon_type = "hex",
   h3_resolution = 8
 )
+#> Warning: The `polygon_type` argument of `cnefe_counts()` is deprecated as of cnefetools
+#> 0.3.0.
+#> The aggregation mode is now inferred from `polygon`.
+#> ℹ Pass an <sf> object to `polygon` for user polygons, or leave it `NULL` for an
+#>   H3 grid.
+#> ℹ The deprecated feature was likely used in the cnefetools package.
+#>   Please report the issue at <https://github.com/pedreirajr/cnefetools/issues>.
+#> This warning is displayed once per session.
+#> Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+#> generated.
 #> 
-ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+ℹ Step 1/3: Ensuring the CNEFE data file...
 
-                                                   
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+                                            
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
+#> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE ZIP ready) [225ms]              
+✔ Step 1/3 (CNEFE data ready) [208ms]      
 #> 
 ℹ Step 2/3: Building full H3 grid over municipality boundary...
 
-✔ Step 2/3 (H3 grid built) [5s]                                
+✔ Step 2/3 (H3 grid built) [3.8s]                              
 #> 
 ℹ Step 3/3: Counting address species per hexagon...
 
-✔ Step 3/3 (Addresses counted) [1.8s]              
+✔ Step 3/3 (Addresses counted) [1.7s]              
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -199,66 +209,39 @@ poa_neigh_counts <- cnefe_counts(
 ℹ Step 1/2: Ensuring data and preparing polygon...
 
                                                    
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/4314902_PORTO_ALEGRE.zip
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-✔ Step 1/2 (Data and polygon ready) [284ms]       
+✔ Step 1/2 (Data and polygon ready) [275ms]       
 #> 
 ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
 #> 
-✔ Step 2/2 (Addresses counted) [3.3s]        
+✔ Step 2/2 (Addresses counted) [3.5s]        
 
 head(poa_neigh_counts)
-#> Simple feature collection with 6 features and 26 fields
+#> Simple feature collection with 6 features and 22 fields
 #> Geometry type: MULTIPOLYGON
 #> Dimension:     XY
-#> Bounding box:  xmin: -51.30325 ymin: -30.17167 xmax: -51.10924 ymax: -29.9323
+#> Bounding box:  xmin: -51.24266 ymin: -30.07413 xmax: -51.19591 ymax: -30.03231
 #> Geodetic CRS:  SIRGAS 2000
-#>   code_muni    name_muni name_neighborhood code_neighborhood code_subdistrict
-#> 1   4314902 Porto Alegre Aberta dos Morros        4314902080      43149020500
-#> 2   4314902 Porto Alegre         Agronomia        4314902035      43149020500
-#> 3   4314902 Porto Alegre          Anchieta        4314902055      43149020500
-#> 4   4314902 Porto Alegre       Arquipélago        4314902033      43149020500
-#> 5   4314902 Porto Alegre       Auxiliadora        4314902045      43149020500
-#> 6   4314902 Porto Alegre            Azenha        4314902008      43149020500
-#>   name_subdistrict code_district name_district code_urban_concentration
-#> 1             <NA>     431490205  Porto Alegre                  4314902
-#> 2             <NA>     431490205  Porto Alegre                  4314902
-#> 3             <NA>     431490205  Porto Alegre                  4314902
-#> 4             <NA>     431490205  Porto Alegre                  4314902
-#> 5             <NA>     431490205  Porto Alegre                  4314902
-#> 6             <NA>     431490205  Porto Alegre                  4314902
-#>   name_urban_concentration code_immediate name_immediate code_intermediate
-#> 1          Porto Alegre/RS         430001   Porto Alegre              4301
-#> 2          Porto Alegre/RS         430001   Porto Alegre              4301
-#> 3          Porto Alegre/RS         430001   Porto Alegre              4301
-#> 4          Porto Alegre/RS         430001   Porto Alegre              4301
-#> 5          Porto Alegre/RS         430001   Porto Alegre              4301
-#> 6          Porto Alegre/RS         430001   Porto Alegre              4301
-#>   name_intermediate code_state        name_state code_region name_region
-#> 1      Porto Alegre         43 Rio Grande do Sul           4         Sul
-#> 2      Porto Alegre         43 Rio Grande do Sul           4         Sul
-#> 3      Porto Alegre         43 Rio Grande do Sul           4         Sul
-#> 4      Porto Alegre         43 Rio Grande do Sul           4         Sul
-#> 5      Porto Alegre         43 Rio Grande do Sul           4         Sul
-#> 6      Porto Alegre         43 Rio Grande do Sul           4         Sul
-#>   addr_type1 addr_type2 addr_type3 addr_type4 addr_type5 addr_type6 addr_type7
-#> 1       4249          1          1          8          2        235        147
-#> 2       1219          3          1         11          1        113         22
-#> 3        294          1          0          3          1        446         16
-#> 4       2851          1          1         12          2        286         62
-#> 5       5464          3          0          9         45        576         57
-#> 6       8150         10          0         17         31       1236         39
-#>   addr_type8                           geom
-#> 1         15 MULTIPOLYGON (((-51.20221 -...
-#> 2          5 MULTIPOLYGON (((-51.15367 -...
-#> 3          1 MULTIPOLYGON (((-51.15517 -...
-#> 4         28 MULTIPOLYGON (((-51.26181 -...
-#> 5          1 MULTIPOLYGON (((-51.1865 -3...
-#> 6          5 MULTIPOLYGON (((-51.21153 -...
+#> # A tibble: 6 × 23
+#>   code_muni name_muni    code_neighborhood name_neighborhood code_district
+#>       <dbl> <chr>                    <dbl> <chr>                     <dbl>
+#> 1   4314902 Porto Alegre        4314902001 Medianeira            431490205
+#> 2   4314902 Porto Alegre        4314902002 Praia de Belas        431490205
+#> 3   4314902 Porto Alegre        4314902003 Cidade Baixa          431490205
+#> 4   4314902 Porto Alegre        4314902004 Menino-Deus           431490205
+#> 5   4314902 Porto Alegre        4314902005 Farroupilha           431490205
+#> 6   4314902 Porto Alegre        4314902006 Santa Cecília         431490205
+#> # ℹ 18 more variables: name_district <chr>, code_subdistrict <dbl>,
+#> #   name_subdistrict <chr>, code_state <dbl>, abbrev_state <chr>,
+#> #   name_state <chr>, code_region <dbl>, name_region <chr>, year <dbl>,
+#> #   geometry <MULTIPOLYGON [°]>, addr_type1 <int>, addr_type2 <int>,
+#> #   addr_type3 <int>, addr_type4 <int>, addr_type5 <int>, addr_type6 <int>,
+#> #   addr_type7 <int>, addr_type8 <int>
 ```
 
 ## Computing ICE by neighborhood

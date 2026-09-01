@@ -167,21 +167,23 @@ spo_lumi <- compute_lumi(
 )
 #> ℹ Processing municipality code 3550308...
 #> 
-ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+ℹ Step 1/3: Ensuring the CNEFE data file...
+Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/35_SP/3550308_SAO_PAULO.zip
+#> 
+ℹ Converting the archive to '.csv.gz' (done once)
 
-                                                   
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
-#> ℹ Step 1/3: Ensuring ZIP and inspecting archive...
+✔ Converting the archive to '.csv.gz' (done once) [35.5s]
+#> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE ZIP ready) [342ms]              
+✔ Step 1/3 (CNEFE data ready) [41.6s]      
 #> 
 ℹ Step 2/3: Counting addresses per H3 cell...
 
-✔ Step 2/3 (Addresses counted) [21.5s]       
+✔ Step 2/3 (Addresses counted) [4.7s]        
 #> 
 ℹ Step 3/3: Building grid and computing LUMI...
 
-✔ Step 3/3 (Land use mix indices computed) [2.2s]
+✔ Step 3/3 (Land use mix indices computed) [1.3s]
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields

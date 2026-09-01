@@ -5,13 +5,29 @@ allocated values are aggregated to user-provided polygons (neighborhoods,
 administrative divisions, custom areas, etc.).
 
 
-The function uses DuckDB with spatial extensions for the heavy work."><meta property="og:description" content="tracts_to_polygon() performs a dasymetric interpolation with the following steps:
+The function uses DuckDB with spatial extensions for the heavy work.
+Unlike cnefe_counts() and compute_lumi(), this function does not expose a
+backend argument and relies on DuckDB exclusively. The dominant cost here is
+a spatial overlay between the full CNEFE point set of the municipality and the
+census tract polygons, which is a different workload from the tabular
+aggregation those other functions perform. Running that overlay in R would
+take prohibitively long in medium and large municipalities, so a pure-R
+fallback would offer users a path that does not finish rather than a slower
+one."><meta property="og:description" content="tracts_to_polygon() performs a dasymetric interpolation with the following steps:
 census tract totals are allocated to CNEFE dwelling points inside each tract;
 allocated values are aggregated to user-provided polygons (neighborhoods,
 administrative divisions, custom areas, etc.).
 
 
-The function uses DuckDB with spatial extensions for the heavy work."><meta property="og:image" content="https://pedreirajr.github.io/cnefetools/logo.svg"><meta name="robots" content="noindex"></head><body>
+The function uses DuckDB with spatial extensions for the heavy work.
+Unlike cnefe_counts() and compute_lumi(), this function does not expose a
+backend argument and relies on DuckDB exclusively. The dominant cost here is
+a spatial overlay between the full CNEFE point set of the municipality and the
+census tract polygons, which is a different workload from the tabular
+aggregation those other functions perform. Running that overlay in R would
+take prohibitively long in medium and large municipalities, so a pure-R
+fallback would offer users a path that does not finish rather than a slower
+one."><meta property="og:image" content="https://pedreirajr.github.io/cnefetools/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -51,7 +67,7 @@ The function uses DuckDB with spatial extensions for the heavy work."><meta prop
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Convert census tract aggregates to user-provided polygons using CNEFE points</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v3/R/tracts_to_polygon.R" class="external-link"><code>R/tracts_to_polygon.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/R/tracts_to_polygon.R" class="external-link"><code>R/tracts_to_polygon.R</code></a></small>
       <div class="d-none name"><code>tracts_to_polygon.Rd</code></div>
     </div>
 
@@ -60,6 +76,14 @@ The function uses DuckDB with spatial extensions for the heavy work."><meta prop
 <li><p>allocated values are aggregated to user-provided polygons (neighborhoods,
 administrative divisions, custom areas, etc.).</p></li>
 </ol><p>The function uses DuckDB with spatial extensions for the heavy work.</p>
+<p>Unlike <code><a href="cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="compute_lumi.html">compute_lumi()</a></code>, this function does not expose a
+<code>backend</code> argument and relies on DuckDB exclusively. The dominant cost here is
+a spatial overlay between the full CNEFE point set of the municipality and the
+census tract polygons, which is a different workload from the tabular
+aggregation those other functions perform. Running that overlay in R would
+take prohibitively long in medium and large municipalities, so a pure-R
+fallback would offer users a path that does not finish rather than a slower
+one.</p>
     </div>
 
     <div class="section level2">
@@ -71,6 +95,7 @@ administrative divisions, custom areas, etc.).</p></li>
 <span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pop_ph"</span>, <span class="st">"pop_ch"</span><span class="op">)</span>,</span>
 <span>  crs_output <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cache <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  cache_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -129,6 +154,13 @@ the original CRS of the <code>polygon</code> argument. Can be an EPSG code (e.g.
 <dd><p>Logical. Whether to use the existing package cache for assets and CNEFE zips.</p></dd>
 
 
+<dt id="arg-cache-dir">cache_dir<a class="anchor" aria-label="anchor" href="#arg-cache-dir"></a></dt>
+<dd><p>Character. Directory to use for cached downloads. If <code>NULL</code>
+(default), the <code>CNEFETOOLS_CACHE_DIR</code> environment variable is used when it
+is set, otherwise <code><a href="https://rdrr.io/r/tools/userdir.html" class="external-link">tools::R_user_dir()</a></code> with <code>which = "cache"</code>. Use this to
+point large downloads at a secondary drive or a shared volume.</p></dd>
+
+
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical. Whether to print step messages and timing.</p></dd>
 
@@ -161,39 +193,33 @@ interpolated variables. The output CRS matches the original <code>polygon</code>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/6: aligning CRS...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Input CRS: <span style="color: #0000BB;">"EPSG:4674"</span> | Output CRS: <span style="color: #0000BB;">"EPSG:4674"</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/6: aligning CRS...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/6 (CRS alignment) <span style="color: #B2B2B2;">[36ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/6 (CRS alignment) <span style="color: #B2B2B2;">[38ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/6: connecting to DuckDB and loading extensions...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> duckdb keeps downloaded extensions and secrets in a temporary directory:</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> /tmp/Rtmpw69KUK/duckdb</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> This is removed when the R session ends.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> Secrets are lost.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> Run duckdb(shared_home = TRUE) (or create ~/.duckdb) to keep them (suitable for most users).</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> Run duckdb(shared_home = FALSE) to accept the temporary directory (and silence this message).</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> See ?duckdb_storage for details and alternatives.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> spatial extension loaded</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/6: connecting to DuckDB and loading extensions...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/6 (DuckDB ready) <span style="color: #B2B2B2;">[272ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/6 (DuckDB ready) <span style="color: #B2B2B2;">[249ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/6: preparing census tracts in DuckDB...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Downloading <span style="color: #0000BB;">sc_29.parquet</span> from GitHub release</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> All local files already up-to-date!</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Downloading <span style="color: #0000BB;">sc_29.parquet</span> from GitHub release</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Downloading <span style="color: #0000BB;">sc_29.parquet</span> from GitHub release <span style="color: #B2B2B2;">[36ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Downloading <span style="color: #0000BB;">sc_29.parquet</span> from GitHub release <span style="color: #B2B2B2;">[38ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/6: preparing census tracts in DuckDB...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/6 (Tracts ready) <span style="color: #B2B2B2;">[231ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/6 (Tracts ready) <span style="color: #B2B2B2;">[227ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 4/6: preparing CNEFE points in DuckDB...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 4/6 (CNEFE points ready) <span style="color: #B2B2B2;">[3.4s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[514ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 4/6: preparing CNEFE points in DuckDB...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 4/6 (CNEFE points ready) <span style="color: #B2B2B2;">[4s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 5/6: spatial join (points to tracts) and allocation...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 5/6 (Join and allocation) <span style="color: #B2B2B2;">[1s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 6/6: aggregating allocated values to polygons...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 6/6 (Polygon aggregation) <span style="color: #B2B2B2;">[25ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 6/6 (Polygon aggregation) <span style="color: #B2B2B2;">[26ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> ── <span style="font-weight: bold;">Dasymetric interpolation diagnostics</span> ──</span>
@@ -206,7 +232,7 @@ interpolated variables. The output CRS matches the original <code>polygon</code>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Unmatched CNEFE points (no tract): <span style="font-weight: bold;">186</span> of <span style="font-weight: bold;">95739</span> points (<span style="font-weight: bold;">0.19%</span> of total</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   points)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> Tracts with <span style="font-weight: bold;">NA</span> totals: <span style="color: #00BB00;">pop_ph</span> in <span style="font-weight: bold;">4</span> of <span style="font-weight: bold;">354</span> tracts (<span style="font-weight: bold;">1.13%</span> of total tracts);</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   <span style="color: #00BB00;">pop_ch</span> in <span style="font-weight: bold;">6</span> of <span style="font-weight: bold;">354</span> tracts (<span style="font-weight: bold;">1.69%</span> of total tracts).</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   <span style="color: #00BB00;">pop_ch</span> in <span style="font-weight: bold;">6</span> of <span style="font-weight: bold;">354</span> tracts (<span style="font-weight: bold;">1.69%</span> of total tracts)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> ── Stage 2: CNEFE points → Polygons </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Polygon coverage: <span style="font-weight: bold;">95492</span> of <span style="font-weight: bold;">95553</span> allocated points captured (<span style="font-weight: bold;">99.94%</span>)</span>
