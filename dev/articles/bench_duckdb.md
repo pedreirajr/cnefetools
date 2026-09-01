@@ -20,46 +20,30 @@ Two DuckDB extensions do the work:
 - [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
   performs point-in-polygon joins in SQL. This is what the
   `tracts_to_*()` functions and the user-polygon mode rely on. It is not
-  used by the H3 mode benchmarked in the first two sections below.
+  used by the H3 mode benchmarked here.
 
 The cached file itself is a gzipped CSV, which DuckDB decompresses
 natively, so no extension is involved in reading it.
 
-This article reports four things:
-
-1.  how
-    [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
-    scales with municipality size, in both elapsed time and peak memory,
-    comparing backends;
-2.  how it scales with H3 resolution, comparing backends;
-3.  the elapsed time and peak memory of every heavy function in the
-    package, not just
-    [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md);
-4.  what happens when DuckDB is held to a small resource budget,
-    standing in for a more modest machine.
-
-Memory turns out to separate the backends far more sharply than time
-does, and in the direction opposite to the one most people expect, so it
-is worth not skipping that section.
+This article compares the two backends along two dimensions, using
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md):
+municipality size, measured in both elapsed time and peak memory, and H3
+output resolution.
 
 ## How these numbers were produced
 
-Benchmarking on a laptop is harder than it looks, and it is worth being
-explicit about the method, because a naive measurement here is actively
-misleading.
-
 Running the same call on the same warm input repeatedly, we measured
-elapsed times from 1.63 s to 3.77 s **within a single session**, with
-the slow runs at the end rather than the beginning. A fresh session
+elapsed times from 1.63 s to 3.77 s within a single session, with the
+slow runs at the end rather than the beginning, and a fresh session
 minutes later ran uniformly slower than the first session’s early runs.
-That pattern is CPU thermal and frequency drift: it is not cold page
-cache, which would make the *first* runs slow, and it is not thread
-scheduling, since pinning CPU affinity barely changed anything.
+That points to CPU thermal and frequency drift rather than to a cold
+page cache, which would have made the first runs slow instead of the
+last, or to thread scheduling, since pinning CPU affinity barely changed
+anything.
 
-The consequence matters. If you time every DuckDB case and then every
-pure-R case, that drift lands entirely on one backend and is
-indistinguishable from the effect you are trying to measure. So the
-measurements here:
+If you time every DuckDB case and then every pure-R case, all of that
+drift lands on one backend, where you can’t tell it apart from the
+effect you’re trying to measure. So the measurements here:
 
 - discard a warm-up run per configuration, so the OS page cache is hot
   and the one-off extension load is already paid;
@@ -75,11 +59,11 @@ measurements here:
 
 Peak memory is the operating system’s peak working set for the whole
 process, via
-[`ps::ps_memory_info()`](https://ps.r-lib.org/reference/ps_memory_info.html).
-This matters: R-level allocation tracking, such as `bench::mark()`’s
-`mem_alloc`, counts only the R heap, and DuckDB allocates in C++ outside
-it. Reporting R-level allocation for a DuckDB workload would understate
-it substantially.
+[`ps::ps_memory_info()`](https://ps.r-lib.org/reference/ps_memory_info.html),
+and not R-level allocation tracking such as `bench::mark()`’s
+`mem_alloc`. R-level tracking only counts the R heap, and DuckDB
+allocates in C++ outside it, so it would understate DuckDB by a wide
+margin.
 
 The raw per-replicate measurements, including the machine-load columns,
 are in `data-raw/bench_r2_8.csv` in the package repository, and the
@@ -183,9 +167,8 @@ bench_plot_time(
 
 ### Memory
 
-Elapsed time is the visible cost. Memory is the one that decides whether
-the call finishes at all, and the gap between the backends is much wider
-here than in the timings.
+The gap between the backends is much wider in memory than in time, and
+it runs in the direction most readers don’t expect.
 
 ``` r
 
@@ -198,16 +181,26 @@ bench_plot_memory(
 ![](bench_duckdb_files/figure-html/plot-memory-cities-1.png)
 
 The pure-R backend holds the filtered address table in R memory, so its
-footprint scales with the number of addresses. DuckDB streams the CSV
-and aggregates as it goes, so it never materialises the full table and
-its footprint stays roughly flat. On the largest municipality this is
-the difference between a workstation-sized requirement and something
-that fits comfortably on any current laptop.
+footprint grows with the number of addresses, while DuckDB streams the
+CSV and aggregates as it goes, never materialising the full table, so
+its footprint stays roughly flat. On São Paulo the two are more than an
+order of magnitude apart.
 
-This has a practical consequence that is easy to get backwards. The
-pure-R backend exists for environments where DuckDB extensions cannot be
-installed. It is **not** the lightweight option, and it is the wrong
-choice on a machine that is short of RAM.
+So `backend = "r"` is not the lightweight option, even though that’s the
+obvious way to read it. It’s there for environments where DuckDB
+extensions can’t be installed, and on a machine that’s short of RAM it’s
+the expensive choice. What holds DuckDB itself back is the
+`cnefetools.duckdb_config` option, which sets its thread count and
+memory budget:
+
+``` r
+
+options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
+```
+
+Left alone, DuckDB sets `memory_limit` to 80% of installed RAM, so it
+already asks for less on a smaller machine, and a query that goes over
+the limit spills to a temporary directory instead of failing.
 
 ## Contrasting three spatial resolutions
 
@@ -254,161 +247,6 @@ bench_plot_time(
 > Because DuckDB still pays its fixed startup cost while the actual
 > computation gets lighter per cell, its relative advantage shrinks as
 > resolution rises.
-
-## The other heavy functions
-
-[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
-is not the only expensive function in the package, and the three others
-do not share its cost profile.
-
-[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
-is deliberately close to it. Both read the same gzipped CSV through the
-same DuckDB scan, assign H3 cells with the same `h3_latlng_to_cell()`
-call, and aggregate with the same `GROUP BY`.
-[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
-then aggregates to two columns instead of eight, so it actually skips a
-pivot, and adds the land-use mix arithmetic. That arithmetic runs once
-per **hexagon**, not once per **address**, which is three to four orders
-of magnitude fewer operations. The expectation is that the two track
-each other closely, and the measurement below is there to check that
-rather than assert it.
-
-The `tracts_to_*()` functions are a genuinely different workload. They
-add a point-in-polygon overlay of the full CNEFE point set against
-census tract polygons, plus a Parquet download of the tract attributes.
-They are DuckDB-only and expose no `backend` argument: running that
-overlay in R would give users a path that does not finish rather than a
-slower one.
-
-``` r
-
-lumi_cmp <- bench_med |>
-  filter(block %in% c("cities", "lumi")) |>
-  mutate(
-    city_lbl = bench_city(muni, short = TRUE),
-    backend_lbl = bench_backend(backend)
-  )
-
-ggplot(lumi_cmp, aes(x = city_lbl, y = seconds, fill = fn)) +
-  geom_col(width = 0.65, position = position_dodge(width = 0.7)) +
-  geom_errorbar(
-    aes(ymin = lo, ymax = hi), width = 0.12,
-    position = position_dodge(width = 0.7), linewidth = 0.4, colour = "grey25"
-  ) +
-  facet_wrap(~backend_lbl, scales = "free_y") +
-  scale_fill_manual(values = c("cnefe_counts" = "#2C3E50",
-                               "compute_lumi" = "#18A999")) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
-  labs(
-    title = "cnefe_counts() vs compute_lumi()",
-    subtitle = "H3 resolution 8, median of replicates, bars show min-max",
-    x = NULL, y = "Elapsed time (seconds)", fill = NULL
-  ) +
-  bench_theme() +
-  theme(legend.position = "top")
-```
-
-![](bench_duckdb_files/figure-html/plot-lumi-1.png)
-
-Elapsed time and peak memory for every heavy function, with the DuckDB
-backend where there is a choice:
-
-``` r
-
-bench_med |>
-  filter(block %in% c("cities", "lumi", "tracts"), backend != "r" | is.na(backend)) |>
-  mutate(muni = bench_city(muni)) |>
-  arrange(muni, fn) |>
-  transmute(
-    Function = paste0(fn, "()"),
-    Municipality = muni,
-    Addresses = n_addresses,
-    `Median (s)` = round(seconds, 2),
-    `Range (s)` = sprintf("%.2f - %.2f", lo, hi),
-    `Peak memory (MB)` = round(peak_mb)
-  ) |>
-  kbl() |>
-  kable_styling() |>
-  collapse_rows(columns = 2:3, valign = "top")
-```
-
-| Function | Municipality | Addresses | Median (s) | Range (s) | Peak memory (MB) |
-|:---|:---|:---|---:|:---|---:|
-| cnefe_counts() | Vitória da Conquista-BA | ~200k | 5.55 | 4.73 - 5.83 | 464 |
-| compute_lumi() |  |  | 6.64 | 6.34 - 7.28 | 391 |
-| tracts_to_h3() |  |  | 11.45 | 10.45 - 13.05 | 687 |
-| tracts_to_polygon() |  |  | 7.05 | 6.88 - 8.48 | 820 |
-| cnefe_counts() | Curitiba-PR | ~900k | 5.56 | 5.08 - 6.16 | 442 |
-| compute_lumi() |  |  | 5.09 | 4.22 - 5.89 | 357 |
-| tracts_to_h3() |  |  | 8.56 | 7.65 - 10.08 | 626 |
-| tracts_to_polygon() |  |  | 5.17 | 4.99 - 6.33 | 1139 |
-| cnefe_counts() | São Paulo-SP | ~5.7M | 8.33 | 7.23 - 8.75 | 693 |
-| compute_lumi() |  |  | 7.48 | 6.65 - 8.04 | 574 |
-| tracts_to_h3() |  |  | 20.69 | 17.97 - 21.76 | 1946 |
-| tracts_to_polygon() |  |  | 20.35 | 16.28 - 20.82 | 4418 |
-
-Peak memory is the whole R process, not an increment, so it includes the
-roughly 60 MB a bare R session occupies before any of this runs. That is
-the number to compare against the RAM in a machine.
-
-## Running on a smaller machine
-
-The figures above come from a well-equipped laptop. The question a
-reader actually has is whether the package runs on theirs.
-
-Two things answer it. The first is the peak memory column above: it is
-measured, and it is the requirement.
-
-The second is that DuckDB adapts. Left alone it sets `memory_limit` to
-80% of installed RAM, so it asks for less on a smaller machine, and when
-a query exceeds that limit it spills to a temporary directory rather
-than failing. A small machine is slower, not blocked.
-
-You can also hold it back explicitly, which is what the constrained
-measurements below do:
-
-``` r
-
-options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
-```
-
-``` r
-
-bench_med |>
-  filter(
-    muni == "Sao Paulo-SP",
-    fn %in% c("cnefe_counts", "tracts_to_h3"),
-    backend %in% "duckdb" | is.na(backend)
-  ) |>
-  transmute(
-    Function = paste0(fn, "()"),
-    Profile = ifelse(constrained, "4 threads, 4 GB", "full machine"),
-    `Median (s)` = round(seconds, 2),
-    `Peak memory (MB)` = round(peak_mb)
-  ) |>
-  arrange(Function, desc(Profile)) |>
-  kbl(caption = "Sao Paulo-SP, the largest municipality in the dataset") |>
-  kable_styling()
-```
-
-| Function       | Profile         | Median (s) | Peak memory (MB) |
-|:---------------|:----------------|-----------:|-----------------:|
-| cnefe_counts() | full machine    |       8.33 |              693 |
-| cnefe_counts() | 4 threads, 4 GB |       9.37 |              455 |
-| tracts_to_h3() | full machine    |      20.69 |             1946 |
-| tracts_to_h3() | 4 threads, 4 GB |      27.85 |             1798 |
-
-Sao Paulo-SP, the largest municipality in the dataset {.table .table
-style="margin-left: auto; margin-right: auto;"}
-
-> **What this does and does not show.** Constraining threads and
-> DuckDB’s memory budget reproduces the *resource envelope* of a modest
-> machine, not a modest machine. The storage, the RAM speed, the CPU
-> generation and the operating system are all still the ones listed
-> above. A genuinely older laptop would do worse than these figures,
-> particularly on the initial read, which is I/O-bound. Treat this as
-> evidence that the package works within a small budget, not as a
-> prediction of runtime on specific hardware.
 
 ## Conclusions
 
@@ -461,23 +299,20 @@ bench_med |>
 |             9 |              105332.51 |           2.02 |
 |            11 |                2149.64 |           1.02 |
 
-The DuckDB advantage in **time** is real but conditional. It grows with
-the number of address points, and it shrinks as H3 resolution rises to
-the point of disappearing: at resolution 11 the two backends are within
-a couple of percent of each other, because H3 indexing then dominates
-and both backends delegate it to the same underlying C library. On the
-smallest municipality the two are close enough that the choice does not
-matter, and in one configuration measured here pure R came out
-marginally ahead.
+How much time DuckDB saves depends on the job. It grows with the number
+of address points and shrinks as H3 resolution rises, to the point of
+disappearing at resolution 11, where the two backends come within a
+couple of percent of each other because H3 indexing dominates and both
+hand it to the same underlying C library. On the smallest municipality
+they’re close enough that the choice doesn’t matter much, and in one
+configuration measured here pure R came out marginally ahead.
 
-The DuckDB advantage in **memory** is unconditional, and it is the
-larger of the two. It does not shrink with resolution, and it widens
-with municipality size, because only one of the two backends
-materialises the address table in memory.
+Memory behaves differently. That gap doesn’t shrink with resolution and
+it widens with municipality size, because only one of the two backends
+materialises the address table.
 
 **Recommendation**: use the DuckDB backend, which is the default. The
-pure-R backend exists for environments where DuckDB extensions cannot be
-installed, and choosing it costs far more in memory than it does in
-time. If you are on a memory-constrained machine, set
-`cnefetools.duckdb_config` rather than switching backends: the pure-R
-path is not the lighter one.
+pure-R backend is there for environments where DuckDB extensions can’t
+be installed, and choosing it costs far more in memory than it does in
+time. If you’re short of RAM, set `cnefetools.duckdb_config` instead of
+switching backends.

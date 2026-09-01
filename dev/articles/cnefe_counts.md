@@ -110,15 +110,15 @@ poa_hex_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE data ready) [208ms]      
+✔ Step 1/3 (CNEFE data ready) [261ms]      
 #> 
 ℹ Step 2/3: Building full H3 grid over municipality boundary...
 
-✔ Step 2/3 (H3 grid built) [3.8s]                              
+✔ Step 2/3 (H3 grid built) [4.8s]                              
 #> 
 ℹ Step 3/3: Counting address species per hexagon...
 
-✔ Step 3/3 (Addresses counted) [1.7s]              
+✔ Step 3/3 (Addresses counted) [1.8s]              
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -212,14 +212,14 @@ poa_neigh_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-✔ Step 1/2 (Data and polygon ready) [275ms]       
+✔ Step 1/2 (Data and polygon ready) [338ms]       
 #> 
 ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
 #> 
-✔ Step 2/2 (Addresses counted) [3.5s]        
+✔ Step 2/2 (Addresses counted) [6.7s]        
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 22 fields

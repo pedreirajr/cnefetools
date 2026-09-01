@@ -98,43 +98,28 @@ inside DuckDB. This is what <code><a href="../reference/cnefe_counts.html">cnefe
 <a href="https://duckdb.org/docs/stable/core_extensions/spatial/overview" class="external-link"><strong>spatial</strong></a>:
 performs point-in-polygon joins in SQL. This is what the
 <code>tracts_to_*()</code> functions and the user-polygon mode rely on.
-It is not used by the H3 mode benchmarked in the first two sections
-below.</li>
+It is not used by the H3 mode benchmarked here.</li>
 </ul>
 <p>The cached file itself is a gzipped CSV, which DuckDB decompresses
 natively, so no extension is involved in reading it.</p>
-<p>This article reports four things:</p>
-<ol style="list-style-type: decimal">
-<li>how <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> scales with municipality size, in
-both elapsed time and peak memory, comparing backends;</li>
-<li>how it scales with H3 resolution, comparing backends;</li>
-<li>the elapsed time and peak memory of every heavy function in the
-package, not just <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code>;</li>
-<li>what happens when DuckDB is held to a small resource budget,
-standing in for a more modest machine.</li>
-</ol>
-<p>Memory turns out to separate the backends far more sharply than time
-does, and in the direction opposite to the one most people expect, so it
-is worth not skipping that section.</p>
+<p>This article compares the two backends along two dimensions, using
+<code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code>: municipality size, measured in both elapsed
+time and peak memory, and H3 output resolution.</p>
 </div>
 <div class="section level2">
 <h2 id="how-these-numbers-were-produced">How these numbers were produced<a class="anchor" aria-label="anchor" href="#how-these-numbers-were-produced"></a>
 </h2>
-<p>Benchmarking on a laptop is harder than it looks, and it is worth
-being explicit about the method, because a naive measurement here is
-actively misleading.</p>
 <p>Running the same call on the same warm input repeatedly, we measured
-elapsed times from 1.63 s to 3.77 s <strong>within a single
-session</strong>, with the slow runs at the end rather than the
-beginning. A fresh session minutes later ran uniformly slower than the
-first session’s early runs. That pattern is CPU thermal and frequency
-drift: it is not cold page cache, which would make the <em>first</em>
-runs slow, and it is not thread scheduling, since pinning CPU affinity
-barely changed anything.</p>
-<p>The consequence matters. If you time every DuckDB case and then every
-pure-R case, that drift lands entirely on one backend and is
-indistinguishable from the effect you are trying to measure. So the
-measurements here:</p>
+elapsed times from 1.63 s to 3.77 s within a single session, with the
+slow runs at the end rather than the beginning, and a fresh session
+minutes later ran uniformly slower than the first session’s early runs.
+That points to CPU thermal and frequency drift rather than to a cold
+page cache, which would have made the first runs slow instead of the
+last, or to thread scheduling, since pinning CPU affinity barely changed
+anything.</p>
+<p>If you time every DuckDB case and then every pure-R case, all of that
+drift lands on one backend, where you can’t tell it apart from the
+effect you’re trying to measure. So the measurements here:</p>
 <ul>
 <li>discard a warm-up run per configuration, so the OS page cache is hot
 and the one-off extension load is already paid;</li>
@@ -149,11 +134,11 @@ replicate, so contention is visible in the data rather than assumed
 away.</li>
 </ul>
 <p>Peak memory is the operating system’s peak working set for the whole
-process, via <code><a href="https://ps.r-lib.org/reference/ps_memory_info.html" class="external-link">ps::ps_memory_info()</a></code>. This matters: R-level
-allocation tracking, such as <code>bench::mark()</code>’s
-<code>mem_alloc</code>, counts only the R heap, and DuckDB allocates in
-C++ outside it. Reporting R-level allocation for a DuckDB workload would
-understate it substantially.</p>
+process, via <code><a href="https://ps.r-lib.org/reference/ps_memory_info.html" class="external-link">ps::ps_memory_info()</a></code>, and not R-level
+allocation tracking such as <code>bench::mark()</code>’s
+<code>mem_alloc</code>. R-level tracking only counts the R heap, and
+DuckDB allocates in C++ outside it, so it would understate DuckDB by a
+wide margin.</p>
 <p>The raw per-replicate measurements, including the machine-load
 columns, are in <code>data-raw/bench_r2_8.csv</code> in the package
 repository, and the harness that produced them is
@@ -272,9 +257,8 @@ the gains from its query engine.</p>
 <div class="section level3">
 <h3 id="memory">Memory<a class="anchor" aria-label="anchor" href="#memory"></a>
 </h3>
-<p>Elapsed time is the visible cost. Memory is the one that decides
-whether the call finishes at all, and the gap between the backends is
-much wider here than in the timings.</p>
+<p>The gap between the backends is much wider in memory than in time,
+and it runs in the direction most readers don’t expect.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">bench_plot_memory</span><span class="op">(</span></span>
 <span>  <span class="va">cities</span>, <span class="va">city_lbl</span>,</span>
@@ -282,15 +266,22 @@ much wider here than in the timings.</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p><img src="bench_duckdb_files/figure-html/plot-memory-cities-1.png" alt="" width="100%"></p>
 <p>The pure-R backend holds the filtered address table in R memory, so
-its footprint scales with the number of addresses. DuckDB streams the
-CSV and aggregates as it goes, so it never materialises the full table
-and its footprint stays roughly flat. On the largest municipality this
-is the difference between a workstation-sized requirement and something
-that fits comfortably on any current laptop.</p>
-<p>This has a practical consequence that is easy to get backwards. The
-pure-R backend exists for environments where DuckDB extensions cannot be
-installed. It is <strong>not</strong> the lightweight option, and it is
-the wrong choice on a machine that is short of RAM.</p>
+its footprint grows with the number of addresses, while DuckDB streams
+the CSV and aggregates as it goes, never materialising the full table,
+so its footprint stays roughly flat. On São Paulo the two are more than
+an order of magnitude apart.</p>
+<p>So <code>backend = "r"</code> is not the lightweight option, even
+though that’s the obvious way to read it. It’s there for environments
+where DuckDB extensions can’t be installed, and on a machine that’s
+short of RAM it’s the expensive choice. What holds DuckDB itself back is
+the <code>cnefetools.duckdb_config</code> option, which sets its thread
+count and memory budget:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>cnefetools.duckdb_config <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>threads <span class="op">=</span> <span class="fl">4</span>, memory_limit <span class="op">=</span> <span class="st">"4GB"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Left alone, DuckDB sets <code>memory_limit</code> to 80% of installed
+RAM, so it already asks for less on a smaller machine, and a query that
+goes over the limit spills to a temporary directory instead of
+failing.</p>
 </div>
 </div>
 <div class="section level2">
@@ -298,7 +289,7 @@ the wrong choice on a machine that is short of RAM.</p>
 </h2>
 <p>The same function on a fixed municipality, Curitiba-PR, across H3
 resolutions 7, 9 and 11.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">for</span> <span class="op">(</span><span class="va">backend</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"duckdb"</span>, <span class="st">"r"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">res</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">9</span>, <span class="fl">11</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
@@ -311,7 +302,7 @@ resolutions 7, 9 and 11.</p>
 <span>    <span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">h3res</span> <span class="op">&lt;-</span> <span class="va">bench_med</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op">==</span> <span class="st">"h3res"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
@@ -335,408 +326,9 @@ shrinks as resolution rises.</p>
 </blockquote>
 </div>
 <div class="section level2">
-<h2 id="the-other-heavy-functions">The other heavy functions<a class="anchor" aria-label="anchor" href="#the-other-heavy-functions"></a>
-</h2>
-<p><code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> is not the only expensive function in the
-package, and the three others do not share its cost profile.</p>
-<p><code><a href="../reference/compute_lumi.html">compute_lumi()</a></code> is deliberately close to it. Both read
-the same gzipped CSV through the same DuckDB scan, assign H3 cells with
-the same <code>h3_latlng_to_cell()</code> call, and aggregate with the
-same <code>GROUP BY</code>. <code><a href="../reference/compute_lumi.html">compute_lumi()</a></code> then aggregates
-to two columns instead of eight, so it actually skips a pivot, and adds
-the land-use mix arithmetic. That arithmetic runs once per
-<strong>hexagon</strong>, not once per <strong>address</strong>, which
-is three to four orders of magnitude fewer operations. The expectation
-is that the two track each other closely, and the measurement below is
-there to check that rather than assert it.</p>
-<p>The <code>tracts_to_*()</code> functions are a genuinely different
-workload. They add a point-in-polygon overlay of the full CNEFE point
-set against census tract polygons, plus a Parquet download of the tract
-attributes. They are DuckDB-only and expose no <code>backend</code>
-argument: running that overlay in R would give users a path that does
-not finish rather than a slower one.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lumi_cmp</span> <span class="op">&lt;-</span> <span class="va">bench_med</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cities"</span>, <span class="st">"lumi"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    city_lbl <span class="op">=</span> <span class="fu">bench_city</span><span class="op">(</span><span class="va">muni</span>, short <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span>    backend_lbl <span class="op">=</span> <span class="fu">bench_backend</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">lumi_cmp</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">city_lbl</span>, y <span class="op">=</span> <span class="va">seconds</span>, fill <span class="op">=</span> <span class="va">fn</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.65</span>, position <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html" class="external-link">geom_errorbar</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin <span class="op">=</span> <span class="va">lo</span>, ymax <span class="op">=</span> <span class="va">hi</span><span class="op">)</span>, width <span class="op">=</span> <span class="fl">0.12</span>,</span>
-<span>    position <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">0.4</span>, colour <span class="op">=</span> <span class="st">"grey25"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">backend_lbl</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cnefe_counts"</span> <span class="op">=</span> <span class="st">"#2C3E50"</span>,</span>
-<span>                               <span class="st">"compute_lumi"</span> <span class="op">=</span> <span class="st">"#18A999"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_y_continuous</a></span><span class="op">(</span>expand <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/expansion.html" class="external-link">expansion</a></span><span class="op">(</span>mult <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"cnefe_counts() vs compute_lumi()"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="st">"H3 resolution 8, median of replicates, bars show min-max"</span>,</span>
-<span>    x <span class="op">=</span> <span class="cn">NULL</span>, y <span class="op">=</span> <span class="st">"Elapsed time (seconds)"</span>, fill <span class="op">=</span> <span class="cn">NULL</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">bench_theme</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="bench_duckdb_files/figure-html/plot-lumi-1.png" alt="" width="100%"></p>
-<p>Elapsed time and peak memory for every heavy function, with the
-DuckDB backend where there is a choice:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bench_med</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cities"</span>, <span class="st">"lumi"</span>, <span class="st">"tracts"</span><span class="op">)</span>, <span class="va">backend</span> <span class="op">!=</span> <span class="st">"r"</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>muni <span class="op">=</span> <span class="fu">bench_city</span><span class="op">(</span><span class="va">muni</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">muni</span>, <span class="va">fn</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
-<span>    Function <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">fn</span>, <span class="st">"()"</span><span class="op">)</span>,</span>
-<span>    Municipality <span class="op">=</span> <span class="va">muni</span>,</span>
-<span>    Addresses <span class="op">=</span> <span class="va">n_addresses</span>,</span>
-<span>    `Median (s)` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">seconds</span>, <span class="fl">2</span><span class="op">)</span>,</span>
-<span>    `Range (s)` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%.2f - %.2f"</span>, <span class="va">lo</span>, <span class="va">hi</span><span class="op">)</span>,</span>
-<span>    `Peak memory (MB)` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">peak_mb</span><span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/collapse_rows.html" class="external-link">collapse_rows</a></span><span class="op">(</span>columns <span class="op">=</span> <span class="fl">2</span><span class="op">:</span><span class="fl">3</span>, valign <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span></span></code></pre></div>
-<table class="table table" style="margin-left: auto; margin-right: auto;">
-<thead><tr>
-<th style="text-align:left;">
-Function
-</th>
-<th style="text-align:left;">
-Municipality
-</th>
-<th style="text-align:left;">
-Addresses
-</th>
-<th style="text-align:right;">
-Median (s)
-</th>
-<th style="text-align:left;">
-Range (s)
-</th>
-<th style="text-align:right;">
-Peak memory (MB)
-</th>
-</tr></thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-cnefe_counts()
-</td>
-<td style="text-align:left;vertical-align: top !important;" rowspan="4">
-Vitória da Conquista-BA
-</td>
-<td style="text-align:left;vertical-align: top !important;" rowspan="4">
-~200k
-</td>
-<td style="text-align:right;">
-5.55
-</td>
-<td style="text-align:left;">
-4.73 - 5.83
-</td>
-<td style="text-align:right;">
-464
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-compute_lumi()
-</td>
-<td style="text-align:right;">
-6.64
-</td>
-<td style="text-align:left;">
-6.34 - 7.28
-</td>
-<td style="text-align:right;">
-391
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_h3()
-</td>
-<td style="text-align:right;">
-11.45
-</td>
-<td style="text-align:left;">
-10.45 - 13.05
-</td>
-<td style="text-align:right;">
-687
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_polygon()
-</td>
-<td style="text-align:right;">
-7.05
-</td>
-<td style="text-align:left;">
-6.88 - 8.48
-</td>
-<td style="text-align:right;">
-820
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-cnefe_counts()
-</td>
-<td style="text-align:left;vertical-align: top !important;" rowspan="4">
-Curitiba-PR
-</td>
-<td style="text-align:left;vertical-align: top !important;" rowspan="4">
-~900k
-</td>
-<td style="text-align:right;">
-5.56
-</td>
-<td style="text-align:left;">
-5.08 - 6.16
-</td>
-<td style="text-align:right;">
-442
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-compute_lumi()
-</td>
-<td style="text-align:right;">
-5.09
-</td>
-<td style="text-align:left;">
-4.22 - 5.89
-</td>
-<td style="text-align:right;">
-357
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_h3()
-</td>
-<td style="text-align:right;">
-8.56
-</td>
-<td style="text-align:left;">
-7.65 - 10.08
-</td>
-<td style="text-align:right;">
-626
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_polygon()
-</td>
-<td style="text-align:right;">
-5.17
-</td>
-<td style="text-align:left;">
-4.99 - 6.33
-</td>
-<td style="text-align:right;">
-1139
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-cnefe_counts()
-</td>
-<td style="text-align:left;vertical-align: top !important;" rowspan="4">
-São Paulo-SP
-</td>
-<td style="text-align:left;vertical-align: top !important;" rowspan="4">
-~5.7M
-</td>
-<td style="text-align:right;">
-8.33
-</td>
-<td style="text-align:left;">
-7.23 - 8.75
-</td>
-<td style="text-align:right;">
-693
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-compute_lumi()
-</td>
-<td style="text-align:right;">
-7.48
-</td>
-<td style="text-align:left;">
-6.65 - 8.04
-</td>
-<td style="text-align:right;">
-574
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_h3()
-</td>
-<td style="text-align:right;">
-20.69
-</td>
-<td style="text-align:left;">
-17.97 - 21.76
-</td>
-<td style="text-align:right;">
-1946
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_polygon()
-</td>
-<td style="text-align:right;">
-20.35
-</td>
-<td style="text-align:left;">
-16.28 - 20.82
-</td>
-<td style="text-align:right;">
-4418
-</td>
-</tr>
-</tbody>
-</table>
-<p>Peak memory is the whole R process, not an increment, so it includes
-the roughly 60 MB a bare R session occupies before any of this runs.
-That is the number to compare against the RAM in a machine.</p>
-</div>
-<div class="section level2">
-<h2 id="running-on-a-smaller-machine">Running on a smaller machine<a class="anchor" aria-label="anchor" href="#running-on-a-smaller-machine"></a>
-</h2>
-<p>The figures above come from a well-equipped laptop. The question a
-reader actually has is whether the package runs on theirs.</p>
-<p>Two things answer it. The first is the peak memory column above: it
-is measured, and it is the requirement.</p>
-<p>The second is that DuckDB adapts. Left alone it sets
-<code>memory_limit</code> to 80% of installed RAM, so it asks for less
-on a smaller machine, and when a query exceeds that limit it spills to a
-temporary directory rather than failing. A small machine is slower, not
-blocked.</p>
-<p>You can also hold it back explicitly, which is what the constrained
-measurements below do:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>cnefetools.duckdb_config <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>threads <span class="op">=</span> <span class="fl">4</span>, memory_limit <span class="op">=</span> <span class="st">"4GB"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bench_med</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span></span>
-<span>    <span class="va">muni</span> <span class="op">==</span> <span class="st">"Sao Paulo-SP"</span>,</span>
-<span>    <span class="va">fn</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cnefe_counts"</span>, <span class="st">"tracts_to_h3"</span><span class="op">)</span>,</span>
-<span>    <span class="va">backend</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="st">"duckdb"</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
-<span>    Function <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">fn</span>, <span class="st">"()"</span><span class="op">)</span>,</span>
-<span>    Profile <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">constrained</span>, <span class="st">"4 threads, 4 GB"</span>, <span class="st">"full machine"</span><span class="op">)</span>,</span>
-<span>    `Median (s)` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">seconds</span>, <span class="fl">2</span><span class="op">)</span>,</span>
-<span>    `Peak memory (MB)` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">peak_mb</span><span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">Function</span>, <span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">Profile</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span>caption <span class="op">=</span> <span class="st">"Sao Paulo-SP, the largest municipality in the dataset"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<table class="table table" style="margin-left: auto; margin-right: auto;">
-<caption>
-Sao Paulo-SP, the largest municipality in the dataset
-</caption>
-<thead><tr>
-<th style="text-align:left;">
-Function
-</th>
-<th style="text-align:left;">
-Profile
-</th>
-<th style="text-align:right;">
-Median (s)
-</th>
-<th style="text-align:right;">
-Peak memory (MB)
-</th>
-</tr></thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-cnefe_counts()
-</td>
-<td style="text-align:left;">
-full machine
-</td>
-<td style="text-align:right;">
-8.33
-</td>
-<td style="text-align:right;">
-693
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-cnefe_counts()
-</td>
-<td style="text-align:left;">
-4 threads, 4 GB
-</td>
-<td style="text-align:right;">
-9.37
-</td>
-<td style="text-align:right;">
-455
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_h3()
-</td>
-<td style="text-align:left;">
-full machine
-</td>
-<td style="text-align:right;">
-20.69
-</td>
-<td style="text-align:right;">
-1946
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-tracts_to_h3()
-</td>
-<td style="text-align:left;">
-4 threads, 4 GB
-</td>
-<td style="text-align:right;">
-27.85
-</td>
-<td style="text-align:right;">
-1798
-</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><strong>What this does and does not show.</strong> Constraining
-threads and DuckDB’s memory budget reproduces the <em>resource
-envelope</em> of a modest machine, not a modest machine. The storage,
-the RAM speed, the CPU generation and the operating system are all still
-the ones listed above. A genuinely older laptop would do worse than
-these figures, particularly on the initial read, which is I/O-bound.
-Treat this as evidence that the package works within a small budget, not
-as a prediction of runtime on specific hardware.</p>
-</blockquote>
-</div>
-<div class="section level2">
 <h2 id="conclusions">Conclusions<a class="anchor" aria-label="anchor" href="#conclusions"></a>
 </h2>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bench_med</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op">==</span> <span class="st">"cities"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>muni <span class="op">=</span> <span class="fu">bench_city</span><span class="op">(</span><span class="va">muni</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -801,7 +393,7 @@ São Paulo-SP
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bench_med</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op">==</span> <span class="st">"h3res"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">bench_speedup</span><span class="op">(</span><span class="st">"h3_res"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -863,24 +455,22 @@ DuckDB speedup
 </tr>
 </tbody>
 </table>
-<p>The DuckDB advantage in <strong>time</strong> is real but
-conditional. It grows with the number of address points, and it shrinks
-as H3 resolution rises to the point of disappearing: at resolution 11
-the two backends are within a couple of percent of each other, because
-H3 indexing then dominates and both backends delegate it to the same
-underlying C library. On the smallest municipality the two are close
-enough that the choice does not matter, and in one configuration
-measured here pure R came out marginally ahead.</p>
-<p>The DuckDB advantage in <strong>memory</strong> is unconditional, and
-it is the larger of the two. It does not shrink with resolution, and it
-widens with municipality size, because only one of the two backends
-materialises the address table in memory.</p>
+<p>How much time DuckDB saves depends on the job. It grows with the
+number of address points and shrinks as H3 resolution rises, to the
+point of disappearing at resolution 11, where the two backends come
+within a couple of percent of each other because H3 indexing dominates
+and both hand it to the same underlying C library. On the smallest
+municipality they’re close enough that the choice doesn’t matter much,
+and in one configuration measured here pure R came out marginally
+ahead.</p>
+<p>Memory behaves differently. That gap doesn’t shrink with resolution
+and it widens with municipality size, because only one of the two
+backends materialises the address table.</p>
 <p><strong>Recommendation</strong>: use the DuckDB backend, which is the
-default. The pure-R backend exists for environments where DuckDB
-extensions cannot be installed, and choosing it costs far more in memory
-than it does in time. If you are on a memory-constrained machine, set
-<code>cnefetools.duckdb_config</code> rather than switching backends:
-the pure-R path is not the lighter one.</p>
+default. The pure-R backend is there for environments where DuckDB
+extensions can’t be installed, and choosing it costs far more in memory
+than it does in time. If you’re short of RAM, set
+<code>cnefetools.duckdb_config</code> instead of switching backends.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

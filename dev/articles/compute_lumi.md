@@ -172,18 +172,18 @@ Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_E
 #> 
 ℹ Converting the archive to '.csv.gz' (done once)
 
-✔ Converting the archive to '.csv.gz' (done once) [35.5s]
+✔ Converting the archive to '.csv.gz' (done once) [1m 21.7s]
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE data ready) [41.6s]      
+✔ Step 1/3 (CNEFE data ready) [1m 27.2s]   
 #> 
 ℹ Step 2/3: Counting addresses per H3 cell...
 
-✔ Step 2/3 (Addresses counted) [4.7s]        
+✔ Step 2/3 (Addresses counted) [11.4s]       
 #> 
 ℹ Step 3/3: Building grid and computing LUMI...
 
-✔ Step 3/3 (Land use mix indices computed) [1.3s]
+✔ Step 3/3 (Land use mix indices computed) [3.1s]
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields
