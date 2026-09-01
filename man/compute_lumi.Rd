@@ -7,12 +7,13 @@
 compute_lumi(
   code_muni,
   year = 2022,
-  polygon_type = c("hex", "user"),
+  polygon_type = lifecycle::deprecated(),
   polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
   cache = TRUE,
+  cache_dir = NULL,
   backend = c("duckdb", "r")
 )
 }
@@ -22,12 +23,13 @@ compute_lumi(
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
 
-\item{polygon_type}{Character. Type of polygon aggregation: \code{"hex"} (default)
-uses an H3 hexagonal grid; \code{"user"} uses polygons provided via the \code{polygon}
-parameter.}
+\item{polygon_type}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} The aggregation mode is
+now inferred from \code{polygon}: leave it \code{NULL} for an H3 grid, or pass an
+\code{\link[sf:sf]{sf::sf}} object for user polygons. Passing \code{polygon_type} still works and
+warns.}
 
-\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Required when
-\code{polygon_type = "user"}. A warning is issued reporting the percentage of
+\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Supplying it
+switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 CNEFE points covered by the polygon area. If no CNEFE points fall within
 the polygon, an error is raised.}
 
@@ -41,12 +43,32 @@ object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
-\item{cache}{Logical. If \code{TRUE} (default), the downloaded ZIP is stored
-in the user cache directory and reused in future calls. If \code{FALSE},
-a temporary file is used and deleted after the call.}
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded data is stored as
+a gzipped CSV in the user cache directory and reused in future calls. If
+\code{FALSE}, a temporary file is used and deleted after the call.}
 
-\item{backend}{Character. \code{"duckdb"} (default) uses DuckDB + H3 extension
-reading directly from the cached ZIP. \code{"r"} computes H3 in R using h3jsr.}
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
+
+\item{backend}{Character. \code{"duckdb"} (default) uses DuckDB with the H3
+extension, reading the cached gzipped CSV directly. \code{"r"} computes H3 in R
+using h3jsr instead, and needs no DuckDB extension.
+
+\code{"r"} exists for environments where DuckDB extensions cannot be installed,
+such as some restricted computing clusters. It is \strong{not} the lighter
+option: it materialises the filtered address table in R memory, so its
+footprint grows with the municipality, while DuckDB aggregates in a
+streaming fashion and stays nearly flat. On São Paulo (5.7 million
+addresses) the measured peak is about 8.4 GB under \code{"r"} against 0.6 GB
+under \code{"duckdb"}, alongside being roughly 15 times slower.
+
+If the constraint is memory rather than installability, keep the DuckDB
+backend and cap it with the \code{cnefetools.duckdb_config} option instead. See
+\code{?cnefetools} for that option, and the benchmark article at
+\url{https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html} for
+the measurements.}
 }
 \value{
 An \code{\link[sf:sf]{sf::sf}} object containing:
@@ -76,12 +98,50 @@ user-provided polygons), and computes the residential proportion (\code{p_res}) 
 indices, such as the Entropy Index (\code{ei}), the Herfindahl-Hirschman Index (\code{hhi}),
 the Balance Index (\code{bal}), the Index of Concentration at Extremes (\code{ice}), the adapted HHI (\code{hhi_adp}),
 and the Bidirectional Global-centered Index (\code{bgbi}), following the methodology proposed in
-Pedreira Jr. et al. (2025).
+Pedreira Junior et al. (2026).
+}
+\details{
+\subsection{Binary land-use classification}{
+
+The indices computed here rest on a binary split. An address is counted as
+residential when \code{COD_ESPECIE == 1} (private household), and as
+non-residential otherwise. This follows the formulation of the indices as
+published in Pedreira Junior et al. (2026), where the measures are defined
+and empirically validated on that two-category basis.
+}
+
+\subsection{Exclusion of buildings under construction}{
+
+\code{compute_lumi()} drops records with \code{COD_ESPECIE == 7} (building under
+construction or renovation), because such records describe a transitional
+state rather than a realised land use. Note that \code{\link[=cnefe_counts]{cnefe_counts()}} does \strong{not}
+apply this exclusion and reports these records as \code{addr_type7}.
+}
+
+\subsection{The citywide baseline P}{
+
+The \code{bgbi} index is referenced against a citywide residential share P. It is
+the only index computed here that uses such a baseline, the others being
+computed entirely within each spatial unit. Two properties of P are worth
+stating.
+
+First, P is computed from CNEFE address-type counts rather than from census
+population, so it describes the distribution of address types and not the
+distribution of residents.
+
+Second, P is always computed over the full municipality, including when
+\code{polygon_type = "user"}, so it does not adapt to the area the supplied
+polygons happen to cover. This is intended, as P describes the context the
+addresses sit in, which is the municipality, and a sub-area of a city is
+still part of that wider context. A baseline recomputed over the sub-area
+would measure something different, namely mix relative to the sub-area
+itself rather than relative to the city.
+}
 }
 \examples{
 \donttest{
 # Compute land-use mix indices on H3 hexagons
-lumi <- compute_lumi(code_muni = 2929057)
+lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries
@@ -93,15 +153,24 @@ nei_ldf <- subset(
 lumi_poly <- compute_lumi(
   code_muni = 2919207,
   polygon_type = "user",
-  polygon = nei_ldf
+  polygon = nei_ldf,
+  cache = FALSE
 )
 }
 
 }
 \references{
+Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+Bomfim, F. G. (2026).
+BGBI: A citywide-referenced and bidirectional land use mix index for
+planning and policy evaluation.
+\emph{Land Use Policy}, 169, 108135.
+https://doi.org/10.1016/j.landusepol.2026.108135
+
 Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 Measuring land use mix with address-level census data (2025).
 \emph{engrXiv}. https://engrxiv.org/preprint/view/5975
+(preprint, where the adapted HHI (\code{hhi_adp}) is documented)
 
 Booth, A.; Crouter, A. C. (Eds.). (2001).
 \emph{Does It Take a Village? Community Effects on Children, Adolescents, and Families}.

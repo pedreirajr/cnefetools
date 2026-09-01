@@ -73,7 +73,6 @@ testthat::test_that("cnefe_counts works offline using ZIP fixture (backend r, po
   out <- testthat::with_mocked_bindings(
     cnefetools::cnefe_counts(
       code_muni,
-      polygon_type = "hex",
       h3_resolution = h3_res,
       backend = "r",
       verbose = FALSE
@@ -146,7 +145,6 @@ testthat::test_that("cnefe_counts works with user polygon (backend r, polygon_ty
     suppressWarnings(
       cnefetools::cnefe_counts(
         code_muni,
-        polygon_type = "user",
         polygon = test_polygon,
         backend = "r",
         verbose = FALSE
@@ -183,12 +181,106 @@ testthat::test_that("cnefe_counts works with user polygon (backend r, polygon_ty
 })
 
 
+testthat::test_that("cnefe_counts (duckdb) handles polygon with 'geometry' column (#70)", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("arrow")
+  testthat::skip_if_not_installed("dplyr")
+  testthat::skip_if_not_installed("duckdb")
+  testthat::skip_if_not_installed("duckspatial")
+  testthat::skip_if_not_installed("sf")
+
+  # Skip if DuckDB cannot load/install the required extensions
+  con_check <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
+  on.exit(DBI::dbDisconnect(con_check, shutdown = TRUE), add = TRUE)
+
+  ext_ok <- function(name) {
+    tryCatch(
+      {
+        DBI::dbExecute(con_check, sprintf("LOAD %s;", name))
+        TRUE
+      },
+      error = function(e) {
+        tryCatch(
+          {
+            DBI::dbExecute(con_check, sprintf("INSTALL %s; LOAD %s;", name, name))
+            TRUE
+          },
+          error = function(e2) FALSE
+        )
+      }
+    )
+  }
+
+  if (!ext_ok("zipfs")) testthat::skip("DuckDB zipfs extension not available.")
+  if (!ext_ok("spatial")) testthat::skip("DuckDB spatial extension not available.")
+
+  code_muni <- 2929057L
+
+  tab <- testthat::with_mocked_bindings(
+    cnefetools::read_cnefe(
+      code_muni,
+      verbose = FALSE,
+      cache = TRUE,
+      output = "arrow"
+    ),
+    .cnefe_ensure_zip = mock_ensure_zip_fixture,
+    .package = "cnefetools"
+  )
+
+  df <- as.data.frame(tab) |>
+    dplyr::transmute(
+      LONGITUDE = suppressWarnings(as.numeric(.data$LONGITUDE)),
+      LATITUDE = suppressWarnings(as.numeric(.data$LATITUDE)),
+      COD_ESPECIE = suppressWarnings(as.integer(.data$COD_ESPECIE))
+    ) |>
+    dplyr::filter(
+      !is.na(.data$LONGITUDE),
+      !is.na(.data$LATITUDE),
+      !is.na(.data$COD_ESPECIE),
+      .data$COD_ESPECIE %in% 1L:8L
+    )
+
+  # Bounding-box polygon with the sf default geometry column name "geometry"
+  bbox <- sf::st_bbox(
+    sf::st_as_sf(df, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+  )
+  test_polygon <- sf::st_sf(id = 1L, geometry = sf::st_as_sfc(bbox))
+  testthat::expect_identical(attr(test_polygon, "sf_column"), "geometry")
+
+  # Before the #70 fix this errored with:
+  # Binder Error: Table "user_polygons" does not have a column with name "geom"
+  out <- testthat::with_mocked_bindings(
+    suppressWarnings(
+      cnefetools::cnefe_counts(
+        code_muni,
+        polygon = test_polygon,
+        backend = "duckdb",
+        verbose = FALSE
+      )
+    ),
+    .cnefe_ensure_zip = mock_ensure_zip_fixture,
+    .package = "cnefetools"
+  )
+
+  testthat::expect_s3_class(out, "sf")
+  testthat::expect_equal(nrow(out), 1L)
+
+  # All points fall inside the bbox, so totals must match the raw data
+  cols <- paste0("addr_type", 1:8)
+  actual_total <- sum(vapply(cols, function(cc) sum(out[[cc]]), numeric(1)))
+  testthat::expect_equal(actual_total, nrow(df))
+})
+
+
 testthat::test_that("cnefe_counts validates polygon argument", {
   testthat::skip_if_not_installed("sf")
 
   code_muni <- 2929057L
 
-  # Error when polygon_type = "user" but polygon is NULL
+  # polygon_type = "user" with no polygon is still an error, even though the
+  # argument is deprecated (#90). Without polygon_type, polygon = NULL is now
+  # simply H3 mode and correctly raises nothing.
+  withr::local_options(lifecycle_verbosity = "quiet")
   testthat::expect_error(
     cnefetools::cnefe_counts(
       code_muni,
@@ -203,7 +295,6 @@ testthat::test_that("cnefe_counts validates polygon argument", {
   testthat::expect_error(
     cnefetools::cnefe_counts(
       code_muni,
-      polygon_type = "user",
       polygon = data.frame(x = 1),
       verbose = FALSE
     ),

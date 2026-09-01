@@ -1,0 +1,11 @@
+"file","cran_defaults","not_cran"
+"R/cnefe_docs.R",0,0
+"R/tracts_to_h3.R",0,90
+"R/tracts_to_polygon.R",10.8,10.8
+"R/cnefe_export.R",31.9,31.9
+"R/utils-internal.R",34.5,58.2
+"R/clear_cache.R",48.6,48.6
+"R/cnefe_counts.R",54.2,77
+"R/compute_lumi.R",59.1,59.1
+"R/read_cnefe.R",75.9,75.9
+"R/build_h3_grid.R",78.5,78.5

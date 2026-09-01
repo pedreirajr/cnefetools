@@ -7,6 +7,15 @@
 #'
 #' The function uses DuckDB with the spatial and H3 extensions for the heavy work.
 #'
+#' Unlike [cnefe_counts()] and [compute_lumi()], this function does not expose a
+#' `backend` argument and relies on DuckDB exclusively. The dominant cost here is
+#' a spatial overlay between the full CNEFE point set of the municipality and the
+#' census tract polygons, which is a different workload from the tabular
+#' aggregation those other functions perform. Running that overlay in R would
+#' take prohibitively long in medium and large municipalities, so a pure-R
+#' fallback would offer users a path that does not finish rather than a slower
+#' one.
+#'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
@@ -38,6 +47,10 @@
 #'     tracts with no private dwellings receive no allocation.
 #'
 #' @param cache Logical. Whether to use the existing package cache for assets and CNEFE zips.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
 #' @param verbose Logical. Whether to print step messages and timing.
 #'
 #' @return An `sf` object (CRS 4326) with an H3 grid and the requested interpolated variables.
@@ -47,7 +60,8 @@
 #' # Interpolate population to H3 hexagons
 #' hex_pop <- tracts_to_h3(
 #'   code_muni = 2929057,
-#'   vars = c("pop_ph", "pop_ch")
+#'   vars = c("pop_ph", "pop_ch"),
+#'   cache = FALSE
 #' )
 #' }
 #'
@@ -58,14 +72,11 @@ tracts_to_h3 <- function(
   h3_resolution = 9,
   vars = c("pop_ph", "pop_ch"),
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  if (exists(".normalize_code_muni", mode = "function")) {
-    code_muni <- .normalize_code_muni(code_muni)
-  } else {
-    code_muni <- as.integer(code_muni)
-  }
+  code_muni <- .normalize_code_muni(code_muni)
 
   year <- .validate_year(year)
 
@@ -114,35 +125,7 @@ tracts_to_h3 <- function(
   # helpers -------------------------------------------------------------------
 
   .duckdb_quiet_execute <- function(con, sql) {
-    invisible(utils::capture.output(
-      utils::capture.output(
-        DBI::dbExecute(con, sql),
-        type = "message"
-      ),
-      type = "output"
-    ))
-  }
-
-  .duckdb_load_ext <- function(con, ext) {
-    utils::capture.output(
-      utils::capture.output({
-        ok <- tryCatch(
-          {
-            .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-            TRUE
-          },
-          error = function(e) FALSE
-        )
-
-        if (!ok) {
-          .duckdb_quiet_execute(con, sprintf("INSTALL %s FROM community;", ext))
-          .duckdb_quiet_execute(con, sprintf("LOAD %s;", ext))
-        }
-      }, type = "message"),
-      type = "output"
-    )
-
-    invisible(TRUE)
+    invisible(.duckdb_quiet(DBI::dbExecute(con, sql)))
   }
 
   .fmt_pct <- function(x) sprintf("%.2f%%", x)
@@ -161,30 +144,12 @@ tracts_to_h3 <- function(
 
   }
 
-  con <- NULL
-  utils::capture.output(
-    utils::capture.output({
-      con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                            config = list(
-                              'enable_progress_bar' = FALSE,
-                              'enable_print_progress' = FALSE,
-                              'print_progress_bar' = FALSE
-                            ))
-
-      tryCatch(
-        duckspatial::ddbs_load(con),
-        error = function(e) {
-          duckspatial::ddbs_install(con)
-          duckspatial::ddbs_load(con)
-        }
-      )
-      .duckdb_load_ext(con, "zipfs")
-      .duckdb_load_ext(con, "h3")
-    }, type = "message"),
-    type = "output"
+  con <- .duckdb_connect(
+      extensions = "h3",
+    spatial = TRUE,
+    reason = "to run the dasymetric interpolation in `tracts_to_h3()`.",
+    verbose = verbose
   )
-
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
   if (verbose) {
     cli::cli_progress_done("Step 1/6: connecting to DuckDB and loading extensions...")
@@ -202,6 +167,8 @@ tracts_to_h3 <- function(
     con,
     code_muni = code_muni,
     cache = cache,
+    cache_dir = cache_dir,
+    year = year,
     verbose = verbose
   )
 
@@ -226,16 +193,23 @@ tracts_to_h3 <- function(
 
   }
 
-  invisible(utils::capture.output({
-    invisible(utils::capture.output({
-      .cnefe_create_points_view_in_duckdb(
-        con,
-        code_muni = code_muni,
-        index = cnefe_index,
-        cache = cache,
-        verbose = verbose
-      )
+  # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
+  # The ZIP must remain on disk until the views are materialised into a table.
+  zip_info_cnefe <- suppressMessages(
+    .cnefe_create_points_view_in_duckdb(
+      con,
+      code_muni = code_muni,
+      index = cnefe_index,
+      cache = cache,
+      cache_dir = cache_dir,
+      year = year,
+      verbose = verbose
+    )
+  )
 
+  # Materialise the lazy view into a table (reads ZIP data into DuckDB memory).
+  .duckdb_quiet({
+    {
       .duckdb_quiet_execute(
         con,
         "
@@ -253,8 +227,13 @@ tracts_to_h3 <- function(
         con,
         "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
       )$n[1]
-    }, type = "message"))
-  }, type = "output"))
+    }
+  })
+
+  # ZIP data is now fully in DuckDB — safe to delete the temp file.
+  if (is.list(zip_info_cnefe) && isTRUE(zip_info_cnefe$cleanup_zip)) {
+    on.exit(unlink(zip_info_cnefe$zip_path), add = TRUE)
+  }
 
   if (verbose) {
     cli::cli_progress_done("Step 3/6: preparing CNEFE points in DuckDB...")
@@ -320,96 +299,7 @@ tracts_to_h3 <- function(
   # Allocation view:
   # - totals: per-point = total / eligible_count
   # - avg_inc_resp: assigned to each eligible point, aggregated later as mean
-  alloc_exprs <- character(0)
-
-  for (v in vars) {
-    if (v == "avg_inc_resp") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 1
-           AND s.avg_inc_resp IS NOT NULL
-           AND s.n_dom_p > 0
-          THEN CAST(s.avg_inc_resp AS DOUBLE)
-          ELSE NULL
-        END AS avg_inc_resp_pt
-      "
-      )
-    } else if (v == "n_resp") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 1
-           AND s.n_resp IS NOT NULL
-           AND s.n_dom_p > 0
-          THEN CAST(s.n_resp AS DOUBLE) / s.n_dom_p
-          ELSE NULL
-        END AS n_resp_pt
-      "
-      )
-    } else if (v == "pop_ph") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 1
-           AND s.pop_ph IS NOT NULL
-           AND s.n_dom_p > 0
-          THEN CAST(s.pop_ph AS DOUBLE) / s.n_dom_p
-          ELSE NULL
-        END AS pop_ph_pt
-      "
-      )
-    } else if (v == "pop_ch") {
-      alloc_exprs <- c(
-        alloc_exprs,
-        "
-        CASE
-          WHEN p.COD_ESPECIE = 2
-           AND s.pop_ch IS NOT NULL
-           AND s.n_dom_c > 0
-          THEN CAST(s.pop_ch AS DOUBLE) / s.n_dom_c
-          ELSE NULL
-        END AS pop_ch_pt
-      "
-      )
-    } else {
-      alloc_exprs <- c(
-        alloc_exprs,
-        sprintf(
-          "
-        CASE
-          WHEN (CASE
-                  WHEN s.n_dom_p > 0 THEN (p.COD_ESPECIE = 1)
-                  WHEN s.n_dom_c > 0 THEN (p.COD_ESPECIE = 2)
-                  ELSE FALSE
-                END)
-           AND s.%s IS NOT NULL
-           AND (CASE
-                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
-                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
-                  ELSE 0
-                END) > 0
-          THEN CAST(s.%s AS DOUBLE) /
-               (CASE
-                  WHEN s.n_dom_p > 0 THEN s.n_dom_p
-                  WHEN s.n_dom_c > 0 THEN s.n_dom_c
-                  ELSE 0
-                END)
-          ELSE NULL
-        END AS %s_pt
-      ",
-          v,
-          v,
-          v
-        )
-      )
-    }
-  }
-
-  alloc_sql <- paste(alloc_exprs, collapse = ",\n")
+  alloc_sql <- .build_alloc_sql(vars)
 
   .duckdb_quiet_execute(
     con,
@@ -486,12 +376,12 @@ tracts_to_h3 <- function(
   # count variables coalesced to 0 and avg_inc_resp left as NA).
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    code_muni     = code_muni
+    code_muni     = code_muni,
+    year          = year
   )
 
-  # capture.output para capturar TUDO (output E messages)
-  invisible(utils::capture.output({
-    invisible(utils::capture.output({
+  .duckdb_quiet({
+    {
       hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
       out <- hex_grid |>
@@ -504,8 +394,8 @@ tracts_to_h3 <- function(
       for (v in count_vars) {
         out[[v]] <- dplyr::coalesce(out[[v]], 0)
       }
-    }, type = "message"))
-  }, type = "output"))
+    }
+  })
 
   sf::st_crs(out) <- 4326
 
@@ -514,247 +404,8 @@ tracts_to_h3 <- function(
     cli::cli_progress_done()
   }
   # diagnostics and warning ----------------------------------------------------
-  warn_lines <- character(0)
+  warn_lines <- .build_interp_diagnostics(con, vars, unmatched_pts, total_pts)
 
-  n_tracts <- suppressMessages(
-    DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM sc_muni_tbl;")$n[1]
-  )
-
-  totals_vars <- setdiff(vars, "avg_inc_resp")
-
-  for (v in totals_vars) {
-    total_v <- suppressMessages(
-      DBI::dbGetQuery(
-      con,
-      sprintf(
-        "SELECT SUM(%s) AS total FROM sc_muni_tbl WHERE %s IS NOT NULL;",
-        v,
-        v
-      )
-    )$total[1]
-    )
-
-    alloc_v <- suppressMessages(
-      DBI::dbGetQuery(
-      con,
-      sprintf(
-        "SELECT SUM(%s_pt) AS alloc FROM cnefe_alloc WHERE %s_pt IS NOT NULL;",
-        v,
-        v
-      )
-    )$alloc[1]
-    )
-
-    total_v <- if (is.null(total_v) || is.na(total_v)) {
-      0
-    } else {
-      as.numeric(total_v)
-    }
-    alloc_v <- if (is.null(alloc_v) || is.na(alloc_v)) {
-      0
-    } else {
-      as.numeric(alloc_v)
-    }
-
-    # Use threshold >= 0.5 to avoid floating point precision issues
-    unalloc <- max(total_v - alloc_v, 0)
-    unalloc <- if (unalloc < 0.5) 0 else round(unalloc)
-    pct <- if (total_v > 0) 100 * unalloc / total_v else 0
-
-    label <- switch(v,
-                    "pop_ph" = "population from private households",
-                    "pop_ch" = "population from collective households",
-                    v  # default: use variable name
-    )
-
-    # Always show all requested variables for consistency
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Unallocated total for {label} ({.field {v}}): {.strong {sprintf('%.0f', unalloc)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.2f%%', pct)}})"
-      )
-    )
-  }
-
-  if ("avg_inc_resp" %in% vars) {
-    eligible_avg <- suppressMessages(
-      DBI::dbGetQuery(
-      con,
-      "
-    SELECT COUNT(*) AS n
-    FROM cnefe_sc p
-    JOIN sc_muni_w_dom s USING (code_tract)
-    WHERE p.COD_ESPECIE = 1 AND s.n_dom_p > 0;
-  "
-    )$n[1]
-    )
-
-    assigned_avg <- suppressMessages(
-      DBI::dbGetQuery(
-      con,
-      "
-    SELECT COUNT(*) AS n
-    FROM cnefe_alloc
-    WHERE avg_inc_resp_pt IS NOT NULL;
-  "
-    )$n[1]
-    )
-
-    assigned_pct <- if (eligible_avg > 0) 100 * assigned_avg / eligible_avg else 0
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
-      )
-    )
-
-    na_avg_tracts <- suppressMessages(
-      DBI::dbGetQuery(
-      con,
-      "
-    SELECT COUNT(*) AS n
-    FROM sc_muni_tbl
-    WHERE avg_inc_resp IS NULL;
-  "
-    )$n[1]
-    )
-
-    if (na_avg_tracts > 0) {
-      na_avg_pct <- if (n_tracts > 0) 100 * na_avg_tracts / n_tracts else 0
-      warn_lines <- c(
-        warn_lines,
-        cli::format_inline(
-          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
-        )
-      )
-    }
-  }
-
-  if (unmatched_pts > 0) {
-    unmatched_pct <- if (total_pts > 0) 100 * unmatched_pts / total_pts else 0
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
-      )
-    )
-  }
-
-  na_totals <- character(0)
-  for (v in totals_vars) {
-    n_na <- suppressMessages(
-      DBI::dbGetQuery(
-      con,
-      sprintf(
-        "SELECT COUNT(*) AS n FROM sc_muni_tbl WHERE %s IS NULL;",
-        v
-      )
-    )$n[1]
-    )
-
-    if (n_na > 0) {
-      na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
-      na_totals <- c(
-        na_totals,
-        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
-      )
-    }
-  }
-
-  if (length(na_totals) > 0) {
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Tracts with {.strong NA} totals: {paste(na_totals, collapse = '; ')}"
-      )
-    )
-  }
-
-  no_elig <- character(0)
-  for (v in totals_vars) {
-    if (v %in% c("pop_ph", "n_resp")) {
-      n0 <- suppressMessages(
-        DBI::dbGetQuery(
-        con,
-        sprintf(
-          "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_w_dom
-      WHERE %s IS NOT NULL AND %s > 0 AND n_dom_p = 0;
-    ",
-          v,
-          v
-        )
-      )$n[1]
-      )
-
-    } else if (v == "pop_ch") {
-      n0 <- suppressMessages(
-        DBI::dbGetQuery(
-        con,
-        "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_w_dom
-      WHERE pop_ch IS NOT NULL AND pop_ch > 0 AND n_dom_c = 0;
-    "
-      )$n[1]
-      )
-
-    } else {
-      n0 <- suppressMessages(
-        DBI::dbGetQuery(
-        con,
-        sprintf(
-          "
-      SELECT COUNT(*) AS n
-      FROM sc_muni_w_dom
-      WHERE %s IS NOT NULL AND %s > 0
-        AND (CASE
-               WHEN n_dom_p > 0 THEN n_dom_p
-               WHEN n_dom_c > 0 THEN n_dom_c
-               ELSE 0
-             END) = 0;
-    ",
-          v,
-          v
-        )
-      )$n[1]
-      )
-    }
-
-    if (n0 > 0) {
-      n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
-      no_elig <- c(
-        no_elig,
-        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
-      )
-    }
-  }
-
-  if (length(no_elig) > 0) {
-    warn_lines <- c(
-      warn_lines,
-      cli::format_inline(
-        "Tracts with no eligible dwellings: {paste(no_elig, collapse = '; ')}"
-      )
-    )
-  }
-
-  # --- emit diagnostics ---
-  cli::cli_h2("Dasymetric interpolation diagnostics")
-
-  # Stage 1
-  cli::cli_h3("Stage 1: Tracts \u2192 CNEFE points")
-  if (length(warn_lines) > 0) {
-    cli::cli_bullets(
-      stats::setNames(warn_lines, rep("!", length(warn_lines)))
-    )
-  } else {
-    cli::cli_alert_success("All tract values fully allocated to CNEFE points.")
-  }
-
-  # Stage 2
-  cli::cli_h3("Stage 2: CNEFE points \u2192 H3 hexagons")
   pts_with_hex <- suppressMessages(
     DBI::dbGetQuery(
       con,
@@ -775,9 +426,8 @@ tracts_to_h3 <- function(
       "CNEFE points mapped to H3 cells: {.strong {pts_with_hex}} of {.strong {total_alloc_pts}} allocated points ({.strong {sprintf('%.2f%%', pts_pct)}})"
     )
   )
-  cli::cli_bullets(
-    stats::setNames(stage2_lines, rep("i", length(stage2_lines)))
-  )
+
+  .report_interp_diagnostics(warn_lines, stage2_lines, "H3 hexagons")
 
   return(out)
 

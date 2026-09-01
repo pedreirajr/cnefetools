@@ -7,16 +7,17 @@
 #' indices, such as the Entropy Index (`ei`), the Herfindahl-Hirschman Index (`hhi`),
 #' the Balance Index (`bal`), the Index of Concentration at Extremes (`ice`), the adapted HHI (`hhi_adp`),
 #' and the Bidirectional Global-centered Index (`bgbi`), following the methodology proposed in
-#' Pedreira Jr. et al. (2025).
+#' Pedreira Junior et al. (2026).
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
-#' @param polygon_type Character. Type of polygon aggregation: `"hex"` (default)
-#'   uses an H3 hexagonal grid; `"user"` uses polygons provided via the `polygon`
-#'   parameter.
-#' @param polygon An [`sf::sf`] object with polygon geometries. Required when
-#'   `polygon_type = "user"`. A warning is issued reporting the percentage of
+#' @param polygon_type `r lifecycle::badge("deprecated")` The aggregation mode is
+#'   now inferred from `polygon`: leave it `NULL` for an H3 grid, or pass an
+#'   [`sf::sf`] object for user polygons. Passing `polygon_type` still works and
+#'   warns.
+#' @param polygon An [`sf::sf`] object with polygon geometries. Supplying it
+#'   switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 #'   CNEFE points covered by the polygon area. If no CNEFE points fall within
 #'   the polygon, an error is raised.
 #' @param crs_output The CRS for the output object. Only used when
@@ -26,11 +27,30 @@
 #' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used when
 #'   `polygon_type = "hex"`.
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
-#' @param cache Logical. If `TRUE` (default), the downloaded ZIP is stored
-#'   in the user cache directory and reused in future calls. If `FALSE`,
-#'   a temporary file is used and deleted after the call.
-#' @param backend Character. `"duckdb"` (default) uses DuckDB + H3 extension
-#'   reading directly from the cached ZIP. `"r"` computes H3 in R using h3jsr.
+#' @param cache Logical. If `TRUE` (default), the downloaded data is stored as
+#'   a gzipped CSV in the user cache directory and reused in future calls. If
+#'   `FALSE`, a temporary file is used and deleted after the call.
+#' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
+#'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
+#'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
+#'   point large downloads at a secondary drive or a shared volume.
+#' @param backend Character. `"duckdb"` (default) uses DuckDB with the H3
+#'   extension, reading the cached gzipped CSV directly. `"r"` computes H3 in R
+#'   using h3jsr instead, and needs no DuckDB extension.
+#'
+#'   `"r"` exists for environments where DuckDB extensions cannot be installed,
+#'   such as some restricted computing clusters. It is **not** the lighter
+#'   option: it materialises the filtered address table in R memory, so its
+#'   footprint grows with the municipality, while DuckDB aggregates in a
+#'   streaming fashion and stays nearly flat. On São Paulo (5.7 million
+#'   addresses) the measured peak is about 8.4 GB under `"r"` against 0.6 GB
+#'   under `"duckdb"`, alongside being roughly 15 times slower.
+#'
+#'   If the constraint is memory rather than installability, keep the DuckDB
+#'   backend and cap it with the `cnefetools.duckdb_config` option instead. See
+#'   `?cnefetools` for that option, and the benchmark article at
+#'   <https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html> for
+#'   the measurements.
 #'
 #' @return An [`sf::sf`] object containing:
 #' \describe{
@@ -52,10 +72,53 @@
 #'   }
 #' }
 #'
+#' @details
+#' ## Binary land-use classification
+#'
+#' The indices computed here rest on a binary split. An address is counted as
+#' residential when `COD_ESPECIE == 1` (private household), and as
+#' non-residential otherwise. This follows the formulation of the indices as
+#' published in Pedreira Junior et al. (2026), where the measures are defined
+#' and empirically validated on that two-category basis.
+#'
+#' ## Exclusion of buildings under construction
+#'
+#' `compute_lumi()` drops records with `COD_ESPECIE == 7` (building under
+#' construction or renovation), because such records describe a transitional
+#' state rather than a realised land use. Note that [cnefe_counts()] does **not**
+#' apply this exclusion and reports these records as `addr_type7`.
+#'
+#' ## The citywide baseline P
+#'
+#' The `bgbi` index is referenced against a citywide residential share P. It is
+#' the only index computed here that uses such a baseline, the others being
+#' computed entirely within each spatial unit. Two properties of P are worth
+#' stating.
+#'
+#' First, P is computed from CNEFE address-type counts rather than from census
+#' population, so it describes the distribution of address types and not the
+#' distribution of residents.
+#'
+#' Second, P is always computed over the full municipality, including when
+#' `polygon_type = "user"`, so it does not adapt to the area the supplied
+#' polygons happen to cover. This is intended, as P describes the context the
+#' addresses sit in, which is the municipality, and a sub-area of a city is
+#' still part of that wider context. A baseline recomputed over the sub-area
+#' would measure something different, namely mix relative to the sub-area
+#' itself rather than relative to the city.
+#'
 #' @references
+#' Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+#' Bomfim, F. G. (2026).
+#' BGBI: A citywide-referenced and bidirectional land use mix index for
+#' planning and policy evaluation.
+#' *Land Use Policy*, 169, 108135.
+#' https://doi.org/10.1016/j.landusepol.2026.108135
+#'
 #' Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
 #' Measuring land use mix with address-level census data (2025).
 #' *engrXiv*. https://engrxiv.org/preprint/view/5975
+#' (preprint, where the adapted HHI (`hhi_adp`) is documented)
 #'
 #' Booth, A.; Crouter, A. C. (Eds.). (2001).
 #' *Does It Take a Village? Community Effects on Children, Adolescents, and Families*.
@@ -69,7 +132,7 @@
 #' @examples
 #' \donttest{
 #' # Compute land-use mix indices on H3 hexagons
-#' lumi <- compute_lumi(code_muni = 2929057)
+#' lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #'
 #' # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries
@@ -81,7 +144,8 @@
 #' lumi_poly <- compute_lumi(
 #'   code_muni = 2919207,
 #'   polygon_type = "user",
-#'   polygon = nei_ldf
+#'   polygon = nei_ldf,
+#'   cache = FALSE
 #' )
 #' }
 #'
@@ -89,66 +153,23 @@
 compute_lumi <- function(
   code_muni,
   year = 2022,
-  polygon_type = c("hex", "user"),
+  polygon_type = lifecycle::deprecated(),
   polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
   cache = TRUE,
+  cache_dir = NULL,
   backend = c("duckdb", "r")
 ) {
-  polygon_type <- match.arg(polygon_type)
+  polygon_type <- .resolve_polygon_mode(polygon, polygon_type, fn = "compute_lumi")
   backend <- match.arg(backend)
   code_muni <- .normalize_code_muni(code_muni)
   year <- .validate_year(year)
 
-  # If polygon is provided but polygon_type is "hex" (default), switch to "user"
-  if (!is.null(polygon) && polygon_type == "hex") {
-    cli::cli_alert_warning(
-      "{.arg polygon} was provided but {.arg polygon_type} was not set to {.val user}."
-    )
-    cli::cli_alert_info("Setting {.arg polygon_type} to {.val user} automatically.")
-    cli::cli_alert_info("To use H3 hexagonal grid instead, set {.code polygon = NULL}.")
-    polygon_type <- "user"
-  }
-
   # Validate polygon argument
   if (polygon_type == "user") {
-    if (is.null(polygon)) {
-      cli::cli_abort(c(
-        "{.arg polygon} is required when {.arg polygon_type} is {.val user}.",
-        "i" = "Provide an {.cls sf} object with polygon geometries."
-      ))
-    }
-    if (!inherits(polygon, "sf")) {
-      cli::cli_abort(c(
-        "{.arg polygon} must be an {.cls sf} object.",
-        "i" = "Received: {.cls {class(polygon)[1]}}"
-      ))
-    }
-    geom_types <- unique(sf::st_geometry_type(polygon))
-    valid_types <- c("POLYGON", "MULTIPOLYGON")
-    if (!all(geom_types %in% valid_types)) {
-      cli::cli_abort(c(
-        "{.arg polygon} must contain only POLYGON or MULTIPOLYGON geometries.",
-        "i" = "Found: {.val {as.character(geom_types)}}"
-      ))
-    }
-
-    # Validate crs_output if provided
-    if (!is.null(crs_output)) {
-      test_crs <- tryCatch(
-        suppressWarnings(sf::st_crs(crs_output)),
-        error = function(e) NULL
-      )
-      if (is.null(test_crs) || is.na(test_crs$wkt)) {
-        cli::cli_abort(c(
-          "{.arg crs_output} is not a valid CRS.",
-          "i" = "Value received: {.val {crs_output}}",
-          "i" = "Use a valid EPSG code (e.g., 4674, 31983) or a CRS object."
-        ))
-      }
-    }
+    .validate_polygon_arg(polygon, crs_output = crs_output)
   }
 
   # Get the appropriate index for the requested year
@@ -187,7 +208,8 @@ compute_lumi <- function(
       backend = backend,
       cnefe_index = cnefe_index,
       verbose = verbose,
-      cache = cache
+      cache = cache,
+      cache_dir = cache_dir
     )
   } else {
     out <- .compute_lumi_user_poly(
@@ -198,7 +220,8 @@ compute_lumi <- function(
       backend = backend,
       cnefe_index = cnefe_index,
       verbose = verbose,
-      cache = cache
+      cache = cache,
+      cache_dir = cache_dir
     )
   }
 
@@ -309,29 +332,31 @@ compute_lumi <- function(
   backend,
   cnefe_index,
   verbose,
-  cache = TRUE
+  cache = TRUE,
+  cache_dir = NULL
 ) {
   # ---------------------------------------------------------------------------
-  # Step 1/3: Ensure ZIP and find CSV inside
+  # Step 1/3: Ensure the cached data file exists
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 1/3: Ensuring ZIP and inspecting archive...",
-                           msg_done = "Step 1/3 (CNEFE ZIP ready)")
+    cli::cli_progress_step("Step 1/3: Ensuring the CNEFE data file...",
+                           msg_done = "Step 1/3 (CNEFE data ready)")
   }
 
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
     index = cnefe_index,
     cache = cache,
+    cache_dir = cache_dir,
+    year = year,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )
   zip_path <- zip_info$zip_path
 
-  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   if (verbose) {
-    cli::cli_progress_done("Step 1/3: Ensuring ZIP and inspecting archive...")
+    cli::cli_progress_done("Step 1/3: Ensuring the CNEFE data file...")
   }
 
   # ---------------------------------------------------------------------------
@@ -349,26 +374,20 @@ compute_lumi <- function(
       "DBI",
       reason = "to use backend = 'duckdb' in `compute_lumi()`."
     )
-    rlang::check_installed(
-      "duckdb",
-      reason = "to use backend = 'duckdb' in `compute_lumi()`."
+    con <- .duckdb_connect(
+      extensions = "h3",
+      reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+      verbose = verbose
     )
 
-    con <- NULL
-    utils::capture.output(
-      utils::capture.output({
-        con <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:",
-                              config = list(
-                                'enable_progress_bar' = FALSE,
-                                'enable_print_progress' = FALSE,
-                                'print_progress_bar' = FALSE
-                              ))
-
-        .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-        .duckdb_ensure_extension(con, "h3", verbose = verbose)
-
-        zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-        uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+    {
+      {
+        src <- .cnefe_csv_uri(zip_path)
+        if (isTRUE(src$needs_zipfs)) {
+          # A cache written by an older version is still a ZIP.
+          .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+        }
+        uri <- src$uri
         uri_sql <- gsub("'", "''", uri)
 
         # only keep the columns needed; exclude COD_ESPECIE == 7
@@ -402,18 +421,15 @@ compute_lumi <- function(
           as.integer(h3_resolution)
         )
 
-        counts_hex <- DBI::dbGetQuery(con, sql) |>
+        counts_hex <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
           dplyr::as_tibble() |>
           dplyr::mutate(
             id_hex = as.character(.data$id_hex),
             n_res = as.integer(.data$n_res),
             n_tot = as.integer(.data$n_tot)
           )
-      }, type = "message"),
-      type = "output"
-    )
-
-    on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+      }
+    }
 
   } else {
     # backend "r"
@@ -422,10 +438,15 @@ compute_lumi <- function(
       year = year,
       output = "arrow",
       cache = cache,
+      cache_dir = cache_dir,
       verbose = FALSE
     )
 
-    df <- as.data.frame(tab) |>
+    # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
+    # as.data.frame() first would materialise all 34 columns as an R data frame
+    # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
+    # memory falls from 108.4 MB to 68.3 MB.
+    df <- tab |>
       dplyr::transmute(
         LONGITUDE = as.numeric(.data$LONGITUDE),
         LATITUDE = as.numeric(.data$LATITUDE),
@@ -437,15 +458,16 @@ compute_lumi <- function(
         !is.na(.data$COD_ESPECIE),
         .data$COD_ESPECIE %in% 1L:8L,
         .data$COD_ESPECIE != 7L
-      )
+      ) |>
+      dplyr::collect()
 
     if (nrow(df) == 0L) {
       if (verbose) {
-        message(
-          "No valid CNEFE points after filtering (COD_ESPECIE 1:8 excluding 7). Returning NULL."
+        cli::cli_alert_warning(
+          "No valid CNEFE points after filtering (COD_ESPECIE 1:8, excluding 7). Returning an empty {.cls sf}."
         )
       }
-      return(NULL)
+      return(.empty_lumi_sf())
     }
 
     coords <- df |>
@@ -478,9 +500,9 @@ compute_lumi <- function(
 
   if (is.null(counts_hex) || nrow(counts_hex) == 0L) {
     if (verbose) {
-      message("No hexagons found after aggregation. Returning NULL.")
+      cli::cli_alert_warning("No hexagons found after aggregation. Returning an empty {.cls sf}.")
     }
-    return(NULL)
+    return(.empty_lumi_sf())
   }
 
   # ---------------------------------------------------------------------------
@@ -493,7 +515,8 @@ compute_lumi <- function(
 
   hex_grid <- build_h3_grid(
     h3_resolution = h3_resolution,
-    code_muni     = code_muni
+    code_muni     = code_muni,
+    year          = year
   )
 
   # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
@@ -537,10 +560,11 @@ compute_lumi <- function(
   backend,
   cnefe_index,
   verbose,
-  cache = TRUE
+  cache = TRUE,
+  cache_dir = NULL
 ) {
   # ---------------------------------------------------------------------------
-  # Step 1/3: Ensure ZIP exists in cache and prepare polygon
+  # Step 1/3: Ensure the cached data file exists and prepare polygon
   # ---------------------------------------------------------------------------
   if (verbose) {
     cli::cli_progress_step("Step 1/3: Ensuring data and preparing polygon...",
@@ -551,11 +575,12 @@ compute_lumi <- function(
     code_muni = code_muni,
     index = cnefe_index,
     cache = cache,
+    cache_dir = cache_dir,
+    year = year,
     verbose = verbose,
     retry_timeouts = c(300L, 600L, 1800L)
   )
   zip_path <- zip_info$zip_path
-  csv_inside <- .cnefe_first_csv_in_zip(zip_path)
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -601,7 +626,6 @@ compute_lumi <- function(
 
     join_result <- .compute_lumi_user_poly_duckdb(
       zip_path = zip_path,
-      csv_inside = csv_inside,
       polygon = polygon_4326,
       verbose = verbose
     )
@@ -611,7 +635,8 @@ compute_lumi <- function(
       year = year,
       polygon = polygon_4326,
       verbose = verbose,
-      cache = cache
+      cache = cache,
+      cache_dir = cache_dir
     )
   }
 
@@ -710,30 +735,25 @@ compute_lumi <- function(
 # -----------------------------------------------------------------------------
 .compute_lumi_user_poly_duckdb <- function(
   zip_path,
-  csv_inside,
   polygon,
   verbose
 ) {
   res <- NULL
 
-  utils::capture.output(
-    utils::capture.output({
+  con <- .duckdb_connect(
+      extensions = "spatial",
+    reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+    verbose = verbose
+  )
 
-      con <- DBI::dbConnect(
-        duckdb::duckdb(),
-        dbdir = ":memory:",
-        config = list(
-          enable_progress_bar = FALSE,
-          enable_print_progress = FALSE,
-          print_progress_bar = FALSE
-        )
-      )
-
-      .duckdb_ensure_extension(con, "zipfs", verbose = verbose)
-      .duckdb_ensure_extension(con, "spatial", repo = NULL, verbose = verbose)
-
-      zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-      uri <- sprintf("zip://%s/%s", zip_norm, csv_inside)
+  .duckdb_quiet({
+    {
+      src <- .cnefe_csv_uri(zip_path)
+      if (isTRUE(src$needs_zipfs)) {
+        # A cache written by an older version is still a ZIP.
+        .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+      }
+      uri <- src$uri
       uri_sql <- gsub("'", "''", uri)
 
       DBI::dbExecute(con, sprintf(
@@ -748,7 +768,8 @@ compute_lumi <- function(
       FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
       WHERE
         LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
-        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8;
+        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8
+        AND try_cast(COD_ESPECIE AS INTEGER) != 7;
       ",
         uri_sql
       ))
@@ -788,9 +809,19 @@ compute_lumi <- function(
   # Write user polygon to DuckDB via duckspatial
   duckspatial::ddbs_write_vector(
     conn = con,
-    data = polygon[, ".poly_row_id"],
+    # Normalize geometry column to "geom"; duckspatial preserves the
+    # input sf geometry name, but the SQL below hardcodes "geom".
+    data = sf::st_set_geometry(polygon[, ".poly_row_id"], "geom"),
     name = "user_polygons",
     overwrite = TRUE
+  )
+
+  # duckspatial 1.0.0 (DuckDB 1.5+) writes GEOMETRY with embedded CRS metadata,
+  # which RTREE does not accept. Strip CRS via WKB round-trip first.
+  DBI::dbExecute(
+    con,
+    "ALTER TABLE user_polygons ALTER COLUMN geom SET DATA TYPE GEOMETRY
+     USING ST_GeomFromWKB(ST_AsWKB(geom));"
   )
 
   # Spatial index on user polygons for faster joins
@@ -851,11 +882,8 @@ compute_lumi <- function(
     total_n_tot = total_n_tot
   )
 
-    }, type = "message"),
-  type = "output"
-  )
-
-  DBI::dbDisconnect(con, shutdown = TRUE)
+    }
+  })
 
   return(res)
 
@@ -870,7 +898,8 @@ compute_lumi <- function(
   year,
   polygon,
   verbose,
-  cache = TRUE
+  cache = TRUE,
+  cache_dir = NULL
 ) {
   # Read CNEFE data via Arrow
   tab <- read_cnefe(
@@ -878,10 +907,15 @@ compute_lumi <- function(
     year = year,
     output = "arrow",
     cache = cache,
+    cache_dir = cache_dir,
     verbose = FALSE
   )
 
-  df <- as.data.frame(tab) |>
+  # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
+  # as.data.frame() first would materialise all 34 columns as an R data frame
+  # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
+  # memory falls from 108.4 MB to 68.3 MB.
+  df <- tab |>
     dplyr::transmute(
       LONGITUDE = as.numeric(.data$LONGITUDE),
       LATITUDE = as.numeric(.data$LATITUDE),
@@ -893,7 +927,8 @@ compute_lumi <- function(
       !is.na(.data$COD_ESPECIE),
       .data$COD_ESPECIE %in% 1L:8L,
       .data$COD_ESPECIE != 7L
-    )
+    ) |>
+    dplyr::collect()
 
   total_points <- nrow(df)
 

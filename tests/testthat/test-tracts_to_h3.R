@@ -109,8 +109,9 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
         is.numeric(res$avg_inc_resp) || all(is.na(res$avg_inc_resp))
       )
     },
-    build_h3_grid = function(h3_resolution, code_muni = NULL,
-                             id_hex = NULL, boundary = NULL) {
+    # Only the arguments this mock reads are named; the rest are absorbed by
+    # `...` so a new internal argument cannot break the test (see #94).
+    build_h3_grid = function(h3_resolution, ...) {
       # Mock: build a grid from the fake CNEFE point coordinates so no geobr
       # network call is needed. The 4 allocated points (0.2/0.8 lon/lat) map
       # to specific H3 cells; these are the only cells that need to be present
@@ -125,7 +126,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       geoms <- h3jsr::cell_to_polygon(ids, simple = TRUE)
       sf::st_sf(id_hex = ids, geometry = sf::st_set_crs(geoms, 4326))
     },
-    .sc_create_views_in_duckdb = function(con, code_muni, cache, verbose) {
+    .sc_create_views_in_duckdb = function(con, ...) {
       # Two tracts. Only the first has CNEFE points in the mocked CNEFE view.
       DBI::dbExecute(
         con,
@@ -151,13 +152,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       "
       )
     },
-    .cnefe_create_points_view_in_duckdb = function(
-      con,
-      code_muni,
-      index,
-      cache,
-      verbose
-    ) {
+    .cnefe_create_points_view_in_duckdb = function(con, ...) {
       # 4 private points inside tract 1; 1 point outside any tract (unmatched)
       DBI::dbExecute(
         con,
