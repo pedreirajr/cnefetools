@@ -43,17 +43,32 @@ object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
-\item{cache}{Logical. If \code{TRUE} (default), the downloaded ZIP is stored
-in the user cache directory and reused in future calls. If \code{FALSE},
-a temporary file is used and deleted after the call.}
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded data is stored as
+a gzipped CSV in the user cache directory and reused in future calls. If
+\code{FALSE}, a temporary file is used and deleted after the call.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
 is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
 point large downloads at a secondary drive or a shared volume.}
 
-\item{backend}{Character. \code{"duckdb"} (default) uses DuckDB + H3 extension
-reading directly from the cached ZIP. \code{"r"} computes H3 in R using h3jsr.}
+\item{backend}{Character. \code{"duckdb"} (default) uses DuckDB with the H3
+extension, reading the cached gzipped CSV directly. \code{"r"} computes H3 in R
+using h3jsr instead, and needs no DuckDB extension.
+
+\code{"r"} exists for environments where DuckDB extensions cannot be installed,
+such as some restricted computing clusters. It is \strong{not} the lighter
+option: it materialises the filtered address table in R memory, so its
+footprint grows with the municipality, while DuckDB aggregates in a
+streaming fashion and stays nearly flat. On São Paulo (5.7 million
+addresses) the measured peak is about 8.4 GB under \code{"r"} against 0.6 GB
+under \code{"duckdb"}, alongside being roughly 15 times slower.
+
+If the constraint is memory rather than installability, keep the DuckDB
+backend and cap it with the \code{cnefetools.duckdb_config} option instead. See
+\code{?cnefetools} for that option, and the benchmark article at
+\url{https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html} for
+the measurements.}
 }
 \value{
 An \code{\link[sf:sf]{sf::sf}} object containing:
