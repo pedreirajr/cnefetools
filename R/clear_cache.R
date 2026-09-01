@@ -1,13 +1,16 @@
-#' Delete cached CNEFE ZIP files
+#' Delete cached CNEFE data files
 #'
 #' @description
-#' `clear_cache_muni()` removes CNEFE ZIP files stored in the user cache
+#' `clear_cache_muni()` removes CNEFE data files stored in the user cache
 #' directory by [cnefe_counts()], [compute_lumi()], [tracts_to_h3()], and
 #' related functions.
 #'
-#' @param code_muni Integer or `"all"`. If `"all"` (default), all cached CNEFE
-#'   ZIP files are deleted. If a seven-digit IBGE municipality code is provided,
-#'   only the ZIP file for that municipality is deleted.
+#' The cache holds gzipped CSVs (`.csv.gz`). Archives left by versions before
+#' 0.3.0, which cached the ZIP as published by IBGE, are removed as well.
+#'
+#' @param code_muni Integer or `"all"`. If `"all"` (default), every cached CNEFE
+#'   file is deleted. If a seven-digit IBGE municipality code is provided, only
+#'   the file for that municipality is deleted.
 #' @param year Integer. Restrict the deletion to one CNEFE edition. `NULL`
 #'   (default) clears every edition, which is the previous behaviour.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
@@ -21,10 +24,10 @@
 #'
 #' @examples
 #' \donttest{
-#' # Delete all cached CNEFE ZIPs
+#' # Delete every cached CNEFE file
 #' clear_cache_muni()
 #'
-#' # Delete only the ZIP for Lauro de Freitas-BA
+#' # Delete only the file for Lauro de Freitas-BA
 #' clear_cache_muni(2919207)
 #' }
 #'
@@ -44,19 +47,24 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
     return(invisible(character(0)))
   }
 
-  # List all ZIP files in the cache root (not subdirectories)
-  all_zips <- list.files(
+  # Both cache formats. `.csv.gz` is what #93 writes; `.zip` is what versions
+  # before 0.3.0 left behind, and those still need clearing. Matching only
+  # `.zip` made this function a silent no-op after the format changed: it
+  # reported an empty cache while every current entry sat there undeleted.
+  # `.parquet` is deliberately absent, since census tract assets are
+  # clear_cache_tracts()'s business.
+  all_files <- list.files(
     path = cache_dir,
-    pattern = "\\.zip$",
+    pattern = "\\.(csv\\.gz|zip)$",
     full.names = TRUE,
     # Cache entries live under a directory per CNEFE edition, so clearing
     # every edition (year = NULL) has to recurse to still mean everything.
     recursive = is.null(year)
   )
 
-  if (length(all_zips) == 0L) {
+  if (length(all_files) == 0L) {
     if (verbose) {
-      cli::cli_inform(c("i" = "No cached CNEFE ZIP files found."))
+      cli::cli_inform(c("i" = "No cached CNEFE files found."))
     }
     return(invisible(character(0)))
   }
@@ -65,12 +73,12 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
   if (!identical(code_muni, "all")) {
     code_muni <- .normalize_code_muni(code_muni)
     code_str <- as.character(code_muni)
-    all_zips <- all_zips[grepl(code_str, basename(all_zips), fixed = TRUE)]
+    all_files <- all_files[grepl(code_str, basename(all_files), fixed = TRUE)]
 
-    if (length(all_zips) == 0L) {
+    if (length(all_files) == 0L) {
       if (verbose) {
         cli::cli_inform(c(
-          "i" = "No cached ZIP found for municipality {.val {code_muni}}."
+          "i" = "No cached file found for municipality {.val {code_muni}}."
         ))
       }
       return(invisible(character(0)))
@@ -78,20 +86,20 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
   }
 
   # Compute total size before deletion
-  sizes <- file.size(all_zips)
+  sizes <- file.size(all_files)
   total_mb <- sum(sizes, na.rm = TRUE) / 1024^2
 
   # Delete files
-  unlink(all_zips)
+  unlink(all_files)
 
   if (verbose) {
-    n <- length(all_zips)
+    n <- length(all_files)
     cli::cli_inform(c(
-      "v" = "Deleted {n} cached CNEFE ZIP file{?s} ({round(total_mb, 1)} MB freed)."
+      "v" = "Deleted {n} cached CNEFE file{?s} ({round(total_mb, 1)} MB freed)."
     ))
   }
 
-  invisible(all_zips)
+  invisible(all_files)
 }
 
 

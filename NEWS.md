@@ -131,6 +131,15 @@
 
 ## Bug fixes
 
+* `clear_cache_muni()` works again. Since the cache moved to gzipped CSV it
+  had been matching `.zip` only, so it silently deleted nothing: it reported
+  "No cached CNEFE ZIP files found" with a full cache and returned an empty
+  vector, leaving users no working way to clear downloads. It now matches both
+  the current `.csv.gz` entries and the `.zip` archives left by versions before
+  0.3.0, and leaves census tract Parquet files to `clear_cache_tracts()`, which
+  was never affected. The existing tests missed this because their fixtures
+  seeded the one format that still worked (#93).
+
 * DuckDB connections are no longer leaked when something fails between
   connecting and the first query. `on.exit()` was registered only after the
   whole connect-and-load block had run, so a failed extension install, a SQL

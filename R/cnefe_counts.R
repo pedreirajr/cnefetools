@@ -169,11 +169,11 @@ cnefe_counts <- function(
   cache_dir = NULL
 ) {
   # ---------------------------------------------------------------------------
-  # Step 1/3: Ensure ZIP exists in cache and find CSV inside
+  # Step 1/3: Ensure the cached data file exists
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 1/3: Ensuring ZIP and inspecting archive...",
-                           msg_done = "Step 1/3 (CNEFE ZIP ready)")
+    cli::cli_progress_step("Step 1/3: Ensuring the CNEFE data file...",
+                           msg_done = "Step 1/3 (CNEFE data ready)")
   }
 
   zip_info <- .cnefe_ensure_zip(
@@ -189,7 +189,7 @@ cnefe_counts <- function(
 
 
   if (verbose) {
-  cli::cli_progress_done("Step 1/3: Ensuring ZIP and inspecting archive...")
+  cli::cli_progress_done("Step 1/3: Ensuring the CNEFE data file...")
   }
 
   # ---------------------------------------------------------------------------
@@ -399,7 +399,7 @@ cnefe_counts <- function(
   cache_dir = NULL
 ) {
   # ---------------------------------------------------------------------------
-  # Step 1/2: Ensure ZIP exists in cache and prepare polygon
+  # Step 1/2: Ensure the cached data file exists and prepare polygon
   # ---------------------------------------------------------------------------
   if (verbose) {
     cli::cli_progress_step("Step 1/2: Ensuring data and preparing polygon...",

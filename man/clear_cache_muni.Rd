@@ -2,7 +2,7 @@
 % Please edit documentation in R/clear_cache.R
 \name{clear_cache_muni}
 \alias{clear_cache_muni}
-\title{Delete cached CNEFE ZIP files}
+\title{Delete cached CNEFE data files}
 \usage{
 clear_cache_muni(
   code_muni = "all",
@@ -12,9 +12,9 @@ clear_cache_muni(
 )
 }
 \arguments{
-\item{code_muni}{Integer or \code{"all"}. If \code{"all"} (default), all cached CNEFE
-ZIP files are deleted. If a seven-digit IBGE municipality code is provided,
-only the ZIP file for that municipality is deleted.}
+\item{code_muni}{Integer or \code{"all"}. If \code{"all"} (default), every cached CNEFE
+file is deleted. If a seven-digit IBGE municipality code is provided, only
+the file for that municipality is deleted.}
 
 \item{verbose}{Logical; if \code{TRUE} (default), reports the number of files
 deleted and the space freed.}
@@ -31,16 +31,19 @@ point large downloads at a secondary drive or a shared volume.}
 Invisibly, the character vector of deleted file paths.
 }
 \description{
-\code{clear_cache_muni()} removes CNEFE ZIP files stored in the user cache
+\code{clear_cache_muni()} removes CNEFE data files stored in the user cache
 directory by \code{\link[=cnefe_counts]{cnefe_counts()}}, \code{\link[=compute_lumi]{compute_lumi()}}, \code{\link[=tracts_to_h3]{tracts_to_h3()}}, and
 related functions.
+
+The cache holds gzipped CSVs (\code{.csv.gz}). Archives left by versions before
+0.3.0, which cached the ZIP as published by IBGE, are removed as well.
 }
 \examples{
 \donttest{
-# Delete all cached CNEFE ZIPs
+# Delete every cached CNEFE file
 clear_cache_muni()
 
-# Delete only the ZIP for Lauro de Freitas-BA
+# Delete only the file for Lauro de Freitas-BA
 clear_cache_muni(2919207)
 }
 

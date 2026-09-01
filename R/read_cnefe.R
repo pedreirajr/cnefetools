@@ -115,7 +115,7 @@ read_cnefe <- function(
     cli::cli_alert_info("Processing municipality code {.val {code_muni}}")
   }
 
-  # Ensure ZIP exists (cached or temporary) and is valid
+  # Ensure the data file exists (cached or temporary) and is valid
   zip_info <- .cnefe_ensure_zip(
     code_muni = code_muni,
     index = cnefe_index,
