@@ -83,3 +83,40 @@ generate_cnefe_fixture_zip <- function() {
 }
 
 generate_cnefe_fixture_zip()
+
+
+# ---------------------------------------------------------------------------
+# Gzipped variant (#94)
+#
+# The package cache has held a gzipped CSV since #93, so the ZIP fixture alone
+# exercises only the legacy path that a cache written by an older version takes.
+# This writes the same records as .csv.gz so the primary format is tested too.
+# ---------------------------------------------------------------------------
+generate_cnefe_fixture_gz <- function() {
+  zip_path <- file.path("inst", "extdata", "cnefe_fixture_cnefe.zip")
+  if (!file.exists(zip_path)) {
+    stop("Run generate_cnefe_fixture_zip() first.")
+  }
+
+  tmp <- file.path(tempdir(), "fixture_gz")
+  unlink(tmp, recursive = TRUE)
+  dir.create(tmp, recursive = TRUE, showWarnings = FALSE)
+
+  inside <- utils::unzip(zip_path, list = TRUE)$Name[1]
+  utils::unzip(zip_path, files = inside, exdir = tmp)
+
+  gz_path <- file.path("inst", "extdata", "cnefe_fixture_cnefe.csv.gz")
+  inc <- file(file.path(tmp, inside), "rb")
+  outc <- gzfile(gz_path, "wb")
+  repeat {
+    buf <- readBin(inc, "raw", n = 1e6)
+    if (length(buf) == 0L) break
+    writeBin(buf, outc)
+  }
+  close(inc)
+  close(outc)
+  unlink(tmp, recursive = TRUE)
+
+  message("Wrote ", gz_path, " (", file.size(gz_path), " bytes)")
+  invisible(gz_path)
+}

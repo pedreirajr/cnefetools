@@ -10,6 +10,7 @@ tracts_to_h3(
   h3_resolution = 9,
   vars = c("pop_ph", "pop_ch"),
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE
 )
 }
@@ -53,6 +54,11 @@ tracts with no private dwellings receive no allocation.
 
 \item{cache}{Logical. Whether to use the existing package cache for assets and CNEFE zips.}
 
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
+
 \item{verbose}{Logical. Whether to print step messages and timing.}
 }
 \value{
@@ -66,6 +72,15 @@ An \code{sf} object (CRS 4326) with an H3 grid and the requested interpolated va
 }
 
 The function uses DuckDB with the spatial and H3 extensions for the heavy work.
+
+Unlike \code{\link[=cnefe_counts]{cnefe_counts()}} and \code{\link[=compute_lumi]{compute_lumi()}}, this function does not expose a
+\code{backend} argument and relies on DuckDB exclusively. The dominant cost here is
+a spatial overlay between the full CNEFE point set of the municipality and the
+census tract polygons, which is a different workload from the tabular
+aggregation those other functions perform. Running that overlay in R would
+take prohibitively long in medium and large municipalities, so a pure-R
+fallback would offer users a path that does not finish rather than a slower
+one.
 }
 \examples{
 \donttest{

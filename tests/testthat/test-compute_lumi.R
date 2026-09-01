@@ -53,7 +53,7 @@ testthat::test_that("compute_lumi computes expected p_res on offline fixture (ba
   # Mock the municipality boundary so the test does not require geobr network
   # access and so that the fixture coordinates (near -38.5 lon, -3.7 lat) fall
   # inside the polygon used to build the full H3 grid.
-  mock_boundary <- function(code_muni) {
+  mock_boundary <- function(code_muni, year = 2022L) {
     sf::st_sf(geometry = sf::st_sfc(
       sf::st_polygon(list(matrix(
         c(-38.60, -3.80, -38.50, -3.80, -38.50, -3.70, -38.60, -3.70, -38.60, -3.80),
@@ -71,7 +71,7 @@ testthat::test_that("compute_lumi computes expected p_res on offline fixture (ba
       verbose = FALSE
     ),
     .cnefe_ensure_zip = mock_ensure_zip_fixture,
-    .read_muni_boundary_2024 = mock_boundary,
+    .read_muni_boundary = mock_boundary,
     .package = "cnefetools"
   )
 
@@ -134,7 +134,6 @@ testthat::test_that("compute_lumi works with user polygon (backend r)", {
     suppressWarnings(
       cnefetools::compute_lumi(
         code_muni,
-        polygon_type = "user",
         polygon = test_polygon,
         backend = "r",
         verbose = FALSE
@@ -243,7 +242,10 @@ testthat::test_that("compute_lumi validates polygon argument", {
 
   code_muni <- 2927408L
 
-  # Error when polygon_type = "user" but polygon is NULL
+  # polygon_type = "user" with no polygon is still an error, even though the
+  # argument is deprecated (#90). Without polygon_type, polygon = NULL is now
+  # simply H3 mode and correctly raises nothing.
+  withr::local_options(lifecycle_verbosity = "quiet")
   testthat::expect_error(
     cnefetools::compute_lumi(
       code_muni,
@@ -258,7 +260,6 @@ testthat::test_that("compute_lumi validates polygon argument", {
   testthat::expect_error(
     cnefetools::compute_lumi(
       code_muni,
-      polygon_type = "user",
       polygon = data.frame(x = 1),
       verbose = FALSE
     ),
@@ -273,7 +274,6 @@ testthat::test_that("compute_lumi validates polygon argument", {
   testthat::expect_error(
     cnefetools::compute_lumi(
       code_muni,
-      polygon_type = "user",
       polygon = pt_sf,
       verbose = FALSE
     ),

@@ -5,15 +5,18 @@
 \title{Read CNEFE data for a given municipality}
 \usage{
 read_cnefe(
-  code_muni,
+  code_muni = NULL,
   year = 2022,
   verbose = TRUE,
   cache = TRUE,
-  output = c("arrow", "sf")
+  cache_dir = NULL,
+  output = c("arrow", "sf"),
+  file = NULL
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Integer. Seven-digit IBGE municipality code. Omit it when
+reading a local file through \code{file}.}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -25,12 +28,22 @@ download, extraction, and reading steps.}
 user-level cache directory specific to this package. If \code{FALSE}, a
 temporary file is used and removed after reading.}
 
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
+
 \item{output}{Character. Output format. \code{"arrow"} (default) returns an
-\link[arrow:Table-class]{arrow::Table}, whereas \code{"sf"} returns an \link[sf:st_as_sf]{sf} point object
+\link[arrow:Table]{arrow::Table}, whereas \code{"sf"} returns an \link[sf:st_as_sf]{sf} point object
 with coordinates built from \code{LONGITUDE} / \code{LATITUDE} in CRS 4674.}
+
+\item{file}{Character. Path to a CNEFE file already on disk, read instead of
+downloading. Accepts \code{.zip} as published by IBGE, \code{.csv}, \code{.csv.gz} and
+\code{.parquet}, which is what \code{\link[=cnefe_export]{cnefe_export()}} writes. Mutually exclusive with
+\code{code_muni}, and it makes the function independent of the IBGE server.}
 }
 \value{
-If \code{output = "arrow"}, an \link[arrow:Table-class]{arrow::Table} containing all CNEFE records for
+If \code{output = "arrow"}, an \link[arrow:Table]{arrow::Table} containing all CNEFE records for
 the given municipality.
 
 If \code{output = "sf"}, an \link[sf:st_as_sf]{sf} object with point geometry in
@@ -40,7 +53,7 @@ EPSG:4674 (SIRGAS 2000), using the \code{LONGITUDE} and \code{LATITUDE} columns.
 Downloads and reads the CNEFE CSV file for a given
 IBGE municipality code, using the official IBGE FTP structure. The function
 relies on an internal index linking municipality codes to the corresponding
-ZIP URLs. Data are returned either as an Arrow \link[arrow:Table-class]{Table}
+ZIP URLs. Data are returned either as an Arrow \link[arrow:Table]{Table}
 (default) or as an \link[sf:st_as_sf]{sf} object with SIRGAS 2000 coordinates.
 }
 \details{
@@ -54,7 +67,7 @@ keeping these columns in the final object (\code{remove = FALSE}).
 
 When \code{cache = TRUE} (the default), the downloaded ZIP file is stored in a
 user-level cache directory specific to this package, created via
-\code{\link[tools:userdir]{tools::R_user_dir()}} with \code{which = "cache"}. This avoids re-downloading
+\code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. This avoids re-downloading
 the same municipality file across sessions.
 
 When \code{cache = FALSE}, the ZIP file is stored in a temporary location and
@@ -66,8 +79,17 @@ removed when the function exits.
 # Read CNEFE data as an Arrow table
 cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 
+# Read a local file instead, with no network access. overwrite = TRUE because
+# cnefe_export() refuses to clobber an existing export by default.
+path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
+cnefe_local <- read_cnefe(file = path)
+
 # Read as an sf spatial object
 cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 }
 
+}
+\seealso{
+\code{\link[=cnefe_export]{cnefe_export()}} to write a municipality to a persistent, optimised
+file that this function can read back through \code{file}.
 }

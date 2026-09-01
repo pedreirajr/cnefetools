@@ -7,12 +7,13 @@
 cnefe_counts(
   code_muni,
   year = 2022,
-  polygon_type = c("hex", "user"),
+  polygon_type = lifecycle::deprecated(),
   polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
   verbose = TRUE,
   cache = TRUE,
+  cache_dir = NULL,
   backend = c("duckdb", "r")
 )
 }
@@ -22,12 +23,13 @@ cnefe_counts(
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
 
-\item{polygon_type}{Character. Type of polygon aggregation: \code{"hex"} (default)
-uses an H3 hexagonal grid; \code{"user"} uses polygons provided via the \code{polygon}
-parameter.}
+\item{polygon_type}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} The aggregation mode is
+now inferred from \code{polygon}: leave it \code{NULL} for an H3 grid, or pass an
+\code{\link[sf:sf]{sf::sf}} object for user polygons. Passing \code{polygon_type} still works and
+warns.}
 
-\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Required when
-\code{polygon_type = "user"}. A warning is issued reporting the percentage of
+\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Supplying it
+switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 CNEFE points covered by the polygon area. If no CNEFE points fall within
 the polygon, an error is raised.}
 
@@ -41,12 +43,32 @@ object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
-\item{cache}{Logical. If \code{TRUE} (default), the downloaded ZIP is stored
-in the user cache directory and reused in future calls. If \code{FALSE},
-a temporary file is used and deleted after the call.}
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded data is stored as
+a gzipped CSV in the user cache directory and reused in future calls. If
+\code{FALSE}, a temporary file is used and deleted after the call.}
 
-\item{backend}{Character. \code{"duckdb"} (default) uses DuckDB with H3/spatial
-extensions. \code{"r"} uses h3jsr and sf in R (slower but no DuckDB dependency).}
+\item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
+(default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
+is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. Use this to
+point large downloads at a secondary drive or a shared volume.}
+
+\item{backend}{Character. \code{"duckdb"} (default) uses DuckDB with the H3
+extension, and the spatial extension as well when \code{polygon} is supplied.
+\code{"r"} uses h3jsr and sf in R instead, and needs no DuckDB extension.
+
+\code{"r"} exists for environments where DuckDB extensions cannot be installed,
+such as some restricted computing clusters. It is \strong{not} the lighter
+option: it materialises the filtered address table in R memory, so its
+footprint grows with the municipality, while DuckDB aggregates in a
+streaming fashion and stays nearly flat. On São Paulo (5.7 million
+addresses) the measured peak is about 9 GB under \code{"r"} against 0.7 GB
+under \code{"duckdb"}, alongside being roughly 13 times slower.
+
+If the constraint is memory rather than installability, keep the DuckDB
+backend and cap it with the \code{cnefetools.duckdb_config} option instead. See
+\code{?cnefetools} for that option, and the benchmark article at
+\url{https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html} for
+the measurements.}
 }
 \value{
 An \code{\link[sf:sf]{sf::sf}} object containing:
@@ -78,6 +100,9 @@ The counts in the columns \code{addr_type1} to \code{addr_type8} correspond to:
 \item \code{addr_type7}: Building under construction or renovation (Edificação em construção ou reforma)
 \item \code{addr_type8}: Religious establishment (Estabelecimento religioso)
 }
+
+All eight types are reported. In particular, \code{addr_type7} is retained here,
+whereas \code{\link[=compute_lumi]{compute_lumi()}} excludes it when computing land-use mix indices.
 }
 \examples{
 \donttest{
@@ -99,4 +124,7 @@ hex_counts <- cnefe_counts(
 )
 }
 
+}
+\seealso{
+\code{\link[=compute_lumi]{compute_lumi()}} for land-use mix indices on the same spatial units.
 }
