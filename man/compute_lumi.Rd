@@ -115,9 +115,7 @@ and empirically validated on that two-category basis.
 \code{compute_lumi()} drops records with \code{COD_ESPECIE == 7} (building under
 construction or renovation), because such records describe a transitional
 state rather than a realised land use. Note that \code{\link[=cnefe_counts]{cnefe_counts()}} does \strong{not}
-apply this exclusion and reports these records as \code{addr_type7}. The two
-functions therefore operate on slightly different subsets of the same
-municipality, by design.
+apply this exclusion and reports these records as \code{addr_type7}.
 }
 
 \subsection{The citywide baseline P}{

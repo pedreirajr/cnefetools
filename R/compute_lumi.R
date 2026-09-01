@@ -86,9 +86,7 @@
 #' `compute_lumi()` drops records with `COD_ESPECIE == 7` (building under
 #' construction or renovation), because such records describe a transitional
 #' state rather than a realised land use. Note that [cnefe_counts()] does **not**
-#' apply this exclusion and reports these records as `addr_type7`. The two
-#' functions therefore operate on slightly different subsets of the same
-#' municipality, by design.
+#' apply this exclusion and reports these records as `addr_type7`.
 #'
 #' ## The citywide baseline P
 #'

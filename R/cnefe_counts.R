@@ -70,9 +70,7 @@
 #' - `addr_type8`: Religious establishment (Estabelecimento religioso)
 #'
 #' All eight types are reported. In particular, `addr_type7` is retained here,
-#' whereas [compute_lumi()] excludes it when computing land-use mix indices. The
-#' two functions therefore operate on slightly different subsets of the same
-#' municipality, by design.
+#' whereas [compute_lumi()] excludes it when computing land-use mix indices.
 #'
 #' @seealso [compute_lumi()] for land-use mix indices on the same spatial units.
 #'

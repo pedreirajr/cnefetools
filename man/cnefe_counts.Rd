@@ -102,9 +102,7 @@ The counts in the columns \code{addr_type1} to \code{addr_type8} correspond to:
 }
 
 All eight types are reported. In particular, \code{addr_type7} is retained here,
-whereas \code{\link[=compute_lumi]{compute_lumi()}} excludes it when computing land-use mix indices. The
-two functions therefore operate on slightly different subsets of the same
-municipality, by design.
+whereas \code{\link[=compute_lumi]{compute_lumi()}} excludes it when computing land-use mix indices.
 }
 \examples{
 \donttest{
