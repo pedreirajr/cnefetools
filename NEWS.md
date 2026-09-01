@@ -41,6 +41,20 @@
 
 ## New features
 
+* New `cnefetools.duckdb_config` option, a named list of DuckDB settings
+  applied to every connection the package opens. Unset, DuckDB sizes itself
+  against the whole machine, taking one thread per logical core and 80% of
+  installed RAM, and there was no way to hold it back on a shared node, a
+  laptop running other work, or a CI runner:
+
+  ```r
+  options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
+  ```
+
+  Names are passed to DuckDB's `SET` verbatim, so any setting DuckDB accepts
+  works. Exceeding `memory_limit` makes DuckDB spill to disk rather than fail,
+  so a low value costs time, not correctness (#80, R2.8).
+
 * The pure-R backends of `cnefe_counts()` and `compute_lumi()` now push their
   `transmute()` and `filter()` calls down to the Arrow table and collect last,
   instead of calling `as.data.frame()` first. The old order materialised all 34
@@ -116,6 +130,26 @@
   partition (#89).
 
 ## Bug fixes
+
+* DuckDB connections are no longer leaked when something fails between
+  connecting and the first query. `on.exit()` was registered only after the
+  whole connect-and-load block had run, so a failed extension install, a SQL
+  error or a user interrupt left the connection and its file handles behind.
+  Cleanup is now registered through `withr::defer()` immediately after
+  `dbConnect()` returns, guarded by `DBI::dbIsValid()` so a connection that
+  died earlier cannot raise a second error during cleanup (#84).
+
+* DuckDB error messages are no longer swallowed. The old pattern wrapped the
+  queries in a nested `utils::capture.output()` that captured both output and
+  message streams, which also absorbed the text of genuine errors and left
+  users with a failure they could not diagnose. The replacement muffles
+  messages only, so errors propagate with their message intact (#57).
+
+* `cnefe_counts()`, `compute_lumi()` and `tracts_to_polygon()` now give a clear
+  error when `polygon` has zero features. An empty `sf` object previously
+  survived validation and failed much later with an unrelated message, because
+  `st_union()` on zero rows yields an empty geometry, `st_centroid()` of that
+  yields an empty point, and `st_coordinates()` returns no rows (#71).
 
 * `compute_lumi()` no longer returns `NULL` when no hexagon survives
   filtering. Both backends now return a zero-row `sf` carrying the documented
