@@ -377,6 +377,7 @@ compute_lumi <- function(
     con <- .duckdb_connect(
       extensions = "h3",
       reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+      fallback = "backend = \"r\"",
       verbose = verbose
     )
 
@@ -743,6 +744,7 @@ compute_lumi <- function(
   con <- .duckdb_connect(
       extensions = "spatial",
     reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+    fallback = "backend = \"r\"",
     verbose = verbose
   )
 

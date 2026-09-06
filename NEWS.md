@@ -131,6 +131,17 @@
 
 ## Bug fixes
 
+* A DuckDB extension that has no usable build for the running platform now
+  fails with a message that says so, instead of a raw `dlopen()` dump. The case
+  that prompted this is live: since extension v1.5.5 the DuckDB community
+  repository serves an arm64 binary under the `osx_amd64` path for `h3`, so the
+  DuckDB backend cannot run on Intel macOS at all. The error now names the
+  upstream packaging problem and, in `cnefe_counts()` and `compute_lumi()`,
+  points at `backend = "r"`. `tracts_to_h3()` and `tracts_to_polygon()` get the
+  same diagnosis without the suggestion, since they have no pure-R path by
+  design. The CI matrix also gained a `macos-latest` job so it covers both
+  architectures CRAN checks (#99).
+
 * `clear_cache_muni()` works again. Since the cache moved to gzipped CSV it
   had been matching `.zip` only, so it silently deleted nothing: it reported
   "No cached CNEFE ZIP files found" with a full cache and returned an empty
