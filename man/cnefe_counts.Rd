@@ -33,13 +33,13 @@ switches the output from an H3 grid to these polygons. A warning is issued repor
 CNEFE points covered by the polygon area. If no CNEFE points fall within
 the polygon, an error is raised.}
 
-\item{crs_output}{The CRS for the output object. Only used when
-\code{polygon_type = "user"}. Default is \code{NULL}, which uses the original CRS of
+\item{crs_output}{The CRS for the output object. Only used when \code{polygon} is
+supplied. Default is \code{NULL}, which uses the original CRS of
 the \code{polygon} argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
-\item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used when
-\code{polygon_type = "hex"}.}
+\item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used for
+the H3 grid, so it is ignored when \code{polygon} is supplied.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
@@ -73,13 +73,13 @@ the measurements.}
 \value{
 An \code{\link[sf:sf]{sf::sf}} object containing:
 \itemize{
-\item \code{id_hex} (when \code{polygon_type = "hex"}): H3 cell identifier
-\item Original columns from \code{polygon} (when \code{polygon_type = "user"})
+\item \code{id_hex} (when \code{polygon} is \code{NULL}): H3 cell identifier
+\item Original columns from \code{polygon} (when \code{polygon} is supplied)
 \item \code{addr_type1} ... \code{addr_type8}: counts per address type
 \item \code{geometry}: polygon geometry
 }
 
-When \code{polygon_type = "user"}, the output CRS matches the original \code{polygon} CRS
+When \code{polygon} is supplied, the output CRS matches the original \code{polygon} CRS
 (or \code{crs_output} if specified).
 }
 \description{

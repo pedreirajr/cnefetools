@@ -17,12 +17,12 @@
 #'   switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 #'   CNEFE points covered by the polygon area. If no CNEFE points fall within
 #'   the polygon, an error is raised.
-#' @param crs_output The CRS for the output object. Only used when
-#'   `polygon_type = "user"`. Default is `NULL`, which uses the original CRS of
+#' @param crs_output The CRS for the output object. Only used when `polygon` is
+#'   supplied. Default is `NULL`, which uses the original CRS of
 #'   the `polygon` argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 #'   object accepted by [sf::st_transform()].
-#' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used when
-#'   `polygon_type = "hex"`.
+#' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used for
+#'   the H3 grid, so it is ignored when `polygon` is supplied.
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
 #' @param cache Logical. If `TRUE` (default), the downloaded data is stored as
 #'   a gzipped CSV in the user cache directory and reused in future calls. If
@@ -50,12 +50,12 @@
 #'   the measurements.
 #'
 #' @return An [`sf::sf`] object containing:
-#' - `id_hex` (when `polygon_type = "hex"`): H3 cell identifier
-#' - Original columns from `polygon` (when `polygon_type = "user"`)
+#' - `id_hex` (when `polygon` is `NULL`): H3 cell identifier
+#' - Original columns from `polygon` (when `polygon` is supplied)
 #' - `addr_type1` ... `addr_type8`: counts per address type
 #' - `geometry`: polygon geometry
 #'
-#' When `polygon_type = "user"`, the output CRS matches the original `polygon` CRS
+#' When `polygon` is supplied, the output CRS matches the original `polygon` CRS
 #' (or `crs_output` if specified).
 #'
 #' @details
