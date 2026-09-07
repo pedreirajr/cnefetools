@@ -139,8 +139,7 @@
   upstream packaging problem and, in `cnefe_counts()` and `compute_lumi()`,
   points at `backend = "r"`. `tracts_to_h3()` and `tracts_to_polygon()` get the
   same diagnosis without the suggestion, since they have no pure-R path by
-  design. The CI matrix also gained a `macos-latest` job so it covers both
-  architectures CRAN checks (#99).
+  design (#99).
 
 * `clear_cache_muni()` works again. Since the cache moved to gzipped CSV it
   had been matching `.zip` only, so it silently deleted nothing: it reported
