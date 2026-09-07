@@ -1170,6 +1170,9 @@
 #' @param spatial Logical. Whether to load duckspatial, installing it into the
 #'   connection if the load fails.
 #' @param reason Passed to [rlang::check_installed()] to explain the dependency.
+#' @param fallback Optional code the caller can suggest when an extension has no
+#'   usable build for the platform, such as `backend = "r"`. `NULL` for the
+#'   functions that have no non-DuckDB path.
 #' @param verbose Logical, forwarded to the extension loader.
 #' @param .envir Frame to attach the cleanup handler to. Defaults to the caller,
 #'   which is what every call site wants.
@@ -1182,6 +1185,7 @@
   extensions = character(0),
   spatial = FALSE,
   reason = "to use the DuckDB backend.",
+  fallback = NULL,
   verbose = TRUE,
   .envir = parent.frame()
 ) {
@@ -1230,12 +1234,69 @@
         con,
         ext,
         repo = if (identical(ext, "spatial")) NULL else "community",
-        verbose = verbose
+        verbose = verbose,
+        fallback = fallback,
+        # Report the failure against the function the user actually called,
+        # not against the connection helper.
+        call = .envir
       )
     )
   }
 
   con
+}
+
+
+# -----------------------------------------------------------------------------
+# Internal: Turn a failed extension load into an actionable message
+# -----------------------------------------------------------------------------
+# DuckDB surfaces a failed `LOAD` as a raw `dlopen()` dump, which reads as a
+# package bug on a fresh look. The architecture-mismatch case is real and
+# current: since extension v1.5.5 the community repository serves an arm64
+# build of `h3` under the osx_amd64 path, so the DuckDB backend is unusable on
+# Intel macOS through no fault of ours (issue #99).
+#
+# `fallback` is the code the caller can suggest instead, or NULL when the
+# calling function has no non-DuckDB path. `tracts_to_h3()` and
+# `tracts_to_polygon()` are the NULL case on purpose, see R2.6 in issue #80.
+.duckdb_extension_abort <- function(
+  ext,
+  err,
+  repo = "community",
+  fallback = NULL,
+  call = rlang::caller_env()
+) {
+  detail <- conditionMessage(err)
+  arch_mismatch <- grepl("incompatible architecture", detail, fixed = TRUE)
+  repo_label <- if (is.null(repo)) "core" else repo
+
+  if (arch_mismatch) {
+    bullets <- c(
+      "The DuckDB {.val {ext}} extension has no usable build for this platform.",
+      "x" = "The {repo_label} extension repository served a binary for a different architecture.",
+      "i" = "This is a packaging problem upstream in DuckDB, not in {.pkg cnefetools}."
+    )
+    # The dlopen dump repeats the same path four times, so only the head of it
+    # earns a place in the message.
+    detail <- paste0(substr(detail, 1, 200), "...")
+  } else {
+    bullets <- c(
+      "The DuckDB {.val {ext}} extension could not be loaded."
+    )
+  }
+
+  if (!is.null(fallback)) {
+    bullets <- c(
+      bullets,
+      "i" = "You can run this on the pure-R backend instead, with {.code {fallback}}."
+    )
+  }
+
+  cli::cli_abort(
+    c(bullets, "i" = "DuckDB reported: {detail}"),
+    class = "cnefetools_extension_unavailable",
+    call = call
+  )
 }
 
 
@@ -1246,7 +1307,9 @@
   con,
   ext,
   repo = "community",
-  verbose = TRUE
+  verbose = TRUE,
+  fallback = NULL,
+  call = rlang::caller_env()
 ) {
   # repo = NULL means core extension (no FROM clause needed)
 
@@ -1272,7 +1335,12 @@
       # if (verbose) {
       #   message("DuckDB: loading extension '", ext, "'...")
       # }
-      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+      tryCatch(
+        DBI::dbExecute(con, sprintf("LOAD %s;", ext)),
+        error = function(e) {
+          .duckdb_extension_abort(ext, e, repo = repo, fallback = fallback, call = call)
+        }
+      )
       return(invisible(TRUE))
     }
   }
@@ -1295,12 +1363,19 @@
   # if (verbose) {
   #   message("DuckDB: installing extension '", ext, "' from ", repo, "...")
   # }
-  if (is.null(repo)) {
-    DBI::dbExecute(con, sprintf("INSTALL %s;", ext))
-  } else {
-    DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
-  }
-  DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+  tryCatch(
+    {
+      if (is.null(repo)) {
+        DBI::dbExecute(con, sprintf("INSTALL %s;", ext))
+      } else {
+        DBI::dbExecute(con, sprintf("INSTALL %s FROM %s;", ext, repo))
+      }
+      DBI::dbExecute(con, sprintf("LOAD %s;", ext))
+    },
+    error = function(e) {
+      .duckdb_extension_abort(ext, e, repo = repo, fallback = fallback, call = call)
+    }
+  )
 
   invisible(TRUE)
 }

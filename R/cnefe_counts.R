@@ -86,9 +86,8 @@
 #'   read_neighborhood(year = 2022),
 #'   code_muni == 2919207
 #' )
-#' hex_counts <- cnefe_counts(
+#' nei_counts <- cnefe_counts(
 #'   code_muni = 2919207,
-#'   polygon_type = "user",
 #'   polygon = nei_ldf,
 #'   cache = FALSE
 #' )
@@ -232,6 +231,7 @@ cnefe_counts <- function(
     con <- .duckdb_connect(
       extensions = "h3",
       reason = "to use backend = 'duckdb' in `cnefe_counts()`.",
+      fallback = "backend = \"r\"",
       verbose = verbose
     )
 
@@ -581,6 +581,7 @@ cnefe_counts <- function(
   con <- .duckdb_connect(
       extensions = "spatial",
     reason = "to use backend = 'duckdb' in `cnefe_counts()`.",
+    fallback = "backend = \"r\"",
     verbose = verbose
   )
 

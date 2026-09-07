@@ -15,11 +15,24 @@ jobs:
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
+    continue-on-error: ${{ matrix.config.allow-failure || false }}
+
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {os: macos-15-intel, r: 'release'}
+          # CRAN checks four macOS flavours and two of them are x86_64, so the
+          # matrix covers both architectures rather than only the current one.
+          #
+          # The Intel entry is expected to fail while the DuckDB community
+          # extension repository serves an arm64 build of `h3` under the
+          # osx_amd64 path (broken since extension v1.5.5). That is an upstream
+          # packaging bug, not a package regression, and the entry is kept so
+          # the breakage stays visible. See issue #99. Do not swap this runner
+          # for macos-latest: that would hide the only architecture where the
+          # bug appears.
+          - {os: macos-15-intel, r: 'release', allow-failure: true}
+          - {os: macos-latest,   r: 'release'}
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'oldrel-1'}
