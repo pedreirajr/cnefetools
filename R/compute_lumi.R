@@ -143,7 +143,6 @@
 #' )
 #' lumi_poly <- compute_lumi(
 #'   code_muni = 2919207,
-#'   polygon_type = "user",
 #'   polygon = nei_ldf,
 #'   cache = FALSE
 #' )
