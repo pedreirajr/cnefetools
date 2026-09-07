@@ -197,8 +197,7 @@
   and
   [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
   get the same diagnosis without the suggestion, since they have no
-  pure-R path by design. The CI matrix also gained a `macos-latest` job
-  so it covers both architectures CRAN checks
+  pure-R path by design
   ([\#99](https://github.com/pedreirajr/cnefetools/issues/99)).
 
 - [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)

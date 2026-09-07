@@ -198,16 +198,16 @@ lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [46ms]
+#> ✔ Converting the archive to .csv.gz (done once) [43ms]
 #> 
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
-#> ✔ Step 1/3 (CNEFE data ready) [605ms]
+#> ✔ Step 1/3 (CNEFE data ready) [517ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [168ms]
+#> ✔ Step 2/3 (Addresses counted) [162ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [3.1s]
+#> ✔ Step 3/3 (Land use mix indices computed) [3.2s]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -227,10 +227,10 @@ lumi_poly <- compute_lumi(
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [548ms]
+#> ✔ Converting the archive to .csv.gz (done once) [565ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ✔ Step 1/3 (Data and polygon ready) [2.2s]
+#> ✔ Step 1/3 (Data and polygon ready) [1.9s]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
 #> ✔ Step 2/3 (Addresses counted) [1.1s]
@@ -239,7 +239,7 @@ lumi_poly <- compute_lumi(
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
 #> ℹ 106975 of 107244 points are within the provided polygon.
 #> ℹ 269 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [58ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [61ms]
 #> 
 # }
 ```
