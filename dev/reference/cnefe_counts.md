@@ -161,16 +161,16 @@ hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [51ms]
+#> ✔ Converting the archive to .csv.gz (done once) [44ms]
 #> 
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
-#> ✔ Step 1/3 (CNEFE data ready) [1.5s]
+#> ✔ Step 1/3 (CNEFE data ready) [1.9s]
 #> 
 #> ℹ Step 2/3: Building full H3 grid over municipality boundary...
-#> ✔ Step 2/3 (H3 grid built) [6.2s]
+#> ✔ Step 2/3 (H3 grid built) [7.1s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [347ms]
+#> ✔ Step 3/3 (Addresses counted) [380ms]
 #> 
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
@@ -181,26 +181,18 @@ nei_ldf <- subset(
   code_muni == 2919207
 )
 #> ℹ Using year/date 2022
-hex_counts <- cnefe_counts(
+nei_counts <- cnefe_counts(
   code_muni = 2919207,
-  polygon_type = "user",
   polygon = nei_ldf,
   cache = FALSE
 )
-#> Warning: The `polygon_type` argument of `cnefe_counts()` is deprecated as of cnefetools
-#> 0.3.0.
-#> The aggregation mode is now inferred from `polygon`.
-#> ℹ Pass an <sf> object to `polygon` for user polygons, or leave it `NULL` for an
-#>   H3 grid.
-#> ℹ The deprecated feature was likely used in the cnefetools package.
-#>   Please report the issue at <https://github.com/pedreirajr/cnefetools/issues>.
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [607ms]
+#> ✔ Converting the archive to .csv.gz (done once) [497ms]
 #> 
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
-#> ✔ Step 1/2 (Data and polygon ready) [2.5s]
+#> ✔ Step 1/2 (Data and polygon ready) [3.2s]
 #> 
 #> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.

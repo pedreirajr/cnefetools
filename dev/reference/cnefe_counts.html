@@ -181,16 +181,16 @@ whereas <code><a href="compute_lumi.html">compute_lumi()</a></code> excludes it 
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring the CNEFE data file...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[51ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[44ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring the CNEFE data file...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (CNEFE data ready) <span style="color: #B2B2B2;">[1.5s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (CNEFE data ready) <span style="color: #B2B2B2;">[1.9s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Building full H3 grid over municipality boundary...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (H3 grid built) <span style="color: #B2B2B2;">[6.2s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (H3 grid built) <span style="color: #B2B2B2;">[7.1s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Counting address species per hexagon...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Addresses counted) <span style="color: #B2B2B2;">[347ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Addresses counted) <span style="color: #B2B2B2;">[380ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)</span></span></span>
@@ -201,26 +201,18 @@ whereas <code><a href="compute_lumi.html">compute_lumi()</a></code> excludes it 
 <span class="r-in"><span>  <span class="va">code_muni</span> <span class="op">==</span> <span class="fl">2919207</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Using year/date 2022</span>
-<span class="r-in"><span><span class="va">hex_counts</span> <span class="op">&lt;-</span> <span class="fu">cnefe_counts</span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">nei_counts</span> <span class="op">&lt;-</span> <span class="fu">cnefe_counts</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  code_muni <span class="op">=</span> <span class="fl">2919207</span>,</span></span>
-<span class="r-in"><span>  polygon_type <span class="op">=</span> <span class="st">"user"</span>,</span></span>
 <span class="r-in"><span>  polygon <span class="op">=</span> <span class="va">nei_ldf</span>,</span></span>
 <span class="r-in"><span>  cache <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The `polygon_type` argument of `cnefe_counts()` is deprecated as of cnefetools</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> 0.3.0.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> The aggregation mode is now inferred from `polygon`.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Pass an <span style="color: #0000BB;">&lt;sf&gt;</span> object to `polygon` for user polygons, or leave it `NULL` for an</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span>   H3 grid.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> The deprecated feature was likely used in the <span style="color: #0000BB;">cnefetools</span> package.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span>   Please report the issue at <span style="color: #0000BB; font-style: italic;">&lt;https://github.com/pedreirajr/cnefetools/issues&gt;</span>.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/2: Ensuring data and preparing polygon...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[607ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[497ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/2: Ensuring data and preparing polygon...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/2 (Data and polygon ready) <span style="color: #B2B2B2;">[2.5s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/2 (Data and polygon ready) <span style="color: #B2B2B2;">[3.2s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/2: Counting addresses per polygon...</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Polygon coverage: <span style="color: #0000BB;">"99.7%"</span> of CNEFE points captured.</span>
