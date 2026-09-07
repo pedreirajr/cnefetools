@@ -33,13 +33,13 @@ switches the output from an H3 grid to these polygons. A warning is issued repor
 CNEFE points covered by the polygon area. If no CNEFE points fall within
 the polygon, an error is raised.}
 
-\item{crs_output}{The CRS for the output object. Only used when
-\code{polygon_type = "user"}. Default is \code{NULL}, which uses the original CRS of
+\item{crs_output}{The CRS for the output object. Only used when \code{polygon} is
+supplied. Default is \code{NULL}, which uses the original CRS of
 the \code{polygon} argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
-\item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used when
-\code{polygon_type = "hex"}.}
+\item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used for
+the H3 grid, so it is ignored when \code{polygon} is supplied.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
@@ -73,7 +73,7 @@ the measurements.}
 \value{
 An \code{\link[sf:sf]{sf::sf}} object containing:
 \describe{
-\item{When \code{polygon_type = "hex"}:}{
+\item{When \code{polygon} is \code{NULL} (H3 grid):}{
 \itemize{
 \item \code{id_hex}: H3 cell identifier
 \item \code{p_res}, \code{ei}, \code{hhi}, \code{bal}, \code{ice}, \code{hhi_adp}, \code{bgbi}: land-use
@@ -81,7 +81,7 @@ mix indicators
 \item \code{geometry}: hexagon geometry (CRS 4326)
 }
 }
-\item{When \code{polygon_type = "user"}:}{
+\item{When \code{polygon} is supplied:}{
 \itemize{
 \item Original columns from \code{polygon}
 \item \code{p_res}, \code{ei}, \code{hhi}, \code{bal}, \code{ice}, \code{hhi_adp}, \code{bgbi}: land-use
@@ -130,7 +130,7 @@ population, so it describes the distribution of address types and not the
 distribution of residents.
 
 Second, P is always computed over the full municipality, including when
-\code{polygon_type = "user"}, so it does not adapt to the area the supplied
+\code{polygon} is supplied, so it does not adapt to the area the supplied
 polygons happen to cover. This is intended, as P describes the context the
 addresses sit in, which is the municipality, and a sub-area of a city is
 still part of that wider context. A baseline recomputed over the sub-area
@@ -152,7 +152,6 @@ nei_ldf <- subset(
 )
 lumi_poly <- compute_lumi(
   code_muni = 2919207,
-  polygon_type = "user",
   polygon = nei_ldf,
   cache = FALSE
 )

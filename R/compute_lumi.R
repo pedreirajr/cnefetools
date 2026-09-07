@@ -20,12 +20,12 @@
 #'   switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 #'   CNEFE points covered by the polygon area. If no CNEFE points fall within
 #'   the polygon, an error is raised.
-#' @param crs_output The CRS for the output object. Only used when
-#'   `polygon_type = "user"`. Default is `NULL`, which uses the original CRS of
+#' @param crs_output The CRS for the output object. Only used when `polygon` is
+#'   supplied. Default is `NULL`, which uses the original CRS of
 #'   the `polygon` argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 #'   object accepted by [sf::st_transform()].
-#' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used when
-#'   `polygon_type = "hex"`.
+#' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used for
+#'   the H3 grid, so it is ignored when `polygon` is supplied.
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
 #' @param cache Logical. If `TRUE` (default), the downloaded data is stored as
 #'   a gzipped CSV in the user cache directory and reused in future calls. If
@@ -54,7 +54,7 @@
 #'
 #' @return An [`sf::sf`] object containing:
 #' \describe{
-#'   \item{When `polygon_type = "hex"`:}{
+#'   \item{When `polygon` is `NULL` (H3 grid):}{
 #'     \itemize{
 #'       \item `id_hex`: H3 cell identifier
 #'       \item `p_res`, `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`: land-use
@@ -62,7 +62,7 @@
 #'       \item `geometry`: hexagon geometry (CRS 4326)
 #'     }
 #'   }
-#'   \item{When `polygon_type = "user"`:}{
+#'   \item{When `polygon` is supplied:}{
 #'     \itemize{
 #'       \item Original columns from `polygon`
 #'       \item `p_res`, `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`: land-use
@@ -100,7 +100,7 @@
 #' distribution of residents.
 #'
 #' Second, P is always computed over the full municipality, including when
-#' `polygon_type = "user"`, so it does not adapt to the area the supplied
+#' `polygon` is supplied, so it does not adapt to the area the supplied
 #' polygons happen to cover. This is intended, as P describes the context the
 #' addresses sit in, which is the municipality, and a sub-area of a city is
 #' still part of that wider context. A baseline recomputed over the sub-area
@@ -143,7 +143,6 @@
 #' )
 #' lumi_poly <- compute_lumi(
 #'   code_muni = 2919207,
-#'   polygon_type = "user",
 #'   polygon = nei_ldf,
 #'   cache = FALSE
 #' )
@@ -377,6 +376,7 @@ compute_lumi <- function(
     con <- .duckdb_connect(
       extensions = "h3",
       reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+      fallback = "backend = \"r\"",
       verbose = verbose
     )
 
@@ -743,6 +743,7 @@ compute_lumi <- function(
   con <- .duckdb_connect(
       extensions = "spatial",
     reason = "to use backend = 'duckdb' in `compute_lumi()`.",
+    fallback = "backend = \"r\"",
     verbose = verbose
   )
 
