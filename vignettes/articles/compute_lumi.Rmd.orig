@@ -233,8 +233,8 @@ into a narrow range and cannot indicate the direction of homogeneity.
 
 ## Producing indices for any user-supplied polygon
 
-`compute_lumi()` also supports user-provided polygons via the
-`polygon_type = "user"` argument, enabling computation of these indices
+`compute_lumi()` also supports user-provided polygons via the `polygon`
+argument, enabling computation of these indices
 for any spatial unit of interest (such as neighborhoods, census tracts,
 or health districts), depending on the specific research or policy
 purpose. See the example below for the neighborhoods of Maringá (IBGE
@@ -249,7 +249,6 @@ mga_nei <- read_neighborhood(year = 2022) |>
 
 mga_lumi <- compute_lumi(
   code_muni = 4115200,
-  polygon_type = "user",
   polygon = mga_nei
 )
 
@@ -263,10 +262,9 @@ mapview(
 
 ### Notes on user-supplied polygons
 
--   If `polygon` is provided but `polygon_type` is not explicitly set to
-    `"user"`, the function automatically switches to
-    `polygon_type = "user"` and issues a warning at the beginning of the
-    processing.
+-   The aggregation unit follows `polygon`. Leave it as `NULL` for the
+    H3 grid, or supply an `sf` object to aggregate to those polygons
+    instead.
 -   The CRS of the output layer matches the CRS of the layer supplied in
     `polygon`. If a different CRS is desired, it can be specified via the
     `crs_output` argument.

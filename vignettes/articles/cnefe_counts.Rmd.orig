@@ -95,14 +95,13 @@ The index ranges from -1 to +1:
 
 ## Aggregating counts to H3 hexagons
 
-We use `cnefe_counts()` with `polygon_type = "hex"` and
-`h3_resolution = 8` to aggregate address counts to H3 hexagonal cells.
-Resolution 8 cells have an average area of approximately 0.74 km².
+We use `cnefe_counts()` with no `polygon`, which is what asks for the H3
+grid, and `h3_resolution = 8` to aggregate address counts to H3 hexagonal
+cells. Resolution 8 cells have an average area of approximately 0.74 km².
 
 ```{r, warning = T, message = T}
 poa_hex_counts <- cnefe_counts(
   code_muni = 4314902, # IBGE code for Porto Alegre
-  polygon_type = "hex",
   h3_resolution = 8
 )
 
@@ -162,7 +161,6 @@ nrow(poa_neighborhoods)
 ```{r, warning = T, message = T}
 poa_neigh_counts <- cnefe_counts(
   code_muni = 4314902,
-  polygon_type = "user",
   polygon = poa_neighborhoods
 )
 
