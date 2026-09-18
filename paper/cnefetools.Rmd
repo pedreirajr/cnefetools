@@ -1103,10 +1103,11 @@ The DuckDB backend derives its performance advantage from three sources:
 
 1.  **In-process execution**: DuckDB runs as a library within the R
     process, eliminating the overhead of client–server communication.
-2.  **Reading directly from ZIP**: the `zipfs` extension exposes ZIP
-    archives as virtual file systems, so DuckDB reads the compressed CSV
-    without a separate extraction step. For São Paulo, this avoids
-    materialising 901 MB of uncompressed data on disk.
+2.  **Streaming aggregation**: DuckDB decompresses the cached gzipped
+    CSV natively, with no extension involved, and aggregates as it
+    scans, so the full address table is never materialised. For São
+    Paulo, this is the difference between holding roughly 5.7 million
+    addresses in memory and holding only the running group totals.
 3.  **Vectorised query execution**: DuckDB uses a columnar engine with
     SIMD-accelerated operations, making aggregation and joins over tens
     of millions of rows substantially faster than row-oriented R
@@ -1117,40 +1118,149 @@ varies municipality size (measured by the number of CNEFE address
 points) while holding the H3 output resolution fixed at 8, using three
 municipalities of increasing size. The second varies H3 resolution
 across levels 7, 9, and 11 while holding the municipality fixed at
-Curitiba-PR. All timings were collected on a machine with a 14-core
-Intel Core i9-13900H (2.60 GHz), 32 GB RAM, Windows 11, R 4.3.2, and
-DuckDB 1.4.1. Absolute elapsed times vary across machines and runs due
-to CPU load, I/O scheduling, and session warm-up effects.
+Curitiba-PR. All measurements were collected on a machine with a
+14-core Intel Core i9-13900H (2.60 GHz), 32 GB RAM, Windows 11, R 4.6.0,
+and DuckDB 1.5.2.
 
-Figure \@ref(fig:fig-bench-cities) shows that DuckDB reduces elapsed
-time for `cnefe_counts()` from 3.66 s to 2.96 s for Vitória da
-Conquista-BA (approximately 200,000 addresses, \~1.4× speedup), from
-12.23 s to 3.32 s for Curitiba-PR (approximately 900,000 addresses, 3.7×
-speedup), and from 165.68 s to 12.43 s for São Paulo-SP (approximately
-5.7 million addresses, 13.3× speedup). The relative advantage grows with
-dataset size, because DuckDB's columnar engine and in-process ZIP
-reading scale more favourably than row-oriented R operations. For small
-municipalities, the fixed initialisation overhead can dominate and the
-two backends perform comparably.
+Elapsed times drift within a session as the CPU changes thermal and
+frequency state, by as much as a factor of two, so timing every DuckDB
+case and then every pure-R case would load that drift onto one backend
+and make it indistinguishable from the effect being measured. Each
+configuration is therefore visited once per pass, round-robin, and the
+pass is repeated three to five times, with every replicate run in a
+fresh R subprocess after a discarded warm-up. The figures report the
+median across replicates, and the whiskers show the observed minimum
+and maximum. Peak memory is the operating system's peak working set for
+the whole R process, obtained through the `ps` package rather than
+R-level allocation tracking, which counts only the R heap and would miss
+what DuckDB allocates in C++. The speedups reported below are smaller
+than those in the submitted version of this article because of this
+change in measurement protocol rather than any change in the package,
+since the earlier figures came from a single unreplicated run in which
+all DuckDB cases preceded all pure-R cases.
+
+Figure \@ref(fig:fig-bench-cities) shows that DuckDB reduces the median
+elapsed time for `cnefe_counts()` from 6.31 s to 5.55 s for Vitória da
+Conquista-BA (approximately 200,000 addresses, 1.14× speedup), from
+11.30 s to 5.56 s for Curitiba-PR (approximately 900,000 addresses,
+2.03× speedup), and from 110.71 s to 8.33 s for São Paulo-SP
+(approximately 5.7 million addresses, 13.3× speedup). The relative
+advantage grows with dataset size, because DuckDB's columnar engine and
+streaming scan scale more favourably than row-oriented R operations. For
+small municipalities, the fixed initialisation overhead of opening a
+connection and loading the H3 extension can dominate and the two
+backends perform comparably.
 
 ```{r fig-bench-cities, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.alt="Grouped bar chart comparing elapsed time in seconds for cnefe_counts() at H3 resolution 8 across three municipalities of increasing size: Vitória da Conquista-BA (roughly 200,000 addresses), Curitiba-PR (roughly 900,000 addresses), and São Paulo-SP (roughly 5.7 million addresses). For each municipality, two bars represent the DuckDB and pure-R backends; the DuckDB bar is shorter for larger municipalities, indicating increasing speedup with dataset size.", fig.cap=paste0("Elapsed time (s) for ", cfmt("cnefe_counts()"), " at H3 resolution~8, by municipality size, comparing the DuckDB and pure-R backends.")}
 knitr::include_graphics("figures/bench-cities.png")
 ```
 
 Figure \@ref(fig:fig-bench-h3) shows results for Curitiba-PR across
-three H3 resolutions. The DuckDB speedup is 4.3× at resolution 7, 3.1×
-at resolution 9, and 1.3× at resolution 11. At finer resolutions (higher
-cell counts), H3 indexing dominates both backends equally, reducing the
-relative DuckDB advantage.
+three H3 resolutions. The DuckDB speedup is 1.88× at resolution 7, 2.02×
+at resolution 9, and 1.02× at resolution 11. At finer resolutions (higher
+cell counts), the point-to-cell indexing dominates the total runtime, and
+both backends ultimately delegate it to the same underlying H3 C library,
+so the relative DuckDB advantage shrinks.
 
 ```{r fig-bench-h3, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.alt="Grouped bar chart comparing elapsed time in seconds for cnefe_counts() on Curitiba-PR across three H3 resolutions: 7 (coarse), 9 (medium), and 11 (fine). For each resolution, two bars represent the DuckDB and pure-R backends; the DuckDB speedup decreases at finer resolutions as H3 indexing cost becomes dominant.", fig.cap=paste0("Elapsed time (s) for ", cfmt("cnefe_counts()"), " on Curitiba-PR, by H3 resolution.")}
 knitr::include_graphics("figures/bench-h3.png")
 ```
 
-The pure-R backend (`backend = "r"`) remains available for environments
-where DuckDB extensions cannot be installed, such as some restricted
-computing clusters. For most users, the default DuckDB backend is
-recommended.
+## Memory
+
+Figure \@ref(fig:fig-bench-memory) reports peak memory for the same
+comparison, and it runs opposite to the intuition that an in-process
+analytical database is the memory-hungry option. DuckDB stays nearly
+flat across a 28-fold increase in input, rising only from 0.45 GB on
+Vitória da Conquista-BA to 0.68 GB on São Paulo-SP, because it streams
+and aggregates rather than materialising the address table. The pure-R
+backend holds the filtered table in R memory, so its footprint scales
+with the input and reaches 9.03 GB on São Paulo-SP, 13.4 times the
+DuckDB figure.
+
+```{r fig-bench-memory, echo=FALSE, eval=TRUE, out.width="70%", fig.align="center", fig.alt="Grouped bar chart comparing peak memory in gigabytes for cnefe_counts() at H3 resolution 8 across three municipalities of increasing size. For each municipality, two bars represent the DuckDB and pure-R backends; the DuckDB bars stay nearly constant below 0.7 GB while the pure-R bars grow with municipality size, reaching about 9 GB for São Paulo.", fig.cap=paste0("Peak memory (GB) for ", cfmt("cnefe_counts()"), " at H3 resolution~8, by municipality size, comparing the DuckDB and pure-R backends.")}
+knitr::include_graphics("figures/bench-memory.png")
+```
+
+This separates two constraints that were previously treated as one. The
+pure-R backend is the appropriate choice when DuckDB extensions cannot
+be installed, such as on some restricted computing clusters, which is
+the case it was written for, and it is the wrong choice when the binding
+constraint is memory. DuckDB sets `memory_limit` to 80% of installed RAM
+by default, so it asks for less on a smaller machine, and a query that
+exceeds the limit spills to a temporary directory instead of failing.
+The budget can also be set explicitly:
+
+```r
+options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
+```
+
+## Other heavy functions
+
+`compute_lumi()` performs the same scan, the same H3 assignment and the
+same grouped aggregation as `cnefe_counts()`, and then adds arithmetic
+that runs once per output cell rather than once per address, which on
+São Paulo-SP is roughly four orders of magnitude fewer operations.
+Measured at H3 resolution 8, the ratio between the two functions stays
+between 0.90 and 1.20 across all three municipalities and both backends,
+with no trend in input size, so the indices are effectively free relative
+to the aggregation that produces them. We report the equivalence rather
+than plotting the same curve twice.
+
+The dasymetric interpolation functions behave differently and are
+reported separately in Table \@ref(tab:tab-bench-tracts). They overlay
+the full CNEFE point set against census tract polygons and download the
+tract attributes for the whole state, and they run only on DuckDB. Two
+features are worth noting. Their cost does not track address count:
+Vitória da Conquista-BA is slower than Curitiba-PR despite being four
+and a half times smaller, because at that size the runtime is dominated
+by loading the state's census tract Parquet file, and Bahia's is more
+than twice the size of Paraná's. In addition, `tracts_to_polygon()` is
+the most memory-hungry path in the package, reaching 4.31 GB on São
+Paulo-SP, because an overlay against arbitrary user polygons cannot use
+the H3 shortcut.
+
+| Municipality | `tracts_to_h3()` | `tracts_to_polygon()` |
+|:-----------------------------|:----------------:|:---------------------:|
+| Vitória da Conquista-BA (\~200k) | 11.45 s, 0.67 GB | 7.05 s, 0.80 GB |
+| Curitiba-PR (\~900k) | 8.56 s, 0.61 GB | 5.17 s, 1.11 GB |
+| São Paulo-SP (\~5.7M) | 20.69 s, 1.90 GB | 20.35 s, 4.31 GB |
+
+: (#tab:tab-bench-tracts) Median elapsed time and peak memory for the
+dasymetric interpolation functions, at H3 resolution 9 on the DuckDB
+backend.
+
+## Constrained resources
+
+Table \@ref(tab:tab-bench-modest) reports the largest municipality
+re-run with DuckDB held to four threads and a 4 GB memory limit, which
+the `cnefetools.duckdb_config` option makes settable. São Paulo-SP
+aggregates in about nine seconds within that budget, 12% slower than on
+the full machine while using a third less memory, and the dasymetric
+interpolation costs 35% more time, so neither degrades sharply as the
+envelope tightens.
+
+| São Paulo-SP (\~5.7M addresses) | full machine | 4 threads, 4 GB |
+|:--------------------------------|:------------:|:---------------:|
+| `cnefe_counts()` | 8.33 s, 0.68 GB | 9.37 s, 0.44 GB |
+| `tracts_to_h3()` | 20.69 s, 1.90 GB | 27.85 s, 1.76 GB |
+
+: (#tab:tab-bench-modest) Median elapsed time and peak memory on São
+Paulo-SP under a constrained DuckDB configuration, against the same
+calls with the machine's full resources.
+
+This shows that the package works within a small resource envelope, but
+it is not a substitute for measuring on older hardware, since the
+storage, the RAM speed, the CPU generation and the operating system are
+all unchanged. A genuinely older machine would do worse, particularly on
+the initial read, which is bound by input and output rather than by
+computation and which limiting the thread count does not reproduce. The
+machine specification is reported above so that readers can scale
+expectations accordingly.
+
+For most users, the default DuckDB backend is recommended, on both time
+and memory. The pure-R backend (`backend = "r"`) remains available for
+environments where DuckDB extensions cannot be installed.
 
 # Summary
 
