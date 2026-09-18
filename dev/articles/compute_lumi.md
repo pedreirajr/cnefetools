@@ -168,22 +168,20 @@ spo_lumi <- compute_lumi(
 #> ℹ Processing municipality code 3550308...
 #> 
 ℹ Step 1/3: Ensuring the CNEFE data file...
-Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/35_SP/3550308_SAO_PAULO.zip
-#> 
-ℹ Converting the archive to '.csv.gz' (done once)
 
-✔ Converting the archive to '.csv.gz' (done once) [1m 21.7s]
+                                            
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/3550308_SAO_PAULO.csv.gz
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE data ready) [1m 27.2s]   
+✔ Step 1/3 (CNEFE data ready) [622ms]      
 #> 
 ℹ Step 2/3: Counting addresses per H3 cell...
 
-✔ Step 2/3 (Addresses counted) [11.4s]       
+✔ Step 2/3 (Addresses counted) [16.6s]       
 #> 
 ℹ Step 3/3: Building grid and computing LUMI...
 
-✔ Step 3/3 (Land use mix indices computed) [3.1s]
+✔ Step 3/3 (Land use mix indices computed) [2.2s]
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields
@@ -267,12 +265,12 @@ homogeneity.
 ## Producing indices for any user-supplied polygon
 
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
-also supports user-provided polygons via the `polygon_type = "user"`
-argument, enabling computation of these indices for any spatial unit of
-interest (such as neighborhoods, census tracts, or health districts),
-depending on the specific research or policy purpose. See the example
-below for the neighborhoods of Maringá (IBGE code 4115200), downloaded
-with the [`geobr` package](https://github.com/ipeaGIT/geobr).
+also supports user-provided polygons via the `polygon` argument,
+enabling computation of these indices for any spatial unit of interest
+(such as neighborhoods, census tracts, or health districts), depending
+on the specific research or policy purpose. See the example below for
+the neighborhoods of Maringá (IBGE code 4115200), downloaded with the
+[`geobr` package](https://github.com/ipeaGIT/geobr).
 
 ``` r
 
@@ -283,7 +281,6 @@ mga_nei <- read_neighborhood(year = 2022) |>
 
 mga_lumi <- compute_lumi(
   code_muni = 4115200,
-  polygon_type = "user",
   polygon = mga_nei
 )
 
@@ -297,10 +294,8 @@ mapview(
 
 ### Notes on user-supplied polygons
 
-- If `polygon` is provided but `polygon_type` is not explicitly set to
-  `"user"`, the function automatically switches to
-  `polygon_type = "user"` and issues a warning at the beginning of the
-  processing.
+- The aggregation unit follows `polygon`. Leave it as `NULL` for the H3
+  grid, or supply an `sf` object to aggregate to those polygons instead.
 - The CRS of the output layer matches the CRS of the layer supplied in
   `polygon`. If a different CRS is desired, it can be specified via the
   `crs_output` argument.
