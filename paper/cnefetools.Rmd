@@ -3,9 +3,9 @@ title: "cnefetools: Access and Analysis of Brazilian CNEFE Address Data in R"
 abstract: >
   The cnefetools package provides programmatic access to the
   Brazilian National Address File for Statistical Purposes (CNEFE), a
-  geocoded register of approximately 110 million valid addresses from the
-  2022 census, published by the Instituto Brasileiro de Geografia e
-  Estatística (IBGE). Although the CNEFE enables fine-grained spatial
+  geocoded register from the 2022 census, published by the Instituto
+  Brasileiro de Geografia e Estatística (IBGE), with 111.1 million
+  records, one for each type of use found at an address. Although the CNEFE enables fine-grained spatial
   analyses central to urban and regional planning, such as characterising
   land use patterns and
   redistributing census aggregates to arbitrary spatial zones, leveraging
@@ -112,8 +112,8 @@ approximately 213 million inhabitants spread across 5,570 municipalities
 Brasileiro de Geografia e Estatística* (IBGE) has produced a rich
 by-product: the *Cadastro Nacional de Endereços para Fins Estatísticos*
 (CNEFE, National Address File for Statistical Purposes). This dataset
-records the geocoordinates and functional category of approximately 110
-million addresses across the entire country.
+records the geocoordinates and functional category of addresses across
+the entire country, in 111.1 million records.
 
 Despite its potential, the CNEFE presents significant barriers to use.
 The data are distributed as individual ZIP-compressed CSV files (one per
@@ -209,8 +209,12 @@ environments [@ibge_cnefe2024].
 
 ## Structure, scale and distribution
 
-Each CNEFE record corresponds to a single address point. The dataset
-uses a fixed schema of 34 columns. The most analytically relevant
+Each CNEFE record corresponds to one type of use at an address, which
+IBGE calls an address species, so an address that hosts more than one
+use appears as more than one record
+and the number of records exceeds the number of addresses
+[@ibge_cnefe2024]. In the rest of this paper, *address* refers to a
+CNEFE record. The dataset uses a fixed schema of 34 columns. The most analytically relevant
 columns are:
 
 -   **`LONGITUDE`** and **`LATITUDE`**: geographic coordinates in the
@@ -318,6 +322,15 @@ Municipality codes are validated and normalized by an internal helper,
 which accepts integer, character, and numeric inputs and checks that the
 code is a seven-digit IBGE code present in the index.
 
+Because the index is fixed when the package is released, it does not
+follow later changes to the FTP layout. Before downloading, the package
+therefore checks whether the server can be reached and whether the file
+exists, and it reports the two failures differently. An unreachable
+server points the user to their connection, while a missing file means
+the layout has changed upstream, and the message asks the user to
+report it. Either way, a ZIP obtained by other means can still be read
+with `read_cnefe(file = ...)`, described below.
+
 ## Persistent user-level caching
 
 Because CNEFE files can be as large as 177 MB compressed for São Paulo,
@@ -379,7 +392,8 @@ can choose between two backends via the `backend` argument:
     DuckDB decompresses gzip natively. For H3 aggregation, the `h3`
     extension assigns cell indices entirely in SQL, while for
     user-provided polygons, the `spatial` extension and the
-    \CRANpkg{duckspatial} R package handle the point-in-polygon join.
+    \CRANpkg{duckspatial} R package [@duckspatial2026] handle the
+    point-in-polygon join.
     Only the final aggregated result is transferred to R. The `zipfs`
     extension is still available but is loaded on demand, only when the
     file at hand is actually a ZIP, which now happens solely for a cache
@@ -393,12 +407,46 @@ can choose between two backends via the `backend` argument:
 
 The dasymetric interpolation functions `tracts_to_h3()` and
 `tracts_to_polygon()` do not expose this argument and rely on DuckDB
-exclusively. Additionally, census tract geometry assets required by
-`tracts_to_h3()` and `tracts_to_polygon()` are stored as Parquet files
-(one per UF, each containing a `geom_wkb` column with the geometries of census tract
+exclusively by design, because their cost is dominated by a
+point-in-polygon overlay between every dwelling point in the
+municipality and the census tract polygons, which is a different and
+heavier workload than the tabular aggregation that the pure-R backend
+handles, and it is the step that benefits most from DuckDB's spatial
+index (Section 4.4).
+
+The census tract geometry assets required by `tracts_to_h3()` and
+`tracts_to_polygon()` are stored as Parquet files (one per UF, each
+containing a `geom_wkb` column with the geometries of census tract
 polygons encoded in Well-Known Binary) and published as assets on the
 package's GitHub Releases page. They are downloaded on-demand with
-caching via the \CRANpkg{piggyback} package.
+caching via the \CRANpkg{piggyback} package [@piggyback2023].
+
+## Data provenance
+
+Besides the CNEFE files, which are downloaded from IBGE as published,
+the package depends on two data products of its own, the municipality
+index and the census tract assets. The scripts that build both are in
+the `data-raw/` directory of the package repository, so either can be
+rebuilt or audited.
+
+The index is built by `data-raw/cnefe_index_2022.R`, which takes the
+list of 2022 municipalities from \CRANpkg{geobr} and the file names from
+the directory listing of each state on the IBGE FTP server.
+
+The census tract assets are built by `data-raw/sc_assets_build.R`. Tract
+geometries come from \CRANpkg{geobr}, and tract attributes come from
+\CRANpkg{censobr} [@censobr2023], which repackages the IBGE census tract
+aggregates, so the variable codes and table names listed in Table
+\@ref(tab:tab-tracts-vars) are those used by \CRANpkg{censobr}. Some
+tracts are returned by \CRANpkg{geobr} as several rows, one for each
+disjoint part, and the script dissolves them into a single geometry per
+tract, since otherwise the dwelling points of such a tract would be
+counted once for each part. The assets for the 2022 edition are served
+from the release tag `sc-assets-v3`, and every value in them matches the
+files originally published with the package, 3,144,868 values across
+468,097 tracts in all 27 states. The SHA-256 checksum and size of each
+file are recorded in `data-raw/sc_assets_checksums.csv`, so a user can
+confirm that a downloaded file is the one that was published.
 
 # Core functionality
 
@@ -411,7 +459,7 @@ data for the municipality of Lauro de Freitas, Bahia (IBGE code
 
 `read_cnefe()` is the entry point to the package. It downloads (if not
 cached) and reads the CNEFE CSV for a municipality, returning either an
-\CRANpkg{arrow} `Table` or an \CRANpkg{sf} point object. The code below
+\CRANpkg{arrow} [@arrow2026] `Table` or an \CRANpkg{sf} point object. The code below
 illustrates both output modes for Lauro de Freitas.
 
 ```{r read-cnefe-example}
@@ -538,6 +586,19 @@ via \CRANpkg{h3jsr}. The H3 resolution can be set from 0 (coarse) to 15
 (fine), and the default is 9, corresponding to an average hexagon area
 of approximately 105,000 m².
 
+That figure is an average, because H3 is not an equal-area grid. Cells
+are laid out on an icosahedron projected onto the globe, so cells of the
+same resolution differ in area depending on where they fall. Across
+Brazil, resolution 9 cells range from about 80,000 m² to 127,000 m², so
+the largest is about 1.6 times the smallest. This matters whenever an
+analysis assumes cells of equal size, as in density estimates. When
+equal area is a requirement, an equal-area grid is the better choice,
+such as the A5 grid available in \CRANpkg{a5R} [@a5r2026] or IGEO7,
+which is built on the ISEA projection [@kmoch2025]. \CRANpkg{cnefetools}
+uses H3 because the DuckDB `h3` extension assigns cells inside the
+query, which keeps the aggregation in-process, and because H3 cell
+identifiers can be joined with other data indexed on the same grid.
+
 When a `polygon` is supplied, the function performs a point-in-polygon
 join between the CNEFE coordinates and the user-supplied `sf` polygon. A
 warning is issued if any CNEFE points fall outside the polygon, together
@@ -615,10 +676,10 @@ indices, whether from address-level or polygon-based data. All indices
 are based on the local residential share
 $p_i = n_{\text{res},i} / n_{\text{tot},i}$, where $n_{\text{res},i}$ is
 the count of type-1 addresses (private households) and
-$n_{\text{tot},i}$ is the total count of addresses of types 1--8,
-excluding type 7 (under construction) due to its transitional nature.
-The citywide residential share $P$ is computed from the full
-municipality CNEFE.
+$n_{\text{tot},i}$ is the total count of addresses of all types except
+type 7 (under construction). The citywide residential share $P$ is
+computed in the same way over the whole municipality, and it is used by
+the Balance Index and by the BGBI.
 
 Table \@ref(tab:lumi-table) summarises the seven indices computed by
 `compute_lumi()`. Further methodological details on these indices can be
@@ -637,6 +698,41 @@ found in @song2013, @massey2001, @pedreirajr2025 and
 
 : (#tab:lumi-table) Land use mix indices returned by `compute_lumi()`.
 Here $q_i = 1 - p_i$ and $r = P/(1-P)$.
+
+All the indices therefore rest on a binary split, in which an address
+counts as residential only when it is a private household (type 1) and
+as non-residential otherwise. They measure the balance between housing
+and all other uses, not the diversity of those other uses, so an area
+whose non-residential addresses are all of one type scores the same as
+an area where they are spread across every type, provided both have the
+same residential share. This is the formulation on which the indices
+were defined and validated against job accessibility in
+@pedreirajr2026bgbi, but it differs from the multi-category definitions
+of land use mix that are common in urban research [@song2013]. Users who
+need the diversity of non-residential uses can compute it from the
+counts by address type that `cnefe_counts()` returns.
+
+Type 7 addresses are left out because a building under construction or
+renovation describes a transitional state rather than a realised use.
+Such buildings are likely to be concentrated where a city is expanding,
+so leaving them out makes the indices describe those areas as they are
+now rather than as they will be once the buildings are occupied. If
+these buildings end up in the same proportions as existing addresses,
+among which private households are the large majority, the indices
+understate the residential share those areas are heading towards, and
+the effect is largest where type 7 makes up a large share of addresses.
+`cnefe_counts()` does not apply this exclusion and reports these
+addresses as `addr_type7`, so users can check how many there are in any
+area of interest.
+
+Because $P$ is computed from counts of address types, it describes how
+addresses are distributed across types in the municipality, not how
+residents are distributed. It is also always computed over the whole
+municipality, including when
+`polygon` is supplied, because it is meant to describe the city that
+the addresses belong to. A baseline computed only over the area covered
+by the polygons would measure mix relative to that area rather than
+relative to the city, which is a different quantity.
 
 The parameter interface of `compute_lumi()` mirrors that of
 `cnefe_counts()`:
@@ -787,7 +883,7 @@ areal weighting. \CRANpkg{sf} [@pebesma2018], through
 the overlap area between source and target polygons, implicitly assuming
 a uniform spatial distribution of the attribute within each source zone.
 
-\CRANpkg{smile} addresses the same change-of-support problem through a
+\CRANpkg{smile} [@smile2025] addresses the same change-of-support problem through a
 model-based approach. Source-zone values are treated as spatial averages
 of a latent Gaussian random field, `fit_spm()` estimates the field
 parameters from the source data, and `predict_spm()` aggregates
@@ -821,26 +917,26 @@ Although dwelling count is itself an imperfect proxy as the number of
 occupants per dwelling varies across households, it is a more defensible
 ancillary variable for redistribution than built area or building
 height. The variables available for interpolation are listed in Table
-\@ref(tab:tab-tracts-vars), alongside their variable code in the IBGE census tract aggregates
-database and source table.
+\@ref(tab:tab-tracts-vars), alongside their variable code and source
+table in the census tract aggregates, as named by \CRANpkg{censobr}.
 
 ```{r tab-tracts-vars, eval=TRUE, echo=FALSE}
 library(cnefetools)
 knitr::kable(
   tracts_variables_ref[, c("var_cnefetools", "code_var_ibge", "table_ibge")],
-  col.names = c("Variable", "IBGE code", "IBGE table"),
+  col.names = c("Variable", "Variable code", "Source table"),
   caption = if (knitr::is_latex_output()) {
     paste0(
       "Variables supported by \\texttt{tracts\\_to\\_h3()} and",
-      " \\texttt{tracts\\_to\\_polygon()}, with their corresponding IBGE",
-     " census tract variable codes and source tables. Portuguese descriptions",
+      " \\texttt{tracts\\_to\\_polygon()}, with their variable codes and",
+     " source tables in the census tract aggregates, as named by censobr. Portuguese descriptions",
       " are available in \\texttt{tracts\\_variables\\_ref\\$desc\\_var\\_ibge}."
     )
   } else {
     paste0(
       "Variables supported by `tracts_to_h3()` and",
-      " `tracts_to_polygon()`, with their corresponding IBGE",
-      " census tract variable codes and source tables. Portuguese descriptions",
+      " `tracts_to_polygon()`, with their variable codes and",
+      " source tables in the census tract aggregates, as named by censobr. Portuguese descriptions",
       " are available in `tracts_variables_ref$desc_var_ibge`."
     )
   },
@@ -1330,15 +1426,19 @@ are:
     municipality, where its peak memory is also more than twelve times
     smaller than the pure-R backend's.
 
-The package also has some limitations. First, data access depends on the
-availability and stability of the IBGE FTP server, since municipal CNEFE
-files are downloaded on demand from the official distribution endpoint.
-This does not represent a fundamental barrier in practice: the CNEFE is
-open data, freely available to the public, and the IBGE FTP
-infrastructure is designed to support broad access to census products.
-The persistent caching layer in \CRANpkg{cnefetools} further mitigates this
-dependency by ensuring that each file is downloaded at most once per
-machine. Second, although the package supports aggregation to H3 grids
+The package also has some limitations. First, data access depends on
+IBGE, and that dependency carries two different risks. The FTP server
+may be unavailable, which the cache mitigates, since a municipality that
+has been downloaded once keeps working without a connection. The terms
+of access may also change, since publishing individual geocoded address
+points for a whole country is unusually granular for a national
+statistical product, and a future review could put the CNEFE behind authentication,
+aggregation or a licence, which no caching strategy can mitigate. What
+the package offers against that risk is that `read_cnefe(file = ...)`
+reads a file obtained through another channel without going through the
+download, although the analytical functions still retrieve their data
+through the cache and would need the same option to work in that
+situation. Second, although the package supports aggregation to H3 grids
 and user-supplied polygons, its core analytical workflows are organised
 around municipality-specific inputs, which limits analyses that span
 multiple municipalities or other cross-boundary study regions. Third,
@@ -1361,6 +1461,30 @@ that `compute_lumi()` uses as its reference is likewise computed per
 municipality, which is the intended behaviour but means that indices
 defined against it are not directly comparable across municipalities
 without recomputing the baseline for the wider area.
+
+The third limitation matters for questions in which the kind of
+non-residential use is the point. The binary split places agricultural
+establishments (type 3), which make up 3.7% of all addresses and are
+qualitatively different from urban uses, in the same group as schools
+and hospitals, and it merges other-purpose establishments (type 6), a
+heterogeneous category that includes commerce and services and makes up
+10.5% of addresses, with educational, health and religious ones. A
+study of urban health that needs to separate commercial from
+institutional uses, for example, cannot do so with these indices. For
+such questions, the counts returned by `cnefe_counts()` keep all eight
+address types and can feed a multi-category index directly.
+
+A related design choice concerns what `read_cnefe()` returns. It
+returns an Arrow table or an `sf` object held in memory, rather than a
+lazy DuckDB relation that would be evaluated only when queried. A lazy
+relation is valid only while its database connection is open, so
+returning one would mean keeping a connection alive after the function
+returns, whereas every function in the package closes its connection
+before returning, which guarantees that no connection is left open after
+an error or an interruption. For a municipality too large to hold in
+memory comfortably, the better route is to export it to Parquet with
+`cnefe_export()` and query the file lazily with `arrow::open_dataset()`
+or DuckDB.
 
 Future development will focus on reducing these constraints. One
 priority is to provide access to preprocessed remote Parquet assets for
