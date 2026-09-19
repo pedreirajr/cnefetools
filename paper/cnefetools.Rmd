@@ -436,7 +436,7 @@ the directory listing of each state on the IBGE FTP server.
 The census tract assets are built by `data-raw/sc_assets_build.R`. Tract
 geometries come from \CRANpkg{geobr}, and tract attributes come from
 \CRANpkg{censobr} [@censobr2023], which repackages the IBGE census tract
-aggregates, so the variable codes and table names listed in Table
+aggregates, so the variable codes listed in Table
 \@ref(tab:tab-tracts-vars) are those used by \CRANpkg{censobr}. Some
 tracts are returned by \CRANpkg{geobr} as several rows, one for each
 disjoint part, and the script dissolves them into a single geometry per
@@ -918,8 +918,8 @@ Although dwelling count is itself an imperfect proxy as the number of
 occupants per dwelling varies across households, it is a more defensible
 ancillary variable for redistribution than built area or building
 height. The variables available for interpolation are listed in Table
-\@ref(tab:tab-tracts-vars), alongside their variable code and source
-table in the census tract aggregates, as named by \CRANpkg{censobr}.
+\@ref(tab:tab-tracts-vars), alongside their variable code, as used by
+\CRANpkg{censobr}, and the census tract table they come from.
 
 ```{r tab-tracts-vars, eval=TRUE, echo=FALSE}
 library(cnefetools)
@@ -930,14 +930,14 @@ knitr::kable(
     paste0(
       "Variables supported by \\texttt{tracts\\_to\\_h3()} and",
       " \\texttt{tracts\\_to\\_polygon()}, with their variable codes and",
-     " source tables in the census tract aggregates, as named by censobr. Portuguese descriptions",
+     " source tables, with codes as used by censobr. Portuguese descriptions",
       " are available in \\texttt{tracts\\_variables\\_ref\\$desc\\_var\\_ibge}."
     )
   } else {
     paste0(
       "Variables supported by `tracts_to_h3()` and",
       " `tracts_to_polygon()`, with their variable codes and",
-      " source tables in the census tract aggregates, as named by censobr. Portuguese descriptions",
+      " source tables, with codes as used by censobr. Portuguese descriptions",
       " are available in `tracts_variables_ref$desc_var_ibge`."
     )
   },
