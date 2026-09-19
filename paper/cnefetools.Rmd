@@ -18,7 +18,7 @@ abstract: >
   user-supplied polygons; (iii) computing land use mix indices; and (iv) performing
   dasymetric interpolation of census tract variables to arbitrary spatial
   units using CNEFE dwelling points as ancillary data. The package provides a flexible dual-backend architecture for all computationally intensive operations.  The default DuckDB backend reads the cached data in-process and handles all spatial joins, H3 indexing, and
-  aggregations without transferring intermediate results to R, achieving speedups of up to 16.7-fold over the pure-R fallback for large municipalities, at a fraction of its peak memory.
+  aggregations without transferring intermediate results to R, with an advantage that grows with dataset size and exceeds fifteenfold on São Paulo, the largest municipality in the country, where it also uses an order of magnitude less memory than the pure-R fallback.
 draft: false
 author:
   - name: Jorge Ubirajara Pedreira Junior
@@ -166,10 +166,11 @@ DuckDB backend [@duckdb2019], supported by the \pkg{duckdb} R package,
 reads the cached gzipped CSV directly, without prior extraction and
 without any third-party extension, performs H3 cell assignment and
 spatial joins entirely in-process, and returns only the final aggregated
-result to R. This design achieves speedups of up to 16.7$\times$ over a
-pure-R fallback
-based on \CRANpkg{h3jsr} [@h3jsr2023] and \CRANpkg{sf} [@pebesma2018]
-(see Section 5 for benchmarks).
+result to R. Measured against a pure-R fallback based on
+\CRANpkg{h3jsr} [@h3jsr2023] and \CRANpkg{sf} [@pebesma2018], its
+advantage grows with dataset size and exceeds fifteenfold on São Paulo,
+where its peak memory is also an order of magnitude lower (see Section 5
+for benchmarks).
 
 This paper is organised as follows. Section 2 describes the CNEFE
 dataset and its distribution. Section 3 presents the architectural
@@ -1328,11 +1329,12 @@ are:
 4.  **Dasymetric interpolation**: tract-to-hexagon and tract-to-polygon
     redistribution of census variables using CNEFE dwelling points as
     ancillary data, with per-variable allocation diagnostics.
-5.  **DuckDB dual-backend**: a performance architecture that achieves up
-    to 16.7× speedup for large municipalities, at a fraction of the
-    pure-R backend's peak memory, by streaming the cached gzipped CSV,
-    assigning H3 cells, and performing spatial joins entirely within an
-    in-process DuckDB engine.
+5.  **DuckDB dual-backend**: a performance architecture that streams the
+    cached gzipped CSV, assigns H3 cells and performs spatial joins
+    entirely within an in-process DuckDB engine. Its advantage grows
+    with dataset size, exceeding fifteenfold on the largest
+    municipality, where its peak memory is also an order of magnitude
+    below the pure-R backend's.
 
 The package also has some limitations. First, data access depends on the
 availability and stability of the IBGE FTP server, since municipal CNEFE
