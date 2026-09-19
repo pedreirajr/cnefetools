@@ -121,10 +121,10 @@ apply this exclusion and reports these records as \code{addr_type7}.
 
 \subsection{The citywide baseline P}{
 
-The \code{bgbi} index is referenced against a citywide residential share P. It is
-the only index computed here that uses such a baseline, the others being
-computed entirely within each spatial unit. Two properties of P are worth
-stating.
+Two indices use a citywide residential share P: the \code{bgbi} index, which is
+referenced against it, and the Balance Index (\code{bal}), which uses it through
+r = P / (1 - P). The other indices are computed entirely within each spatial
+unit. Two properties of P are worth stating.
 
 First, P is computed from CNEFE address-type counts rather than from census
 population, so it describes the distribution of address types and not the
