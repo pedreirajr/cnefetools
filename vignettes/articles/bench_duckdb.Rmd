@@ -301,17 +301,17 @@ bench_med |>
   <tr>
    <td style="text-align:left;"> Vitória da Conquista-BA </td>
    <td style="text-align:left;"> ~200k </td>
-   <td style="text-align:right;"> 1.14 </td>
+   <td style="text-align:right;"> 1.24 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Curitiba-PR </td>
    <td style="text-align:left;"> ~900k </td>
-   <td style="text-align:right;"> 2.03 </td>
+   <td style="text-align:right;"> 2.60 </td>
   </tr>
   <tr>
    <td style="text-align:left;"> São Paulo-SP </td>
    <td style="text-align:left;"> ~5.7M </td>
-   <td style="text-align:right;"> 13.29 </td>
+   <td style="text-align:right;"> 16.71 </td>
   </tr>
 </tbody>
 </table>
@@ -347,17 +347,17 @@ bench_med |>
   <tr>
    <td style="text-align:right;"> 7 </td>
    <td style="text-align:right;"> 5161293.36 </td>
-   <td style="text-align:right;"> 1.88 </td>
+   <td style="text-align:right;"> 2.17 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 9 </td>
    <td style="text-align:right;"> 105332.51 </td>
-   <td style="text-align:right;"> 2.02 </td>
+   <td style="text-align:right;"> 2.39 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 11 </td>
    <td style="text-align:right;"> 2149.64 </td>
-   <td style="text-align:right;"> 1.02 </td>
+   <td style="text-align:right;"> 1.17 </td>
   </tr>
 </tbody>
 </table>
