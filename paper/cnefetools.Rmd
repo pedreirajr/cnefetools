@@ -302,24 +302,9 @@ need directly, without a separate data-loading step. All user-facing
 functions additionally validate their inputs with \CRANpkg{checkmate}
 [@lang2017] before any I/O (normalizing municipality codes, verifying
 geometry types, and repairing invalid geometries), so errors are caught
-before any network or disk operation begins.
-
-This municipality-centric design is a real constraint for research
-questions that span several municipalities, such as those posed at the
-scale of a metropolitan region. Analyses of that kind are achievable
-today by iterating the relevant function over a vector of municipality
-codes and combining the results, and @pedreirajr2026 gives a worked
-example applying exactly that pattern across the 39 municipalities of
-the São Paulo metropolitan region. Two caveats apply when doing so. The
-H3 grid built by `cnefe_counts()` and `compute_lumi()` is derived from
-each municipality's own boundary, and cells are selected by whether
-their centre falls inside it, so a cell straddling a shared border
-belongs to exactly one of the two municipalities and its counts reflect
-only that municipality's addresses. The citywide residential share $P$
-that `compute_lumi()` uses as its reference is likewise computed per
-municipality, which is the intended behaviour but means that indices
-defined against it are not directly comparable across municipalities
-without recomputing the baseline for the wider area.
+before any network or disk operation begins. Every function works on one
+municipality at a time, and Section 6 discusses how analyses that span
+several municipalities can be carried out today.
 
 ## Pre-built municipality index
 
@@ -374,14 +359,12 @@ also have direct control over the local cache: `clear_cache_muni()` and
 all at once or filtered by municipality or state (see Section 4.5).
 
 For workflows that need the data outside this transient cache,
-`cnefe_export()` writes a municipality to a location of the user's
-choosing as Parquet (the default), CSV or gzipped CSV. The companion to
-it is the `file` argument of `read_cnefe()`, which reads any of those
-formats, as well as the ZIP exactly as IBGE publishes it, and therefore
-skips retrieval entirely. Together they let a user keep an optimised
-copy on whichever disk suits them, and they also make ingestion
-independent of the download path, which matters if access to the
-upstream server ever changes.
+`cnefe_export()` writes a permanent copy to a location of the user's
+choosing, and the `file` argument of `read_cnefe()` reads such a copy
+back without any download (see Section 4.5). Together they let a user
+keep an optimised copy on whichever disk suits them, and they also make
+ingestion independent of the download path, which matters if access to
+the upstream server ever changes.
 
 ## Dual-backend architecture
 
@@ -639,7 +622,8 @@ municipality CNEFE.
 
 Table \@ref(tab:lumi-table) summarises the seven indices computed by
 `compute_lumi()`. Further methodological details on these indices can be
-found in @song2013, @booth2001 and @pedreirajr2025.
+found in @song2013, @massey2001, @pedreirajr2025 and
+@pedreirajr2026bgbi.
 
 | Index | Code | Formula | Range |
 |:---------------:|:---------------:|:-------------------:|:---------------:|
@@ -683,7 +667,7 @@ lumi_poly <- compute_lumi(
 The output `sf` object contains columns `id_hex` (or the original
 polygon columns), `p_res`, `ei`, `hhi`, `bal`, `ice`, `hhi_adp`, `bgbi`,
 and the polygon geometry. Figure \@ref(fig:fig-bgbi) maps the BGBI index
-[@pedreirajr2025] for Lauro de Freitas at H3 resolution 8 and at the
+[@pedreirajr2026bgbi] for Lauro de Freitas at H3 resolution 8 and at the
 neighborhood level.
 
 ```{r fig-bgbi, echo=FALSE, eval=TRUE, cache=TRUE, fig.cap="Bidirectional Global-centered Balance Index (BGBI) for Lauro de Freitas, Bahia, aggregated to H3 hexagons at resolution~8 (left) and to neighborhoods (right). Green cells indicate a local residential share above the citywide average ($p_i > P$); pink cells indicate non-residential dominance ($p_i < P$); white cells are near the citywide baseline.", fig.alt="Two side-by-side choropleth maps of Lauro de Freitas showing the BGBI index. The left map aggregates to H3 hexagons at resolution 8 and the right map aggregates to neighborhoods. Green areas indicate a local residential share above the citywide average, pink areas indicate non-residential dominance, and white or neutral areas are near the citywide baseline.", fig.width=10, fig.height=5, out.width="100%"}
@@ -1116,8 +1100,8 @@ fallacy [@robinson1950].
 
 ## Utility functions {#utility-functions}
 
-\CRANpkg{cnefetools} also exports four utility functions for documentation
-access and cache management. `cnefe_dictionary()` opens the official
+\CRANpkg{cnefetools} also exports five utility functions for documentation
+access, cache management and data export. `cnefe_dictionary()` opens the official
 CNEFE data dictionary (an Excel file bundled with the package) in the
 system's default spreadsheet viewer, providing column definitions and
 value codes for all 34 fields of the CNEFE schema. `cnefe_doc()` opens
@@ -1144,6 +1128,21 @@ clear_cache_muni(2919207)   # delete only the file for Lauro de Freitas-BA
 
 clear_cache_tracts()        # delete all cached census tract Parquets
 clear_cache_tracts("BA")    # delete only the Parquet for the state of Bahia ("BA")
+```
+
+`cnefe_export()` writes a municipality to a directory of the user's
+choosing as Parquet (the default), CSV or gzipped CSV, so that an
+analysis can keep its own copy of the data instead of depending on the
+cache, which the functions above are meant to empty. The `file`
+argument of `read_cnefe()` reads any of those formats, as well as the
+ZIP exactly as IBGE publishes it, and skips the download entirely.
+
+```{r util-export}
+# Write Lauro de Freitas-BA to a project folder as Parquet
+path <- cnefe_export(2919207, path = "data/cnefe")
+
+# Read it back later without downloading anything
+cnefe <- read_cnefe(file = path)
 ```
 
 # Performance
@@ -1182,12 +1181,7 @@ median across replicates, and the whiskers show the observed minimum
 and maximum. Peak memory is the operating system's peak working set for
 the whole R process, obtained through the `ps` package rather than
 R-level allocation tracking, which counts only the R heap and would miss
-what DuckDB allocates in C++. The speedups reported below differ from
-those in the submitted version of this article because of this change in
-measurement protocol rather than any change in the package, since the
-earlier figures came from a single unreplicated run in which all DuckDB
-cases preceded all pure-R cases.
-
+what DuckDB allocates in C++.
 Figure \@ref(fig:fig-bench-cities) shows that DuckDB reduces the median
 elapsed time for `cnefe_counts()` from 4.69 s to 3.79 s for Vitória da
 Conquista-BA (approximately 200,000 addresses, 1.24× speedup), from
@@ -1351,6 +1345,22 @@ multiple municipalities or other cross-boundary study regions. Third,
 the land use mix implementation is restricted to a binary residential
 versus non-residential formulation, even though the underlying CNEFE
 classification distinguishes a richer set of address types.
+
+The second limitation matters most for research questions posed at the
+scale of a metropolitan region. Analyses of that kind are achievable
+today by iterating the relevant function over a vector of municipality
+codes and combining the results, and @pedreirajr2026 gives a worked
+example applying exactly that pattern across the 39 municipalities of
+the São Paulo metropolitan region. Two caveats apply when doing so. The
+H3 grid built by `cnefe_counts()` and `compute_lumi()` is derived from
+each municipality's own boundary, and cells are selected by whether
+their centre falls inside it, so a cell straddling a shared border
+belongs to exactly one of the two municipalities and its counts reflect
+only that municipality's addresses. The citywide residential share $P$
+that `compute_lumi()` uses as its reference is likewise computed per
+municipality, which is the intended behaviour but means that indices
+defined against it are not directly comparable across municipalities
+without recomputing the baseline for the wider area.
 
 Future development will focus on reducing these constraints. One
 priority is to provide access to preprocessed remote Parquet assets for
