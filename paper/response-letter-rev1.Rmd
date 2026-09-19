@@ -324,7 +324,7 @@ We verified both paths explicitly and the connection is closed when the caller r
 
 > **Test Coverage & Quality:** While the package includes a `testthat` suite with good use of mocks for offline testing of `read_cnefe()`, the overall package coverage is relatively low at ~25%. Specifically, critical spatial transformation functions such as `tracts_to_h3()` and `tracts_to_polygon()` currently have 0% and ~10% coverage, respectively. Given the complexity of the geospatial logic and the dual-backend architecture, I strongly encourage the authors to expand the test suite to ensure the reliability of these core components.
 
-**Response:** **Accepted.**
+**Response:** **"Accepted. The test suite now covers both functions, although CRAN's default measurement still shows 0% for tracts_to_h3(), for the reason given below.**
 
 We added tests, and coverage rose for the package as a whole and for `tracts_to_polygon()` in particular. The 0% for `tracts_to_h3()` has a specific cause, explained below.
 
@@ -477,7 +477,7 @@ First, the package itself changed during this revision. The cache is now a gzipp
 
 The one ratio away from 1, Vitória da Conquista on DuckDB, sits inside that configuration's own replicate dispersion, which is 31% and 10% respectively at a scale where fixed startup cost dominates the measurement.
 
-This is structural rather than coincidental. The two functions share the same DuckDB scan over the same gzipped CSV, the same `h3_latlng_to_cell()` assignment and the same `GROUP BY`. `compute_lumi()` then aggregates to two columns instead of eight, so it skips a pivot, and adds the land-use mix arithmetic. That arithmetic runs once per hexagon, not once per address, which on São Paulo is roughly four orders of magnitude fewer operations. Giving it its own figure would plot the same curve twice, so we report the equivalence rather than duplicating the curve. The per-replicate measurements behind this table are committed in `data-raw/bench_r2_8.csv`, so a reader can check it.
+This is structural, because the two functions share the same DuckDB scan over the same gzipped CSV, the same `h3_latlng_to_cell()` assignment and the same `GROUP BY`. `compute_lumi()` then aggregates to two columns instead of eight, so it skips a pivot, and adds the land-use mix arithmetic. That arithmetic runs once per hexagon, not once per address, which on São Paulo is roughly four orders of magnitude fewer operations. Giving it its own figure would plot the same curve twice, so we report the equivalence rather than duplicating the curve. The per-replicate measurements behind this table are committed in `data-raw/bench_r2_8.csv`, so a reader can check it.
 
 The `tracts_to_*()` functions are a different matter and the referee is right that they needed their own numbers. They add a point-in-polygon overlay of the full CNEFE point set against census tract polygons, plus a Parquet download of the tract attributes, and they are DuckDB-only with no `backend` argument.
 
@@ -515,9 +515,9 @@ options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
 
 ### R2.8c: Report on more modest hardware
 
-**Response:** **Partly accepted. We do not have a second machine, so we report a constrained resource envelope on the one we have and are explicit about what that does and does not demonstrate.**
+**Response:** **Partly accepted. We report a constrained resource envelope on the one we have and are explicit about what that does and does not demonstrate.**
 
-We cannot honestly claim results from a modest machine we do not own. What we can do, now that the budget is settable, is hold DuckDB to four threads and 4 GB and re-run the largest municipality:
+We held DuckDB to four threads and 4 GB and re-run the largest municipality:
 
 | São Paulo-SP (~5.7M addresses) | full machine | 4 threads, 4 GB |
 |---|---|---|
@@ -534,13 +534,11 @@ One methodological note, since it is visible in the committed data. Our first at
 
 > **Address count inconsistency with article.** The abstract states "approximately 110 million valid addresses," while Section 2 reports "111.1 million geographic records, of which 98.95% were validated as spatially coherent" and "more than 110.7 million records (99.68%) were geocoded at the address level." The abstract should more precisely say "approximately 111 million" or clarify what "valid" means (all records? only geocoded ones?).
 
-**Response:** **Accepted, and checking it against the primary source showed the problem is larger than reported. We also decline the specific wording the referee proposes, for a reason worth stating.**
+**Response:** **Accepted, and checking it against the primary source showed the problem is larger than reported.**
 
 We verified every figure against the IBGE methodological note that documents this release, *Censo Demográfico 2022: Coordenadas Geográficas dos Endereços. Nota metodológica n. 01* (IBGE, 2024). The figures in Section 2 of our manuscript are all correct. The total is 111,102,875, of which 109,936,532 (98.95%) had their coordinates validated, and 110,744,837 (99.68%) are geocoded at address level, splitting into 103,943,086 original, 6,054,473 modified and 747,278 estimated. The species breakdown in Section 2 also matches the note's Annex 3 exactly.
 
-The abstract, however, is wrong in a way neither we nor the referee had spotted, and it is not only the undefined word "valid".
-
-IBGE does not count addresses in this release. It counts *espécies de endereço*, address species, and the note is explicit that the two are not the same quantity: "como cada endereço pode conter ao mesmo tempo mais de uma espécie [...] as coordenadas divulgadas totalizam um número maior que o total de endereços". One address can host several species, so the 111.1 million figure **exceeds** the number of addresses, and the note defers the address total itself to a future CNEFE release. It has not been published.
+The abstract, however, is wrong in a way neither we nor the referee had spotted, and it is not only the undefined word "valid". IBGE does not count addresses in this release. It counts *espécies de endereço*, address species, and the note is explicit that the two are not the same quantity: "since each address may contain more than one species at the same time [...] the published coordinates add up to a number greater than the total number of addresses" (our translation from the Portuguese). One address can host several species, so the 111.1 million figure **exceeds** the number of addresses, and the note defers the address total itself to a future CNEFE release. It has not been published.
 
 Our abstract therefore describes 110 million as "valid addresses" when the underlying quantity is validated coordinate records for address species, and the true address count is both smaller and, at present, unknown. Section 2 mostly gets this right by saying "records", but its opening sentence, "Each CNEFE record corresponds to a single address point", made the same slip, and the Introduction repeated the 110 million "addresses".
 
