@@ -328,7 +328,7 @@ We verified both paths explicitly and the connection is closed when the caller r
 
 We added tests, and coverage rose for the package as a whole and for `tracts_to_polygon()` in particular. The 0% for `tracts_to_h3()` has a specific cause, explained below.
 
-Coverage depends on how it's measured. Under CRAN's defaults, tests marked with `skip_on_cran()` don't run, and that is the measurement behind the referee's figures. With `NOT_CRAN=true`, which is how we run them during development, every test runs. Before and after this revision:
+Coverage depends on how it's measured. Under CRAN's defaults, tests marked with `skip_on_cran()` don't run, and that is the measurement behind the referee's figures. With `NOT_CRAN=true`, which is how the tests run during development and in continuous integration on GitHub, every test runs. Before and after this revision:
 
 | | CRAN defaults | Full run (`NOT_CRAN=true`) |
 |---|---|---|
@@ -339,7 +339,7 @@ Coverage depends on how it's measured. Under CRAN's defaults, tests marked with 
 
 `tracts_to_polygon()` used to have tests for input validation only. It now has tests that check its output, built so the expected values are exact: a polygon covering a tract receives exactly the tract's allocated total, a tract split between two polygons is divided correctly, the caller's columns and CRS are kept, `crs_output` works, and the two-stage diagnostics are reported. They're described in more detail under R2.C8.
 
-`tracts_to_h3()` already had an end-to-end test of its output, which covers 90% of the file. The referee's 0% is what CRAN's defaults produce, because that test calls `skip_on_cran()`.
+`tracts_to_h3()` already had an end-to-end test of its output, which covers 90% of the file. The referee's 0% is what CRAN's defaults produce, because that test calls `skip_on_cran()`. Checking this for the present response, we found that the test was also being skipped in our own continuous integration, on all four machines, because it still required the DuckDB `zipfs` extension, which the package stopped needing when the cache became a gzipped CSV (R1.11). We removed that requirement, and the test, along with one other that had the same problem, now runs on every machine.
 
 The logic of both functions now also runs on CRAN. The deduplication Referee 2 asked for in R2.C1 moved the allocation rules and the diagnostics out of `tracts_to_h3()` and `tracts_to_polygon()` into shared internal helpers (`.build_alloc_sql()`, `.build_interp_diagnostics()` and `.report_interp_diagnostics()`). These helpers need only core DuckDB, with no extension, so we test them directly and without `skip_on_cran()`. That is where the rise in `R/utils-internal.R` under CRAN's defaults comes from, and it means the calculations themselves are now tested on CRAN, even though the two files still show the figures above.
 
@@ -397,7 +397,7 @@ We should report one further outcome. Checking that the exclusion was applied co
 
 > **Global P in BGBI: scope and computation.** The article states that "The citywide residential share P is computed from the full municipality CNEFE" (Section 4.3), which is correct and appropriate. However, two subtleties deserve mention: (a) P is derived from CNEFE dwelling counts, not from the population census, so it reflects the *distribution of address types* rather than the *distribution of residents* — a municipality with many small households and few large institutions would have a high P regardless of population; and (b) when `polygon_type = "user"`, P still reflects the entire municipality, not just the area covered by the user's polygons, which means the BGBI baseline is externally defined rather than locally computed.
 
-**Response:** **Both observations are correct. Both are now documented. Neither changes the computation.**
+**Response:** **Both observations are correct and are now documented. Neither changes the computation.**
 
 On (a), P is indeed derived from CNEFE address-type counts rather than from census population, so it describes the distribution of address types and not the distribution of residents. This is now stated explicitly in `?compute_lumi` and in Section 4.3.
 
@@ -437,7 +437,7 @@ We agree with the referee that the constraint deserves more prominence. Section 
 
 The referee is right that we never stated our position, and that is now fixed in Section 3 of the manuscript and in the roxygen of both functions.
 
-On the substance we would push back gently on the inference from the benchmark. The roughly 13-fold figure comes from `cnefe_counts()`, which is a tabular aggregation over address records. The `tracts_to_*()` functions are dominated by a different workload, a spatial overlay between the full CNEFE point set of the municipality and the census tract polygons, followed by a second overlay onto the target units. That cost doesn't scale like the tabular case, and it's the step where DuckDB's spatial index does most of the work. We haven't built a pure-R version to time, so we don't put a number on it, but we'd expect the gap to be much wider than the one measured on the tabular aggregation, and a fallback that is impractical on exactly the large municipalities where users would need it isn't one we want to maintain. Section 3 now gives this reason.
+On the substance we would push back gently on the inference from the benchmark. The speed-up figure comes from `cnefe_counts()`, which is a tabular aggregation over address records. The `tracts_to_*()` functions are dominated by a different workload, a spatial overlay between the full CNEFE point set of the municipality and the census tract polygons, followed by a second overlay onto the target units. That cost doesn't scale like the tabular case, and it's the step where DuckDB's spatial index does most of the work. We haven't built a pure-R version to time, so we don't put a number on it, but we'd expect the gap to be much wider than the one measured on the tabular aggregation, and a fallback that is impractical on exactly the large municipalities where users would need it isn't one we want to maintain. Section 3 now gives this reason.
 
 ### R2.7: Data-access risk: availability vs. policy
 
