@@ -64,7 +64,7 @@ mapview(
 
 ## The Index of Concentration at the Extremes (ICE)
 
-ICE was originally proposed by Booth & Crouter (2001) to measure spatial
+ICE was originally proposed by Massey (2001) to measure spatial
 concentration between two groups. We adapt it here to compare
 educational (`addr_type4`) and religious (`addr_type8`) establishments:
 ``` math
@@ -99,15 +99,15 @@ poa_hex_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE data ready) [152ms]      
+✔ Step 1/3 (CNEFE data ready) [190ms]      
 #> 
 ℹ Step 2/3: Building full H3 grid over municipality boundary...
 
-✔ Step 2/3 (H3 grid built) [3.1s]                              
+✔ Step 2/3 (H3 grid built) [3.7s]                              
 #> 
 ℹ Step 3/3: Counting address species per hexagon...
 
-✔ Step 3/3 (Addresses counted) [1.2s]              
+✔ Step 3/3 (Addresses counted) [1.3s]              
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -200,14 +200,14 @@ poa_neigh_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-✔ Step 1/2 (Data and polygon ready) [196ms]       
+✔ Step 1/2 (Data and polygon ready) [269ms]       
 #> 
 ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
 #> ℹ 129 points fell outside the polygon and were not counted.
 #> 
-✔ Step 2/2 (Addresses counted) [2.5s]        
+✔ Step 2/2 (Addresses counted) [2.6s]        
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 22 fields
@@ -283,6 +283,7 @@ statistics to reveal spatial patterns within cities.
 
 ## References
 
-Booth, A.; Crouter, A. C. (Eds.). (2001). *Does It Take a Village?
-Community Effects on Children, Adolescents, and Families*. Psychology
-Press.
+Massey, D. S. (2001). The prodigal paradigm returns: ecology comes back
+to sociology. In A. Booth & A. C. Crouter (Eds.), *Does It Take a
+Village? Community Effects on Children, Adolescents, and Families*.
+Lawrence Erlbaum.

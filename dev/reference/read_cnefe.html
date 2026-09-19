@@ -32,6 +32,7 @@ ZIP URLs. Data are returned either as an Arrow Table
     <li><a class="dropdown-item" href="../articles/tracts_to.html">Dasymetric interpolation using CNEFE addresses</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/cache.html">Cache and exported copies</a></li>
     <li><a class="dropdown-item" href="../articles/bench_duckdb.html">Performance benchmark: DuckDB vs pure-R backends</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -92,9 +93,9 @@ download, extraction, and reading steps.</p></dd>
 
 
 <dt id="arg-cache">cache<a class="anchor" aria-label="anchor" href="#arg-cache"></a></dt>
-<dd><p>Logical; if <code>TRUE</code>, cache the downloaded ZIP file in a
-user-level cache directory specific to this package. If <code>FALSE</code>, a
-temporary file is used and removed after reading.</p></dd>
+<dd><p>Logical; if <code>TRUE</code>, keep the downloaded data as a gzipped CSV
+in the cache folder (see <code>cache_dir</code>). If <code>FALSE</code>, a temporary file is
+used and removed after reading.</p></dd>
 
 
 <dt id="arg-cache-dir">cache_dir<a class="anchor" aria-label="anchor" href="#arg-cache-dir"></a></dt>
@@ -136,12 +137,16 @@ keeping these columns in the final object (<code>remove = FALSE</code>).</p>
     <h2 id="caching">Caching<a class="anchor" aria-label="anchor" href="#caching"></a></h2>
 
 
-<p>When <code>cache = TRUE</code> (the default), the downloaded ZIP file is stored in a
-user-level cache directory specific to this package, created via
-<code><a href="https://rdrr.io/r/tools/userdir.html" class="external-link">tools::R_user_dir()</a></code> with <code>which = "cache"</code>. This avoids re-downloading
-the same municipality file across sessions.</p>
-<p>When <code>cache = FALSE</code>, the ZIP file is stored in a temporary location and
+<p>When <code>cache = TRUE</code> (the default), the municipality is downloaded once and
+kept as a gzipped CSV, so later calls, in this session or any other, reuse
+it instead of downloading again. The cache folder is <code>cache_dir</code> when given,
+otherwise the <code>CNEFETOOLS_CACHE_DIR</code> environment variable when set,
+otherwise <code><a href="https://rdrr.io/r/tools/userdir.html" class="external-link">tools::R_user_dir()</a></code> with <code>which = "cache"</code>.</p>
+<p>When <code>cache = FALSE</code>, the file is stored in a temporary location and
 removed when the function exits.</p>
+<p>The cache is meant to be cleared (see <code><a href="clear_cache_muni.html">clear_cache_muni()</a></code>). For a copy
+that stays put, use <code><a href="cnefe_export.html">cnefe_export()</a></code>. The "Cache and exported copies"
+article on the package website covers both.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -157,10 +162,10 @@ file that this function can read back through <code>file</code>.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Processing municipality code <span style="color: #0000BB;">2929057</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[48ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[49ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Reading <span style="color: #0000BB;">file1e793fffc07e.csv.gz</span> with <span style="color: #0000BB;">arrow</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">file1e793fffc07e.csv.gz</span> with <span style="color: #0000BB;">arrow</span> <span style="color: #B2B2B2;">[22ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Reading <span style="color: #0000BB;">file1e7f168292b4.csv.gz</span> with <span style="color: #0000BB;">arrow</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">file1e7f168292b4.csv.gz</span> with <span style="color: #0000BB;">arrow</span> <span style="color: #B2B2B2;">[22ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Read <span style="color: #0000BB;">9354</span> records from CNEFE</span>
 <span class="r-in"><span></span></span>
@@ -170,19 +175,19 @@ file that this function can read back through <code>file</code>.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Processing municipality code <span style="color: #0000BB;">2929057</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[46ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[57ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Reading <span style="color: #0000BB;">file1e79af04afa.csv.gz</span> with <span style="color: #0000BB;">arrow</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">file1e79af04afa.csv.gz</span> with <span style="color: #0000BB;">arrow</span> <span style="color: #B2B2B2;">[21ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Reading <span style="color: #0000BB;">file1e7f52207b26.csv.gz</span> with <span style="color: #0000BB;">arrow</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">file1e7f52207b26.csv.gz</span> with <span style="color: #0000BB;">arrow</span> <span style="color: #B2B2B2;">[20ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Read <span style="color: #0000BB;">9354</span> records from CNEFE</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Writing <span style="color: #0000BB;">cnefe_2022_2929057.parquet</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Writing <span style="color: #0000BB;">cnefe_2022_2929057.parquet</span> <span style="color: #B2B2B2;">[20ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Writing <span style="color: #0000BB;">cnefe_2022_2929057.parquet</span> <span style="color: #B2B2B2;">[21ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Wrote <span style="color: #0000BB;">9354</span> records to <span style="color: #0000BB;">/tmp/Rtmpam4xRZ/cnefe_2022_2929057.parquet</span> (0.3 MB).</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Wrote <span style="color: #0000BB;">9354</span> records to <span style="color: #0000BB;">/tmp/RtmpwinupG/cnefe_2022_2929057.parquet</span> (0.3 MB).</span>
 <span class="r-in"><span><span class="va">cnefe_local</span> <span class="op">&lt;-</span> <span class="fu">read_cnefe</span><span class="op">(</span>file <span class="op">=</span> <span class="va">path</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Reading <span style="color: #0000BB;">cnefe_2022_2929057.parquet</span> as Parquet</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">cnefe_2022_2929057.parquet</span> as Parquet <span style="color: #B2B2B2;">[13ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">cnefe_2022_2929057.parquet</span> as Parquet <span style="color: #B2B2B2;">[12ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Read <span style="color: #0000BB;">9354</span> records from <span style="color: #0000BB;">cnefe_2022_2929057.parquet</span></span>
 <span class="r-in"><span></span></span>
@@ -191,14 +196,14 @@ file that this function can read back through <code>file</code>.</p></div>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Processing municipality code <span style="color: #0000BB;">2929057</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[53ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[57ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Reading <span style="color: #0000BB;">file1e79583a0f57.csv.gz</span> with <span style="color: #0000BB;">arrow</span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">file1e79583a0f57.csv.gz</span> with <span style="color: #0000BB;">arrow</span> <span style="color: #B2B2B2;">[23ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Reading <span style="color: #0000BB;">file1e7f88e3489.csv.gz</span> with <span style="color: #0000BB;">arrow</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Reading <span style="color: #0000BB;">file1e7f88e3489.csv.gz</span> with <span style="color: #0000BB;">arrow</span> <span style="color: #B2B2B2;">[21ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Read <span style="color: #0000BB;">9354</span> records from CNEFE</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting to <span style="color: #0000BB;">sf</span> object</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting to <span style="color: #0000BB;">sf</span> object <span style="color: #B2B2B2;">[29ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting to <span style="color: #0000BB;">sf</span> object <span style="color: #B2B2B2;">[30ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Created <span style="color: #0000BB;">&lt;sf&gt;</span> object with <span style="color: #0000BB;">9354</span> points (CRS: EPSG:4674)</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>

@@ -6,8 +6,10 @@ user-provided polygons), and computes the residential proportion
 (`p_res`) and land-use mix indices, such as the Entropy Index (`ei`),
 the Herfindahl-Hirschman Index (`hhi`), the Balance Index (`bal`), the
 Index of Concentration at Extremes (`ice`), the adapted HHI (`hhi_adp`),
-and the Bidirectional Global-centered Index (`bgbi`), following the
-methodology proposed in Pedreira Junior et al. (2026).
+and the Bidirectional Global-centered Balance Index (`bgbi`), following
+the methodology proposed in Pedreira Junior et al. (2025, 2026). The
+2026 article introduces the BGBI, and the adapted HHI is documented in
+the 2025 preprint.
 
 ## Usage
 
@@ -175,14 +177,15 @@ Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional land
 use mix index for planning and policy evaluation. *Land Use Policy*,
 169, 108135. https://doi.org/10.1016/j.landusepol.2026.108135
 
-Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
-Measuring land use mix with address-level census data (2025). *engrXiv*.
-https://engrxiv.org/preprint/view/5975 (preprint, where the adapted HHI
+Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
+(2025). Measuring land use mix with address-level census data. *engrXiv*
+preprint. https://engrxiv.org/preprint/view/5975 (where the adapted HHI
 (`hhi_adp`) is documented)
 
-Booth, A.; Crouter, A. C. (Eds.). (2001). *Does It Take a Village?
-Community Effects on Children, Adolescents, and Families*. Psychology
-Press.
+Massey, D. S. (2001). The prodigal paradigm returns: ecology comes back
+to sociology. In A. Booth & A. C. Crouter (Eds.), *Does It Take a
+Village? Community Effects on Children, Adolescents, and Families*.
+Lawrence Erlbaum.
 
 Song, Y.; Merlin, L.; Rodriguez, D. (2013). Comparing measures of urban
 land use mix. *Computers, Environment and Urban Systems*, 42, 1–13.
@@ -198,16 +201,16 @@ lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [52ms]
+#> ✔ Converting the archive to .csv.gz (done once) [48ms]
 #> 
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
-#> ✔ Step 1/3 (CNEFE data ready) [609ms]
+#> ✔ Step 1/3 (CNEFE data ready) [499ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [167ms]
+#> ✔ Step 2/3 (Addresses counted) [173ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [3.3s]
+#> ✔ Step 3/3 (Land use mix indices computed) [3.4s]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -227,10 +230,10 @@ lumi_poly <- compute_lumi(
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [545ms]
+#> ✔ Converting the archive to .csv.gz (done once) [610ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
-#> ✔ Step 1/3 (Data and polygon ready) [2.2s]
+#> ✔ Step 1/3 (Data and polygon ready) [1.9s]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
 #> ✔ Step 2/3 (Addresses counted) [1.1s]
@@ -239,7 +242,7 @@ lumi_poly <- compute_lumi(
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
 #> ℹ 106975 of 107244 points are within the provided polygon.
 #> ℹ 269 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [50ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [56ms]
 #> 
 # }
 ```

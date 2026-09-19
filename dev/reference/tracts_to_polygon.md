@@ -113,8 +113,8 @@ tracts_to_polygon(
 
 - cache:
 
-  Logical. Whether to use the existing package cache for assets and
-  CNEFE zips.
+  Logical. Whether to use the package cache for the census tract assets
+  and the CNEFE files.
 
 - cache_dir:
 
@@ -157,33 +157,33 @@ poly_pop <- tracts_to_polygon(
 #> ℹ Step 1/6: aligning CRS...
 #> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
 #> ℹ Step 1/6: aligning CRS...
-#> ✔ Step 1/6 (CRS alignment) [37ms]
+#> ✔ Step 1/6 (CRS alignment) [36ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [227ms]
+#> ✔ Step 2/6 (DuckDB ready) [251ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 #> ℹ Downloading sc_29.parquet from GitHub release
 #> ℹ All local files already up-to-date!
 #> ℹ Downloading sc_29.parquet from GitHub release
-#> ✔ Downloading sc_29.parquet from GitHub release [71ms]
+#> ✔ Downloading sc_29.parquet from GitHub release [39ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ✔ Step 3/6 (Tracts ready) [262ms]
+#> ✔ Step 3/6 (Tracts ready) [242ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [519ms]
+#> ✔ Converting the archive to .csv.gz (done once) [578ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 4/6 (CNEFE points ready) [4.2s]
+#> ✔ Step 4/6 (CNEFE points ready) [3.7s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [1s]
+#> ✔ Step 5/6 (Join and allocation) [995ms]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [27ms]
+#> ✔ Step 6/6 (Polygon aggregation) [25ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
