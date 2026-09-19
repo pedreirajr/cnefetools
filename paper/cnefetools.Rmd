@@ -17,8 +17,8 @@ abstract: >
   5,570 municipalities; (ii) aggregating address counts to H3 hexagonal grids or
   user-supplied polygons; (iii) computing land use mix indices; and (iv) performing
   dasymetric interpolation of census tract variables to arbitrary spatial
-  units using CNEFE dwelling points as ancillary data. The package provides a flexible dual-backend architecture for all computationally intensive operations.  The default DuckDB backend reads CSV data in-process from cached ZIP archives and handles all spatial joins, H3 indexing, and
-  aggregations without transferring intermediate results to R, achieving up to 13-fold speedups over the pure-R fallback for large municipalities.
+  units using CNEFE dwelling points as ancillary data. The package provides a flexible dual-backend architecture for all computationally intensive operations.  The default DuckDB backend reads the cached data in-process and handles all spatial joins, H3 indexing, and
+  aggregations without transferring intermediate results to R, achieving speedups of up to 16.7-fold over the pure-R fallback for large municipalities, at a fraction of its peak memory.
 draft: false
 author:
   - name: Jorge Ubirajara Pedreira Junior
@@ -163,10 +163,11 @@ address-level or polygon-based data.
 
 A key technical contribution is a dual-backend architecture. The default
 DuckDB backend [@duckdb2019], supported by the \pkg{duckdb} R package,
-reads CSV data directly from cached ZIP archives without prior
-extraction, performs H3 cell assignment and spatial joins entirely
-in-process, and returns only the final aggregated result to R. This
-design achieves speedups of up to 13$\times$ over a pure-R fallback
+reads the cached gzipped CSV directly, without prior extraction and
+without any third-party extension, performs H3 cell assignment and
+spatial joins entirely in-process, and returns only the final aggregated
+result to R. This design achieves speedups of up to 16.7$\times$ over a
+pure-R fallback
 based on \CRANpkg{h3jsr} [@h3jsr2023] and \CRANpkg{sf} [@pebesma2018]
 (see Section 5 for benchmarks).
 
@@ -302,6 +303,23 @@ functions additionally validate their inputs with \CRANpkg{checkmate}
 geometry types, and repairing invalid geometries), so errors are caught
 before any network or disk operation begins.
 
+This municipality-centric design is a real constraint for research
+questions that span several municipalities, such as those posed at the
+scale of a metropolitan region. Analyses of that kind are achievable
+today by iterating the relevant function over a vector of municipality
+codes and combining the results, and @pedreirajr2026 gives a worked
+example applying exactly that pattern across the 39 municipalities of
+the São Paulo metropolitan region. Two caveats apply when doing so. The
+H3 grid built by `cnefe_counts()` and `compute_lumi()` is derived from
+each municipality's own boundary, and cells are selected by whether
+their centre falls inside it, so a cell straddling a shared border
+belongs to exactly one of the two municipalities and its counts reflect
+only that municipality's addresses. The citywide residential share $P$
+that `compute_lumi()` uses as its reference is likewise computed per
+municipality, which is the intended behaviour but means that indices
+defined against it are not directly comparable across municipalities
+without recomputing the baseline for the wider area.
+
 ## Pre-built municipality index
 
 The package ships with an internal data frame (`cnefe_index`) that maps
@@ -316,22 +334,53 @@ code is a seven-digit IBGE code present in the index.
 
 ## Persistent user-level caching
 
-Because CNEFE files can be as large as 177 MB compressed for São Paulo, 
+Because CNEFE files can be as large as 177 MB compressed for São Paulo,
 repeated downloads would impose a
 substantial cost on iterative workflows. \CRANpkg{cnefetools} therefore
-caches each downloaded ZIP in the user's application data directory
-(via `tools::R_user_dir("cnefetools", "cache")`), creating the directory
-on first use and persisting it across R sessions.
+caches each municipality locally on first download, creating the cache
+directory on first use and persisting it across R sessions.
+
+What is cached is a gzipped CSV rather than the ZIP as published. The
+conversion runs once, on first download, streamed in chunks so that peak
+memory does not scale with the file, and written through a temporary
+name so that an interrupted run cannot leave behind something that later
+passes for a valid cache entry. Gzip was chosen over raw CSV because it
+costs essentially nothing on disk relative to the published ZIP, whereas
+the uncompressed CSV is several times larger, and because DuckDB
+decompresses it natively, which keeps the read path free of any
+third-party extension.
+
+The cache location resolves from the most specific source to the least:
+the `cache_dir` argument of the calling function, then the
+`CNEFETOOLS_CACHE_DIR` environment variable, and finally
+`tools::R_user_dir("cnefetools", "cache")`, which remains the default so
+that users who do nothing see the previous behaviour. Both mechanisms
+are offered deliberately, since an environment variable suits a machine
+configured once while an explicit argument lets a single call be
+redirected without touching the session. The argument is accepted by
+every function that reads data, and also by `clear_cache_muni()` and
+`clear_cache_tracts()`, because a redirected cache the cleaners could
+not see would report success while deleting nothing.
 
 Download integrity is verified by checking that the downloaded file is a
 valid ZIP archive and that it contains a CSV file matching the expected
 naming pattern. Corrupted or incomplete downloads are detected and
 retried with increasing timeout thresholds (300 s, 600 s, and 1,800 s).
-Caching can be disabled with `cache = FALSE`, in which case the ZIP is
+Caching can be disabled with `cache = FALSE`, in which case the data is
 written to a temporary file and removed when the function exits. Users
 also have direct control over the local cache: `clear_cache_muni()` and
 `clear_cache_tracts()` allow selectively removing cached files, either
 all at once or filtered by municipality or state (see Section 4.5).
+
+For workflows that need the data outside this transient cache,
+`cnefe_export()` writes a municipality to a location of the user's
+choosing as Parquet (the default), CSV or gzipped CSV. The companion to
+it is the `file` argument of `read_cnefe()`, which reads any of those
+formats, as well as the ZIP exactly as IBGE publishes it, and therefore
+skips retrieval entirely. Together they let a user keep an optimised
+copy on whichever disk suits them, and they also make ingestion
+independent of the download path, which matters if access to the
+upstream server ever changes.
 
 ## Dual-backend architecture
 
@@ -341,13 +390,17 @@ hexagons or user-supplied polygons and performing spatial joins, users
 can choose between two backends via the `backend` argument:
 
 -   **`"duckdb"` (default)**: uses the \CRANpkg{duckdb} [@duckdb_r2024]
-    R package alongside some DuckDB extensions to spin up an in-memory DuckDB database. 
-    The `zipfs` extension is always loaded to read CSV data directly from the cached
-    ZIP without decompression. For H3 aggregation, the `h3` extension
-    assigns cell indices entirely in SQL, while for user-provided
-    polygons, the `spatial` extension and the \CRANpkg{duckspatial} R
-    package handle the point-in-polygon join. Only the final aggregated
-    result is transferred to R.
+    R package alongside some DuckDB extensions to spin up an in-memory DuckDB database.
+    Reading the cached gzipped CSV requires no extension at all, since
+    DuckDB decompresses gzip natively. For H3 aggregation, the `h3`
+    extension assigns cell indices entirely in SQL, while for
+    user-provided polygons, the `spatial` extension and the
+    \CRANpkg{duckspatial} R package handle the point-in-polygon join.
+    Only the final aggregated result is transferred to R. The `zipfs`
+    extension is still available but is loaded on demand, only when the
+    file at hand is actually a ZIP, which now happens solely for a cache
+    written by an earlier version or for a file the user supplies
+    directly.
 
 -   **`"r"`**: for H3 aggregation, \CRANpkg{h3jsr} assigns each point to
     a cell, whereas for user-provided polygons, \CRANpkg{sf} performs
@@ -469,7 +522,6 @@ hex_counts <- cnefe_counts(
   code_muni     = 2919207,
   year          = 2022,
   cache         = TRUE,
-  polygon_type  = "hex",
   h3_resolution = 9,
   verbose       = TRUE,
   backend       = "duckdb"
@@ -486,7 +538,6 @@ poly_counts <- cnefe_counts(
   code_muni    = 2919207,
   year         = 2022,
   cache        = TRUE,
-  polygon_type = "user",
   polygon      = nei,
   crs_output   = NULL,
   verbose      = TRUE,
@@ -494,8 +545,8 @@ poly_counts <- cnefe_counts(
 )
 ```
 
-When `polygon_type = "hex"` (default), the function builds a complete H3
-grid over the municipality boundary using \CRANpkg{geobr} to obtain the
+When no `polygon` is supplied (the default), the function builds a
+complete H3 grid over the municipality boundary using \CRANpkg{geobr} to obtain the
 boundary polygon and \CRANpkg{h3jsr} to generate the hexagon geometries.
 The DuckDB `h3` extension is used (when `backend = "duckdb"`) to assign
 CNEFE points to cells in SQL, but the grid itself is always constructed
@@ -503,15 +554,15 @@ via \CRANpkg{h3jsr}. The H3 resolution can be set from 0 (coarse) to 15
 (fine), and the default is 9, corresponding to an average hexagon area
 of approximately 105,000 m².
 
-When `polygon_type = "user"`, the function performs a point-in-polygon
+When a `polygon` is supplied, the function performs a point-in-polygon
 join between the CNEFE coordinates and the user-supplied `sf` polygon. A
 warning is issued if any CNEFE points fall outside the polygon, together
 with the coverage percentage, and an error is raised if no points fall
 inside.
 
 The output `sf` object inherits the polygon geometry: H3 hexagons when
-`polygon_type = "hex"`, or the user-supplied polygons (in their original
-CRS, or `crs_output` if specified) when `polygon_type = "user"`. Figure
+`polygon` is `NULL`, or the user-supplied polygons (in their original
+CRS, or `crs_output` if specified) when one is given. Figure
 \@ref(fig:fig-counts) illustrates both modes for Lauro de Freitas at H3
 resolution 8 and at the neighborhood level.
 
@@ -541,7 +592,6 @@ hex8 <- cnefetools::cnefe_counts(
 # Address counts per neighborhood
 poly_counts <- cnefetools::cnefe_counts(
   code_muni    = 2919207,
-  polygon_type = "user",
   polygon      = nei,
   verbose      = FALSE
 )
@@ -612,7 +662,6 @@ lumi_hex <- compute_lumi(
   code_muni     = 2919207,
   year          = 2022,
   cache         = TRUE,
-  polygon_type  = "hex",
   h3_resolution = 9,
   verbose       = TRUE,
   backend       = "duckdb"
@@ -623,7 +672,6 @@ lumi_poly <- compute_lumi(
   code_muni    = 2919207,
   year         = 2022,
   cache        = TRUE,
-  polygon_type = "user",
   polygon      = nei,
   crs_output   = NULL,
   verbose      = TRUE,
@@ -662,7 +710,6 @@ lumi_hex <- cnefetools::compute_lumi(
 # BGBI per neighborhood
 lumi_poly <- cnefetools::compute_lumi(
   code_muni    = 2919207,
-  polygon_type = "user",
   polygon      = nei,
   verbose      = FALSE
 )
@@ -820,10 +867,11 @@ The entire computation pipeline runs within an in-memory DuckDB instance
 and proceeds in six steps, with all heavy operations remaining inside
 DuckDB until the final aggregated result is materialised in R:
 
-1.  **DuckDB setup**: an in-memory DuckDB database is opened and three
-    extensions are loaded: `zipfs` (to read compressed CSV directly from
-    the cached ZIP without extraction), `h3` (for H3 cell assignment in
-    SQL), and `spatial` (for `ST_Within` point-in-polygon joins).
+1.  **DuckDB setup**: an in-memory DuckDB database is opened and two
+    extensions are loaded: `h3` (for H3 cell assignment in SQL) and
+    `spatial` (for `ST_Within` point-in-polygon joins). Reading the
+    cached data needs no extension, since DuckDB decompresses gzip
+    natively.
 
 2.  **Census tract geometry**: the UF-level Parquet asset is registered
     as a DuckDB `VIEW` and immediately materialised into a persistent
@@ -831,9 +879,9 @@ DuckDB until the final aggregated result is materialised in R:
     on the tract geometry column to accelerate the subsequent
     point-in-polygon join.
 
-3.  **CNEFE points**: the municipality ZIP is mounted as a virtual file
-    system via the `zipfs` extension, and DuckDB streams the
-    semicolon-delimited CSV directly without extracting it to disk. Only
+3.  **CNEFE points**: DuckDB streams the semicolon-delimited CSV
+    straight out of the cached gzipped file, without extracting it to
+    disk and without an extension to mediate the read. Only
     rows with `COD_ESPECIE` $\in \{1, 2\}$ (private and collective
     dwellings) and non-null coordinates are retained and materialised
     into a second in-memory `TABLE`.
@@ -1081,7 +1129,7 @@ cnefe_dictionary()  # opens the Excel data dictionary
 cnefe_doc()         # opens the IBGE methodological PDF
 ```
 
-`clear_cache_muni()` deletes CNEFE ZIP files from the user cache
+`clear_cache_muni()` deletes cached CNEFE files from the cache
 directory, either all at once or for a specific municipality identified
 by its seven-digit IBGE code. `clear_cache_tracts()` removes cached
 census tract Parquet files, with optional filtering by state, accepting
@@ -1090,8 +1138,8 @@ seven-digit municipality code (which is resolved to its state
 automatically).
 
 ```{r util-cache}
-clear_cache_muni()          # delete all cached CNEFE ZIPs
-clear_cache_muni(2919207)   # delete only the ZIP for Lauro de Freitas-BA
+clear_cache_muni()          # delete all cached CNEFE files
+clear_cache_muni(2919207)   # delete only the file for Lauro de Freitas-BA
 
 clear_cache_tracts()        # delete all cached census tract Parquets
 clear_cache_tracts("BA")    # delete only the Parquet for the state of Bahia ("BA")
@@ -1281,9 +1329,10 @@ are:
     redistribution of census variables using CNEFE dwelling points as
     ancillary data, with per-variable allocation diagnostics.
 5.  **DuckDB dual-backend**: a performance architecture that achieves up
-    to 13× speedup for large municipalities by reading ZIP-compressed
-    CSV files, assigning H3 cells, and performing spatial joins entirely
-    within an in-process DuckDB engine.
+    to 16.7× speedup for large municipalities, at a fraction of the
+    pure-R backend's peak memory, by streaming the cached gzipped CSV,
+    assigning H3 cells, and performing spatial joins entirely within an
+    in-process DuckDB engine.
 
 The package also has some limitations. First, data access depends on the
 availability and stability of the IBGE FTP server, since municipal CNEFE
