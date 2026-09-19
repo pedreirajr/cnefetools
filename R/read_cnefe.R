@@ -16,13 +16,18 @@
 #' keeping these columns in the final object (`remove = FALSE`).
 #'
 #' @section Caching:
-#' When `cache = TRUE` (the default), the downloaded ZIP file is stored in a
-#' user-level cache directory specific to this package, created via
-#' [tools::R_user_dir()] with `which = "cache"`. This avoids re-downloading
-#' the same municipality file across sessions.
+#' When `cache = TRUE` (the default), the municipality is downloaded once and
+#' kept as a gzipped CSV, so later calls, in this session or any other, reuse
+#' it instead of downloading again. The cache folder is `cache_dir` when given,
+#' otherwise the `CNEFETOOLS_CACHE_DIR` environment variable when set,
+#' otherwise [tools::R_user_dir()] with `which = "cache"`.
 #'
-#' When `cache = FALSE`, the ZIP file is stored in a temporary location and
+#' When `cache = FALSE`, the file is stored in a temporary location and
 #' removed when the function exits.
+#'
+#' The cache is meant to be cleared (see [clear_cache_muni()]). For a copy
+#' that stays put, use [cnefe_export()]. The "Cache and exported copies"
+#' article on the package website covers both.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code. Omit it when
 #'   reading a local file through `file`.
@@ -30,9 +35,9 @@
 #'   Defaults to 2022.
 #' @param verbose Logical; if `TRUE`, print informative messages about
 #'   download, extraction, and reading steps.
-#' @param cache Logical; if `TRUE`, cache the downloaded ZIP file in a
-#'   user-level cache directory specific to this package. If `FALSE`, a
-#'   temporary file is used and removed after reading.
+#' @param cache Logical; if `TRUE`, keep the downloaded data as a gzipped CSV
+#'   in the cache folder (see `cache_dir`). If `FALSE`, a temporary file is
+#'   used and removed after reading.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to

@@ -59,7 +59,7 @@ tracts with no private dwellings receive no allocation.
 the original CRS of the \code{polygon} argument. Can be an EPSG code (e.g., 4326,
 31983) or any CRS object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
-\item{cache}{Logical. Whether to use the existing package cache for assets and CNEFE zips.}
+\item{cache}{Logical. Whether to use the package cache for the census tract assets and the CNEFE files.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it

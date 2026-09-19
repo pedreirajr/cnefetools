@@ -52,7 +52,7 @@ dwellings but has collective dwellings, they are allocated to collective.
 tracts with no private dwellings receive no allocation.
 }}
 
-\item{cache}{Logical. Whether to use the existing package cache for assets and CNEFE zips.}
+\item{cache}{Logical. Whether to use the package cache for the census tract assets and the CNEFE files.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it

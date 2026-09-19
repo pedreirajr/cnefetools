@@ -222,6 +222,23 @@
   the geobr call in the H3-grid path (#74). Note that geobr is nonetheless
   pinned to (>= 2.0.0), for the unrelated reason given above.
 
+## Documentation
+
+* New article, "Cache and exported copies". It covers where the cache lives
+  and how to move it (`cache_dir` and `CNEFETOOLS_CACHE_DIR`), how to clear
+  it, and how to keep a permanent copy with `cnefe_export()` and read it back
+  with `read_cnefe(file = ...)`. It also points out that only `read_cnefe()`
+  reads an exported file (#110).
+
+* The Index of Concentration at Extremes is now credited to Massey (2001),
+  the chapter that proposes it, instead of Booth & Crouter (2001), who edited
+  the book. Affects `?compute_lumi` and the `cnefe_counts` article. The
+  description of `?compute_lumi` now also cites the 2025 preprint alongside
+  the 2026 article, since the adapted HHI appears only in the preprint (#110).
+
+* `?read_cnefe` no longer says that the cache holds the published ZIP and
+  always lives in `tools::R_user_dir()` (#110).
+
 # cnefetools 0.2.5
 
 * Fixed an RTREE spatial-index failure introduced by DuckDB 1.5 (which moved

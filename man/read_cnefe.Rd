@@ -24,9 +24,9 @@ Defaults to 2022.}
 \item{verbose}{Logical; if \code{TRUE}, print informative messages about
 download, extraction, and reading steps.}
 
-\item{cache}{Logical; if \code{TRUE}, cache the downloaded ZIP file in a
-user-level cache directory specific to this package. If \code{FALSE}, a
-temporary file is used and removed after reading.}
+\item{cache}{Logical; if \code{TRUE}, keep the downloaded data as a gzipped CSV
+in the cache folder (see \code{cache_dir}). If \code{FALSE}, a temporary file is
+used and removed after reading.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
@@ -65,13 +65,18 @@ keeping these columns in the final object (\code{remove = FALSE}).
 }
 \section{Caching}{
 
-When \code{cache = TRUE} (the default), the downloaded ZIP file is stored in a
-user-level cache directory specific to this package, created via
-\code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}. This avoids re-downloading
-the same municipality file across sessions.
+When \code{cache = TRUE} (the default), the municipality is downloaded once and
+kept as a gzipped CSV, so later calls, in this session or any other, reuse
+it instead of downloading again. The cache folder is \code{cache_dir} when given,
+otherwise the \code{CNEFETOOLS_CACHE_DIR} environment variable when set,
+otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code{which = "cache"}.
 
-When \code{cache = FALSE}, the ZIP file is stored in a temporary location and
+When \code{cache = FALSE}, the file is stored in a temporary location and
 removed when the function exits.
+
+The cache is meant to be cleared (see \code{\link[=clear_cache_muni]{clear_cache_muni()}}). For a copy
+that stays put, use \code{\link[=cnefe_export]{cnefe_export()}}. The "Cache and exported copies"
+article on the package website covers both.
 }
 
 \examples{

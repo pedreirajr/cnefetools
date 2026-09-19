@@ -78,7 +78,7 @@ mapview(
 
 ## The Index of Concentration at the Extremes (ICE)
 
-ICE was originally proposed by Booth & Crouter (2001) to measure
+ICE was originally proposed by Massey (2001) to measure
 spatial concentration between two groups. We adapt it here to compare
 educational (`addr_type4`) and religious (`addr_type8`) establishments:
 $$
@@ -212,6 +212,7 @@ patterns within cities.
 
 ## References
 
-Booth, A.; Crouter, A. C. (Eds.). (2001). *Does It Take a Village?
-Community Effects on Children, Adolescents, and Families*. Psychology
-Press.
+Massey, D. S. (2001). The prodigal paradigm returns: ecology comes back
+to sociology. In A. Booth & A. C. Crouter (Eds.), *Does It Take a
+Village? Community Effects on Children, Adolescents, and Families*.
+Lawrence Erlbaum.

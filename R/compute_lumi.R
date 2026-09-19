@@ -6,8 +6,9 @@
 #' user-provided polygons), and computes the residential proportion (`p_res`) and land-use mix
 #' indices, such as the Entropy Index (`ei`), the Herfindahl-Hirschman Index (`hhi`),
 #' the Balance Index (`bal`), the Index of Concentration at Extremes (`ice`), the adapted HHI (`hhi_adp`),
-#' and the Bidirectional Global-centered Index (`bgbi`), following the methodology proposed in
-#' Pedreira Junior et al. (2026).
+#' and the Bidirectional Global-centered Balance Index (`bgbi`), following the methodology
+#' proposed in Pedreira Junior et al. (2025, 2026). The 2026 article introduces the BGBI,
+#' and the adapted HHI is documented in the 2025 preprint.
 #'
 #' @param code_muni Integer. Seven-digit IBGE municipality code.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
@@ -115,14 +116,16 @@
 #' *Land Use Policy*, 169, 108135.
 #' https://doi.org/10.1016/j.landusepol.2026.108135
 #'
-#' Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
-#' Measuring land use mix with address-level census data (2025).
-#' *engrXiv*. https://engrxiv.org/preprint/view/5975
-#' (preprint, where the adapted HHI (`hhi_adp`) is documented)
+#' Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. (2025).
+#' Measuring land use mix with address-level census data.
+#' *engrXiv* preprint. https://engrxiv.org/preprint/view/5975
+#' (where the adapted HHI (`hhi_adp`) is documented)
 #'
-#' Booth, A.; Crouter, A. C. (Eds.). (2001).
+#' Massey, D. S. (2001).
+#' The prodigal paradigm returns: ecology comes back to sociology.
+#' In A. Booth & A. C. Crouter (Eds.),
 #' *Does It Take a Village? Community Effects on Children, Adolescents, and Families*.
-#' Psychology Press.
+#' Lawrence Erlbaum.
 #'
 #' Song, Y.; Merlin, L.; Rodriguez, D. (2013).
 #' Comparing measures of urban land use mix.
