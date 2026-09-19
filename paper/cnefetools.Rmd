@@ -435,7 +435,7 @@ the directory listing of each state on the IBGE FTP server.
 
 The census tract assets are built by `data-raw/sc_assets_build.R`. Tract
 geometries come from \CRANpkg{geobr}, and tract attributes come from
-\CRANpkg{censobr} [@censobr2023], which repackages the IBGE census tract
+\CRANpkg{censobr} [@pereira2026censobr], which repackages the IBGE census tract
 aggregates, so the variable codes listed in Table
 \@ref(tab:tab-tracts-vars) are those used by \CRANpkg{censobr}. Some
 tracts are returned by \CRANpkg{geobr} as several rows, one for each
