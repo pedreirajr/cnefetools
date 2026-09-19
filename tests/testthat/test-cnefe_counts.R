@@ -189,30 +189,7 @@ testthat::test_that("cnefe_counts (duckdb) handles polygon with 'geometry' colum
   testthat::skip_if_not_installed("duckspatial")
   testthat::skip_if_not_installed("sf")
 
-  # Skip if DuckDB cannot load/install the required extensions
-  con_check <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
-  on.exit(DBI::dbDisconnect(con_check, shutdown = TRUE), add = TRUE)
-
-  ext_ok <- function(name) {
-    tryCatch(
-      {
-        DBI::dbExecute(con_check, sprintf("LOAD %s;", name))
-        TRUE
-      },
-      error = function(e) {
-        tryCatch(
-          {
-            DBI::dbExecute(con_check, sprintf("INSTALL %s; LOAD %s;", name, name))
-            TRUE
-          },
-          error = function(e2) FALSE
-        )
-      }
-    )
-  }
-
-  if (!ext_ok("zipfs")) testthat::skip("DuckDB zipfs extension not available.")
-  if (!ext_ok("spatial")) testthat::skip("DuckDB spatial extension not available.")
+  skip_unless_duckdb_extensions("spatial")
 
   code_muni <- 2929057L
 
