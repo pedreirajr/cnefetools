@@ -326,26 +326,24 @@ We verified both paths explicitly and the connection is closed when the caller r
 
 **Response:** **Accepted.**
 
-We re-measured rather than quoting the report, in both configurations, and that is what explains all three of the referee's numbers.
+We added tests, and coverage rose for the package as a whole and for `tracts_to_polygon()` in particular. The 0% for `tracts_to_h3()` has a specific cause, explained below.
 
-| | CRAN defaults | `NOT_CRAN=true` |
+Coverage depends on how it's measured. Under CRAN's defaults, tests marked with `skip_on_cran()` don't run, and that is the measurement behind the referee's figures. With `NOT_CRAN=true`, which is how we run them during development, every test runs. Before and after this revision:
+
+| | CRAN defaults | Full run (`NOT_CRAN=true`) |
 |---|---|---|
-| **overall** | 38.3% → **46.3%** | 58.3% → **69.2%** |
-| `R/cnefe_docs.R` | 0.0% → 76.9% | 0.0% → 76.9% |
-| `R/cnefe_export.R` | 31.9% → 87.2% | 31.9% → 87.2% |
-| `R/utils-internal.R` | 34.5% → 51.9% | 58.2% → 60.4% |
+| Whole package | 38.3% → **46.3%** | 58.3% → **69.2%** |
 | `R/tracts_to_polygon.R` | 10.8% → 10.8% | 10.8% → **83.3%** |
-| `R/tracts_to_h3.R` | 0.0% → 0.0% | **90.0%** → 90.0% |
+| `R/tracts_to_h3.R` | 0.0% → 0.0% | 90.0% → 90.0% |
+| `R/utils-internal.R` | 34.5% → **51.9%** | 58.2% → 60.4% |
 
-The referee's 0% for `tracts_to_h3()` is exactly what the default configuration produces. The file is not untested: with `NOT_CRAN=true` it measures 90%. Its only test calls `skip_on_cran()`, added in version 0.2.1 for a concrete reason, a DuckDB spatial extension segfault on `r-devel-linux-x86_64-fedora-clang`.
+`tracts_to_polygon()` used to have tests for input validation only. It now has tests that check its output, built so the expected values are exact: a polygon covering a tract receives exactly the tract's allocated total, a tract split between two polygons is divided correctly, the caller's columns and CRS are kept, `crs_output` works, and the two-stage diagnostics are reported. They're described in more detail under R2.C8.
 
-We report this as confirmation of the referee's point rather than as a rebuttal of it. A test that runs only when someone opts in is invisible to CRAN and to anyone measuring coverage the ordinary way, which makes it close to worthless as a signal. The referee saw the number a user would see.
+`tracts_to_h3()` already had an end-to-end test of its output, which covers 90% of the file. The referee's 0% is what CRAN's defaults produce, because that test calls `skip_on_cran()`.
 
-The fix follows from that reading. Rather than removing a skip that exists for a real crash, we added tests for the parts that need no DuckDB extension, exercising `.build_alloc_sql()`, `.build_interp_diagnostics()` and `.report_interp_diagnostics()` against core DuckDB only. Those helpers hold the logic that used to live inside `tracts_to_h3()` and `tracts_to_polygon()`, so it now has coverage in the configuration CRAN actually runs. This is a direct dividend of the deduplication Referee 2 asked for in R2.C1: before the extraction, that logic could not be reached without the extensions.
+The logic of both functions now also runs on CRAN. The deduplication Referee 2 asked for in R2.C1 moved the allocation rules and the diagnostics out of `tracts_to_h3()` and `tracts_to_polygon()` into shared internal helpers (`.build_alloc_sql()`, `.build_interp_diagnostics()` and `.report_interp_diagnostics()`). These helpers need only core DuckDB, with no extension, so we test them directly and without `skip_on_cran()`. That is where the rise in `R/utils-internal.R` under CRAN's defaults comes from, and it means the calculations themselves are now tested on CRAN, even though the two files still show the figures above.
 
-`tracts_to_h3.R` therefore still reads 0% under CRAN defaults, and we would rather say so plainly than move the number by weakening a skip that guards against a segfault.
-
-The `~10%` reported for `tracts_to_polygon()` is confirmed exactly, and addressed under R2.C8.
+We kept `skip_on_cran()` on the end-to-end tests because of a crash. It was added in version 0.2.1 after the DuckDB spatial extension caused a segfault on CRAN's `r-devel-linux-x86_64-fedora-clang` check machine, an incompatibility between the clang-built DuckDB binary and the GCC-built extension (duckdb/duckdb-r#1107). Removing it would risk the package failing on CRAN again, so we'd rather report the 0% plainly than raise it by dropping a skip that guards against a segfault.
 
 ## Referee 1 references
 
