@@ -442,9 +442,10 @@ tracts are returned by \CRANpkg{geobr} as several rows, one for each
 disjoint part, and the script dissolves them into a single geometry per
 tract, since otherwise the dwelling points of such a tract would be
 counted once for each part. The assets for the 2022 edition are served
-from the release tag `sc-assets-v3`, and every value in them matches the
-files originally published with the package, 3,144,868 values across
-468,097 tracts in all 27 states. The SHA-256 checksum and size of each
+from the release tag `sc-assets-v3`, which was built with this script,
+and a tract-by-tract comparison with the files originally published
+with the package found the same 468,097 tracts in all 27 states and
+identical values in all 3,144,868 comparisons. The SHA-256 checksum and size of each
 file are recorded in `data-raw/sc_assets_checksums.csv`, so a user can
 confirm that a downloaded file is the one that was published.
 
