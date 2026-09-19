@@ -29,7 +29,7 @@ This document reproduces every comment in full, followed by our response. We've 
 
 > Evaluating the manuscript and accompanying software against [The R Journal guidelines](https://journal.r-project.org/R_package_guidelines.html), `cnefetools` demonstrates strong adherence. The paper balances geospatial context with a clear focus on the software's design, dual DuckDB/R backend, and performance benchmarks. The package addresses the data engineering challenge of processing 110 million Brazilian address records, making it a critical resource for researchers focused on Brazilian geospatial analysis. Beyond its immediate utility, `cnefetools` serves as a technical blueprint for the R developer community, demonstrating a performant architecture for the emerging class of DuckDB-powered data access packages. I have independently verified the examples in `read_cnefe()` and the primary vignettes; the package is fully functional and the API is intuitive. Furthermore, the codebase follows modern R development standards, including semantic messaging via `cli` and comprehensive `roxygen2` documentation.
 
-**Response.** Thank you. We're glad the referee ran the examples and the articles independently, and we've tried to keep the package to that standard throughout this revision.
+**Response:** Thank you. We're glad the referee ran the examples and the articles independently, and we've tried to keep the package to that standard throughout this revision.
 
 ## Methodological considerations: land use mix indices
 
@@ -37,7 +37,7 @@ This document reproduces every comment in full, followed by our response. We've 
 
 > The core analytical module of the package, `compute_lumi()`, is built around a binary classification: Residential (Type 1) versus Non-Residential (Types 2–8). While the manuscript (Section 4) and the referenced preprint (Pedreira Junior et al. 2025) are transparent about this choice, the implementation results in a significant loss of the "fine-grained" information that the authors initially promote as a key advantage of the CNEFE dataset. Collapsing eight distinct categories—ranging from schools and hospitals to religious temples and factories—into a single "Non-Residential" bin means that diversity indices like **Entropy** and **HHI** do not actually measure functional land-use diversity, but rather simple "residential dominance." As a result, a neighborhood with ten different types of services would receive a lower "mix" score than one with a single service and a few houses, which is counter-intuitive for urban planning research and deviates from the multi-category standards discussed in the cited literature (e.g., Song et al. 2013).
 
-**Response.** **We keep the binary formulation, and we agree with the referee's description of what it measures.**
+**Response:** **We keep the binary formulation, and we agree with the referee's description of what it measures.**
 
 The referee is right that with two categories the Entropy Index and the HHI measure how evenly an area is split between housing and everything else, not how diverse its non-residential uses are. That is the construct the indices are meant to capture, and it's the one on which they were defined and validated against job accessibility in Pedreira Junior et al. (2026), now published in *Land Use Policy*. Redefining the indices inside a software paper would change the object the paper describes, so we haven't done that.
 
@@ -47,13 +47,13 @@ What we have changed is how clearly this is stated, since a reader shouldn't hav
 
 > **Reliance on Unreviewed Methodology:** The package serves as a "pixel-perfect" implementation of the authors' own directional indices (aHHI and BGBI), which are currently documented in an unreviewed engrXiv preprint (Pedreira Junior et al. 2025). While this demonstrates high internal consistency between the paper and the code, it also positions the package as a highly specialized tool for one specific methodological framework rather than a general-purpose geospatial utility. Given that these indices (specifically the BGBI) rely on a nonlinear transformation centered on a global proportion, their scientific validity rests entirely on the unreviewed preprint's claims. For a research-focused package, this narrow methodological scope should be more explicitly signaled to the user.
 
-**Response.** **We've separated the two indices, because the referee's premise now holds for one of them and not the other.**
+**Response:** **We've separated the two indices, because the referee's premise now holds for one of them and not the other.**
 
-The BGBI has since been peer-reviewed and published (Pedreira Junior et al., 2026, *Land Use Policy* 169, 108135), where it is computed alongside four established indices and validated against job accessibility measures. The manuscript now cites that article for it. We don't want to lean on this more than it deserves, since peer review doesn't settle whether an index is the right choice for a particular study, but the statement that its validity rests entirely on an unreviewed preprint no longer holds.
+The BGBI has since been peer-reviewed and published (Pedreira Junior et al., 2026, *Land Use Policy* 169, 108135), where it is computed alongside four established indices and validated against job accessibility measures. The manuscript now cites that article for it.
 
-The adapted HHI is still documented only in the engrXiv preprint, which the manuscript keeps and now labels as a preprint. It is a monotone rescaling of the standard HHI, which runs from 0.5 to 1 with two categories, into the range 0 to 1, with a sign that shows which use dominates. It inherits the properties of an established index and adds only a direction, so it doesn't carry a validity claim of its own.
+The adapted HHI is still documented only in the engrXiv preprint, which the manuscript keeps and now labels as a preprint. Nevertheless, it consists of a trivial monotone rescaling of the standard HHI, which runs from 0.5 to 1 with two categories, into the range 0 to 1, with a sign that shows which use dominates. It inherits the properties of an established index and adds only a direction, so it doesn't carry a validity claim of its own.
 
-On scope, three of the six indices (entropy, HHI and the Balance Index) are standard measures from the literature, and the Index of Concentration at Extremes comes from Massey (2001), so only the BGBI and the adapted HHI are ours. The package is also more than its land use mix module, since data access, address counts and dasymetric interpolation don't depend on these indices at all. The methodological basis of the indices is now explicit in Section 4.3 and in `?compute_lumi`, as described under R1.3.
+On scope, three of the six indices (entropy, HHI and the Balance Index) are standard measures from the literature, and the Index of Concentration at Extremes comes from Massey (2001), so only the BGBI and the adapted HHI are ours. The methodological basis of the indices is now explicit in Section 4.3 and in `?compute_lumi`, as described under R1.3.
 
 ### R1.3: Ambiguity in Documentation
 
@@ -63,7 +63,7 @@ On scope, three of the six indices (entropy, HHI and the Balance Index) are stan
 > 2. Provide a theoretical justification for why the binary split was chosen over a multi-category approach, especially given that the raw CNEFE data already provides the necessary granularity. This is covered in the preprint, but a brief summary in the package documentation and the package paper would help users understand the rationale without needing to read the full paper.
 > 3. Acknowledge that while this logic is consistent with their preprint, it may not align with the prevalent multi-category definitions of Land Use Mix in broader urban science.
 
-**Response.** **Accepted, all three points.**
+**Response:** **Accepted, all three points.**
 
 `?compute_lumi` now carries a `@details` section, which it previously lacked entirely. On the referee's point 1, it states the rule without ambiguity: an address is counted as residential when `COD_ESPECIE == 1` and as non-residential otherwise. On point 2, the justification now cites the peer-reviewed article rather than the preprint, since the indices are defined and empirically validated on that two-category basis in Pedreira Junior et al. (2026), *Land Use Policy* 169, 108135. The same `@details` block also documents the type 7 exclusion raised in R2.2 and the citywide baseline P raised in R2.3, so the help page and the article now state one contract instead of two.
 
@@ -81,7 +81,7 @@ The manuscript carries the same three points in Section 4.3: the rule, the justi
 >
 > By including H3 as a primary built-in option, `cnefetools` understandably provides a practical solution for many users. However, it is also helpful to keep in mind that spreading awareness of H3's spatial drawbacks can prevent unintentional analytical biases. While it is entirely up to the authors' discretion whether to expand on this in the manuscript or documentation, I believe that briefly mentioning equal-area alternatives could be a valuable service to the community. Equal-area alternatives such as **ISEA**, the **A5** grid (available via the [a5R](https://belian-earth.github.io/a5R/) package), or the newer **IGEO7** system (Kmoch et al. 2025) help users make more informed decisions when high-precision area consistency is required.
 
-**Response.** **Accepted. We add the caveat and the pointers.**
+**Response:** **Accepted. We add the caveat and the pointers.**
 
 The referee is right, and we thank them for framing it as a service to users rather than as a defect. H3 uses a gnomonic projection onto an icosahedron, so cell areas are not constant, and across a country the size of Brazil that's worth stating rather than assuming.
 
@@ -97,11 +97,9 @@ We keep H3 as the built-in option, and the manuscript now says why. The DuckDB `
 
 > The authors are inconsistent in citing software used or discussed in the manuscript. While they cite `sf`, `areal`, `geobr`, `populR`, `duckdb`, and `h3jsr`, implementation-relevant packages such as `arrow`, `duckspatial`, and `piggyback` are mentioned without formal citations. The model-based change-of-support package `smile` is also discussed in the related-work section without a citation. These omissions should be corrected to ensure proper attribution of open-source software.
 
-**Response.** **Accepted without reservation. This was an oversight on our part.**
+**Response:** **Accepted without reservation. This was an oversight on our part.**
 
 All four packages are on CRAN and therefore have canonical citations. `arrow`, `duckspatial`, `piggyback` and `smile` now have bibliography entries taken from each package's own citation, and each is cited at its first mention in the text. We also added citations for `censobr`, which the new provenance statement relies on (R1.9), and for `a5R` (R1.4).
-
-We agree with the principle behind the comment. A paper whose contribution is an R package has no standing to be casual about attributing the R packages it stands on.
 
 R2.11 raises the `smile` citation independently and is answered by the same change.
 
@@ -111,7 +109,7 @@ R2.11 raises the `smile` citation independently and is answered by the same chan
 
 > **Workflow & API:** The package has a highly intuitive and user-friendly workflow. The dual-backend architecture is abstracted cleanly behind a single `backend = "duckdb"` or `"r"` argument. However, the `polygon_type` argument feels somewhat redundant. If a user passes an `sf` object to the `polygon` argument, it naturally implies they want to use custom polygons rather than an H3 grid. While the package currently infers this and issues a warning, the authors could consider making this inference automatic and silent. Alternatively, they could deprecate `polygon_type` entirely in favour of simply checking whether `polygon` is `NULL` or an `sf` object.
 
-**Response.** **Accepted, and we took the stronger of the two options the referee offers.**
+**Response:** **Accepted, and we took the stronger of the two options the referee offers.**
 
 The referee is right that `polygon_type` is redundant: passing an `sf` object to `polygon` already states the intent. Rather than only silencing the existing inference, we deprecated the argument.
 
@@ -125,7 +123,7 @@ We chose deprecation over silent inference because `lifecycle` was already a dep
 
 > **Cache Location Override:** The package downloads potentially massive ZIP files (up to 901 MB uncompressed) and hardcodes the cache location to `tools::R_user_dir("cnefetools", "cache")`. While caching is a very useful feature and using this directory aligns with CRAN policies for persistent data, forcing users to store large files on their primary partition can be problematic for those with limited space. The authors might consider allowing users to override this cache path. While packages dealing with large geospatial datasets like `osmextract` rely on environment variables to set the download directory, providing an explicit user-facing function argument (e.g., `cache_dir`) might be more intuitive for novice R users. This ensures they can easily point the download to a larger secondary drive or shared volume.
 
-**Response.** **Accepted. Both mechanisms the referee mentions are now available.**
+**Response:** **Accepted. Both mechanisms the referee mentions are now available.**
 
 The cache location resolves from the most specific source to the least:
 
@@ -145,7 +143,7 @@ The CRAN-policy default is unchanged, so users who do nothing see exactly the pr
 >
 > **Documentation:** The functions are thoroughly documented with roxygen2, clearly explaining parameters, return types, and caching behaviour.
 
-**Response.** Thank you. The functions and arguments added in this revision follow the same conventions and are documented in the same way.
+**Response:** Thank you. The functions and arguments added in this revision follow the same conventions and are documented in the same way.
 
 ## Code: technical implementation
 
@@ -153,23 +151,23 @@ The CRAN-policy default is unchanged, so users who do nothing see exactly the pr
 
 > **Organisation & Style:** The code is meticulously organised and adheres strongly to modern Tidyverse conventions. Internal helpers are properly prefixed with `.` and annotated with `@noRd` to keep the exported namespace clean. The use of `rlang::check_installed()` for managing optional dependencies (e.g., `sf`, `duckdb`, `piggyback`) is excellent.
 
-**Response.** Thank you.
+**Response:** Thank you.
 
 ### R1.8: Resilience to URL Changes and Data Versioning
 
 > **Resilience to URL Changes and Data Versioning:** The package relies entirely on a pre-built internal index (`cnefe_index_2022`) to resolve IBGE FTP download URLs. If IBGE changes their directory structure or filenames, existing versions of the package will fail to download data. Currently, the package handles failures gracefully via `httr2`. It attempts hardcoded retries (300s, 600s, 1800s) before aborting, but lacks a dynamic fallback mechanism. Furthermore, while the manuscript states that `cnefetools` "targets the 2022 edition and future censuses," the current architecture is strictly hardcoded for 2022. The internal `.get_cnefe_index()` and `.validate_year()` functions explicitly abort for any year other than 2022. If the 2030 census introduces a different schema or FTP hierarchy, the package will require a significant update. The authors might consider adding a dynamic fallback that scans the FTP server at runtime to reconstruct URLs or at least acknowledging that support for "future censuses" is currently a roadmap item rather than a present capability. Additionally, adding a pre-flight availability check could vastly improve the user experience. If the base IBGE server is unreachable, inform the user they may have a connectivity issue. If the server is reachable but the specific file is not (e.g., a 404 error), inform the user that the upstream directory structure may have changed and encourage them to report the issue on the package's issue tracker. I have included a small supplementary script (`test_url_fallback.R`) that illustrates the current behaviour when an internal IBGE URL is broken. It should not be treated as a production test in its current form because it mutates internal package data and can trigger the long retry timeouts, but it may be useful as a starting point for a mocked `testthat` regression test with shorter retry intervals.
 
-**Response.** This comment makes three requests of very different cost, so we answer them separately below, as R1.8a, R1.8b and R1.8c.
+**Response:** This comment makes three requests of very different cost, so we answer them separately below, as R1.8a, R1.8b and R1.8c.
 
 ### R1.8a: Dynamic FTP fallback
 
-**Response.** **We haven't added a runtime scan of the FTP server, and we've handled the underlying risk in two other ways.**
+**Response:** **We haven't added a runtime scan of the FTP server, and we've handled the underlying risk in two other ways.**
 
 A dynamic fallback would have to rebuild URLs from a directory layout that has, by assumption, just changed in some unknown way, so it could only guess, and a wrong guess is harder for a user to diagnose than a clear failure. We think the referee's concern is better met by what we did under R1.8c and R1.11. The pre-flight check now tells the user when a file is missing because the layout changed upstream and asks them to report it, so the index can be rebuilt with `data-raw/cnefe_index_2022.R` and shipped in a patch release. Until then, `read_cnefe(file = ...)` reads a ZIP the user downloads by hand, exactly as IBGE publishes it, without going through the index at all. Section 3 of the manuscript now describes both.
 
 ### R1.8b: "Future censuses" claim versus hardcoded 2022
 
-**Response.** **Accepted, and answered with code rather than with wording.**
+**Response:** **Accepted, and answered with code rather than with wording.**
 
 The referee is right that the claim sat uneasily beside a hardcoded year. Rather than soften the sentence, we removed the hardcoding. `.read_muni_boundary_2024()`, which called geobr with `year = 2024L` fixed, is now `.read_muni_boundary(code_muni, year)`, and `build_h3_grid()` gained a `year` argument that `cnefe_counts()`, `compute_lumi()` and `tracts_to_h3()` thread down from their own validated `year`.
 
@@ -179,7 +177,7 @@ The change is behaviour-affecting in principle. Measured at resolution 9, the 20
 
 ### R1.8c: Pre-flight availability check
 
-**Response.** **Accepted, and the practical gain is larger than the message wording.**
+**Response:** **Accepted, and the practical gain is larger than the message wording.**
 
 We probed the live IBGE server before designing this, and it answers `HEAD` correctly: 200 with a content-length for a file that exists, 404 for one that does not, and a transport-level failure when the host cannot be resolved. The three cases the referee describes are therefore genuinely distinguishable at low cost.
 
@@ -196,7 +194,7 @@ We are grateful for the script regardless: it made the failure modes concrete an
 
 > **External Data Provenance and Reproducibility:** In addition to the municipal CNEFE ZIP files downloaded from IBGE, the package relies on derived internal data objects and GitHub-release assets, including the pre-built `cnefe_index_2022` and the UF-level census-tract Parquet files used by `tracts_to_h3()` and `tracts_to_polygon()`. The manuscript describes these assets functionally, but it does not yet give readers enough information to reproduce or audit their generation. I recommend adding a short data provenance statement that identifies the source files, generation scripts, package/data versions, release tags, and checksums or hashes for externally downloaded and derived assets. This is especially important because the package is positioned as infrastructure for reproducible spatial analysis. The authors may find the `geobr` project useful as a model: it uses a reproducible `targets` workflow and supporting infrastructure to generate and maintain its data assets. Adopting a similar approach, or at least documenting the existing asset-generation pipeline more explicitly, would make `cnefetools` more robust to upstream data changes and easier for future contributors to maintain.
 
-**Response.** **Accepted, and delivered. The referee found a real gap, and closing it turned out to be more interesting than expected.**
+**Response:** **Accepted, and delivered. The referee found a real gap, and closing it turned out to be more interesting than expected.**
 
 The package carried generation scripts in `data-raw/` for `cnefe_index_2022` and for `tracts_variables_ref`, both public in the repository. The UF-level census tract Parquet assets served from GitHub Releases had none. They were built once, published, and the code that built them was never committed. The referee could not have known that from the manuscript, which is exactly their point.
 
@@ -242,7 +240,7 @@ Section 3 now ends with a "Data provenance" subsection. It names the scripts tha
 
 > **Memory Inefficiency in Pure-R Fallbacks:** In the pure R backends (e.g., within `.cnefe_counts_user_poly_r` and `.cnefe_counts_h3`), the code calls `as.data.frame(tab)` directly on the imported Arrow table before applying `dplyr::filter()` and `dplyr::select()`. For massive datasets like São Paulo (5.7 million records), materialising the entire dataset in memory before filtering completely negates the memory advantages of reading with Arrow. The authors should apply the `dplyr` verbs directly to the Arrow Table and call `dplyr::collect()` as the final step before converting to `sf`.
 
-**Response.** **Accepted and implemented, with one qualification to the diagnosis.**
+**Response:** **Accepted and implemented, with one qualification to the diagnosis.**
 
 The four pure-R backends now apply `transmute()` and `filter()` to the Arrow table and call `collect()` last, exactly as the referee prescribes.
 
@@ -267,7 +265,7 @@ The regression test guards the translation rather than the output. Arrow falls b
 
 > **Architecture Consistency & Efficiency in `read_cnefe()`:** The current implementation of `read_cnefe()` extracts the ZIP file to a temporary directory using `utils::unzip()` before reading it with `arrow::read_delim_arrow()`. This "unpack-every-time" approach is somewhat wasteful in terms of disk I/O and CPU. While using DuckDB's `zipfs` for zero-extraction streaming is a valid alternative, reading directly from ZIP archives can be computationally expensive for repeated queries. Empirical benchmarks using the Salvador dataset (1.3M rows) show that reading from standard ZIP archives via `zipfs` is significantly slower than native alternatives. Specifically, Gzip was **2.2x faster** than ZIP, and raw CSV was **4.7x faster**. The authors might consider re-compressing the cached data into `.gz` (Gzip) format. DuckDB supports Gzip decompression natively in its core, which avoids the protocol overhead of the community `zipfs` extension. Beyond performance, the authors might also consider the potential stability risks of relying on community-maintained DuckDB extensions in an R package. Some community extensions (e.g., `onager`) are known to encounter issues on macOS due to lack of code-signing and GateKeeper whitelisting. This can cause significant loading delays (4-5 seconds) as the OS re-verifies the extension on every load. While it is unclear if `zipfs` suffers from this specific issue, minimising the surface area of external community dependencies is generally considered a safer practice for production-grade R packages when native alternatives (like Gzip or Parquet) are available. Another resilient option would be to provide a conversion/reorganisation function that allows users to move data from the transient cache to a persistent, optimised structure (like raw CSV or Parquet) on a disk of their choice (see the `spanishoddata` package for an example of this design). Moving toward a lazy DuckDB/DuckSpatial relation (potentially via `duckspatial_df`) instead of a materialised `arrow::Table` would complete this transition to a modern, memory-efficient architecture. I have included three small supplementary scripts: `benchmark_gz_vs_zip.R`, which benchmarks ZIP/`zipfs` reads against native Gzip and raw CSV on the Salvador data; and `suggested_duckdb_impl.R` and `test_duckdb_zipfs.R`, which demonstrate the basic DuckDB/`zipfs` approach. They are not proposed as drop-in production code, but they may help clarify the implementation pattern and provide a starting point for more formal package tests or benchmarks.
 
-**Response.** **Three of the referee's four suggestions are implemented. We decline the fourth, and the reason is that it conflicts with what the referees themselves asked for elsewhere.**
+**Response:** **Three of the referee's four suggestions are implemented. We decline the fourth, and the reason is that it conflicts with what the referees themselves asked for elsewhere.**
 
 This was the largest single item in either report, and we treated it as four separate proposals.
 
@@ -318,7 +316,7 @@ In the manuscript, Section 3 describes the gzipped cache and the export path, Se
 
 > **Resource Cleanup and Connection Leaks:** In several DuckDB backend functions (e.g., `.cnefe_counts_h3`, `compute_lumi`, `tracts_to_h3`), the connection `con` is initialized to `NULL`, followed by a large `utils::capture.output` block that performs the `DBI::dbConnect` and subsequent queries. The `on.exit(DBI::dbDisconnect(con, shutdown = TRUE))` call is only registered *after* this block completes. If an error occurs inside the block—such as an extension loading failure, a memory-intensive SQL error, or a manual user interruption—the function exits before the cleanup is registered, leaving "zombie" DuckDB processes and file handles active. The authors should move the `on.exit()` registration to immediately follow the `dbConnect()` call (even if it's inside the `capture.output` block) to ensure connections are always closed. Alternatively, the authors could adopt the `withr::defer()` pattern for cleaner resource management. Additionally, wrapping the cleanup in a safety check like `if (!is.null(con) && DBI::dbIsValid(con))` is a defensive best practice to prevent secondary errors during cleanup if the connection failed to initialize.
 
-**Response.** **Accepted in full, including the referee's suggested pattern.**
+**Response:** **Accepted in full, including the referee's suggested pattern.**
 
 The referee's reading of the failure mode is exact. `on.exit()` was registered only after the whole `capture.output` block had run, so an extension install failure, a SQL error or a user interrupt exited before any cleanup was in place.
 
@@ -332,7 +330,7 @@ We verified both paths explicitly: the connection is closed when the caller retu
 
 > **Test Coverage & Quality:** While the package includes a `testthat` suite with good use of mocks for offline testing of `read_cnefe()`, the overall package coverage is relatively low at ~25%. Specifically, critical spatial transformation functions such as `tracts_to_h3()` and `tracts_to_polygon()` currently have 0% and ~10% coverage, respectively. Given the complexity of the geospatial logic and the dual-backend architecture, I strongly encourage the authors to expand the test suite to ensure the reliability of these core components.
 
-**Response.** **Accepted, and measuring it turned the referee's own figure into a finding we would otherwise have missed.**
+**Response:** **Accepted, and measuring it turned the referee's own figure into a finding we would otherwise have missed.**
 
 We re-measured rather than quoting the report, in both configurations, and that is what explains all three of the referee's numbers.
 
@@ -375,7 +373,7 @@ The `~10%` reported for `tracts_to_polygon()` is confirmed exactly, and addresse
 >
 > **Shortcomings** are relatively minor. The main ones are: (1) substantial code duplication between `cnefe_counts.R`, `compute_lumi.R`, and the `tracts_to_*` functions; (2) aggressive suppression of DuckDB output via nested `capture.output()` that can mask real errors (acknowledged in open GitHub issue #57); (3) the `compute_lumi()` function hardcodes a binary residential/non-residential split, acknowledged in Section 6 but still a significant limitation; and (4) some edge cases in input validation and inconsistent return behavior.
 
-**Response.** Thank you for this summary. The four shortcomings it lists are answered below, under R2.C1 (duplication), R2.C2 (`capture.output`), R2.1 (the binary split) and R2.C4 to R2.C6 (edge cases and return types).
+**Response:** Thank you for this summary. The four shortcomings it lists are answered below, under R2.C1 (duplication), R2.C2 (`capture.output`), R2.1 (the binary split) and R2.C4 to R2.C6 (edge cases and return types).
 
 ## Detailed comments
 
@@ -383,7 +381,7 @@ The `~10%` reported for `tracts_to_polygon()` is confirmed exactly, and addresse
 
 > **Binary land-use classification in `compute_lumi()`.** The LUMI indices treat `COD_ESPECIE == 1` as "residential" and everything else (2–6, 8, excluding 7) as "non-residential." The article acknowledges this limitation in Section 6 and notes plans to expand to multi-category formulations. However, the article could strengthen the discussion by noting specific use cases where the binary split is inadequate — for example, distinguishing commercial from institutional land use matters for urban health studies, and agricultural establishments (type 3) are qualitatively different from urban non-residential types. The article already notes that type 3 (agricultural) accounts for 3.7% of addresses and type 6 (other) for 10.5% — collapsing these very different categories into one "non-residential" bucket discards substantial information.
 
-**Response.** **Accepted. Section 6 now discusses the specific cases the referee names.**
+**Response:** **Accepted. Section 6 now discusses the specific cases the referee names.**
 
 It explains that the binary split places agricultural establishments (type 3, 3.7% of addresses), which are qualitatively different from urban uses, in the same group as schools and hospitals, and that it merges other-purpose establishments (type 6), a heterogeneous category that includes commerce and services and makes up 10.5% of addresses, with educational, health and religious ones. It uses the referee's own example of an urban health study that needs to separate commercial from institutional uses and can't do so with these indices. It also points out that `cnefe_counts()` keeps all eight address types, so users who need a multi-category index can build one from its output today.
 
@@ -393,7 +391,7 @@ Section 4.3 states what the binary split does and doesn't measure, as described 
 
 > **Exclusion of COD_ESPECIE == 7.** The article explains that type 7 ("under construction or renovation") is excluded from `compute_lumi()` due to its "transitional nature." However, with 3.5 million such records (3.2% of all addresses), and likely concentrated in rapidly urbanizing peripheries, their exclusion could systematically bias LUMI indices in precisely those areas where land-use classification matters most. The article should at minimum discuss the direction and likely magnitude of this bias. Additionally, `cnefe_counts()` does NOT exclude type 7 (it appears in `addr_type7`), creating an inconsistency between the two functions that should be documented.
 
-**Response.** **Accepted on documentation and on bias direction. Declined on magnitude. The audit it prompted found a defect.**
+**Response:** **Accepted on documentation and on bias direction. Declined on magnitude. The audit it prompted found a defect.**
 
 On the inconsistency, the referee is correct and it is now documented on both sides. `?compute_lumi` states that type 7 is excluded and why, `?cnefe_counts` states that it is retained and reported as `addr_type7`, and the two help pages cross-reference each other. The divergence is deliberate, since a building under construction describes a transitional state rather than a realised land use, but it was undocumented and the referee was right to flag it.
 
@@ -407,7 +405,7 @@ We should report one further outcome. Checking that the exclusion was applied co
 
 > **Global P in BGBI: scope and computation.** The article states that "The citywide residential share P is computed from the full municipality CNEFE" (Section 4.3), which is correct and appropriate. However, two subtleties deserve mention: (a) P is derived from CNEFE dwelling counts, not from the population census, so it reflects the *distribution of address types* rather than the *distribution of residents* — a municipality with many small households and few large institutions would have a high P regardless of population; and (b) when `polygon_type = "user"`, P still reflects the entire municipality, not just the area covered by the user's polygons, which means the BGBI baseline is externally defined rather than locally computed.
 
-**Response.** **Both observations are correct. Both are now documented. Neither changes the computation.**
+**Response:** **Both observations are correct. Both are now documented. Neither changes the computation.**
 
 On (a), P is indeed derived from CNEFE address-type counts rather than from census population, so it describes the distribution of address types and not the distribution of residents. This is now stated explicitly in `?compute_lumi` and in Section 4.3.
 
@@ -419,7 +417,7 @@ We also note that P is used by two indices, the BGBI and the Balance Index, wher
 
 > **Dasymetric interpolation: unallocated population and ecological fallacy.** The article provides an excellent discussion of the ecological fallacy (Robinson, 1950) and the limitations of the proportional-dwelling assumption (Section 4.4). The diagnostic output (shown in the article) quantifies unallocated totals per variable. One enhancement would be to discuss typical magnitudes: for the Lauro de Freitas example, the unallocated pop_ph is 0.00% — but what about larger, more complex municipalities like São Paulo? Reporting typical unallocation rates across a sample of municipalities would help users calibrate expectations. Also, the diagnostic is always emitted regardless of `verbose`, which is a good design choice.
 
-**Response.** **We measured the case the referee names, and the figure was already published in the package documentation.**
+**Response:** **We measured the case the referee names, and the figure was already published in the package documentation.**
 
 We ran `tracts_to_h3()` on São Paulo (3550308) with the same variables and resolution as the Fortaleza example in the `tracts_to` article, so the two diagnostics are directly comparable. Unallocated `pop_ph` is 86,998 of 11,394,071, or 0.76%. Unmatched CNEFE points are 2,935 of 4,996,529, or 0.06%, and 100% of allocated points map to H3 cells.
 
@@ -433,7 +431,7 @@ We have not added a sample across municipalities. We would argue it is not the r
 
 > **Single-municipality scope.** The article acknowledges in Section 6 that "core analytical workflows are organised around municipality-specific inputs, which limits analyses that span multiple municipalities." This is a significant practical limitation. Many research questions require cross-municipality analysis (e.g., metropolitan areas spanning multiple municipalities). The article's discussion of plans to address this is appreciated, but the current constraint deserves slightly more prominence — perhaps a note in Section 3 about how users could currently work around it (calling functions in a loop and combining results, with appropriate caveats about the H3 grid being municipality-specific).
 
-**Response.** **Accepted, and the workaround the referee describes already exists in published form.**
+**Response:** **Accepted, and the workaround the referee describes already exists in published form.**
 
 The `tracts_to` article already carried a section on scaling to multiple municipalities, pointing users at `purrr::map()` over municipalities followed by `dplyr::bind_rows()`. We have added a pointer there to a published worked example applying exactly that iterative workflow across the 39 municipalities of the São Paulo metropolitan region: https://pedreirajr.github.io/website/posts/2026-02-18-census-tracts-rmsp/
 
@@ -443,7 +441,7 @@ We agree with the referee that the constraint deserves more prominence. Section 
 
 > **No `backend` parameter for `tracts_to_*()`.** The article states that `tracts_to_h3()` and `tracts_to_polygon()` "do not expose this argument and rely on DuckDB exclusively" (Section 3). This means these functions have a hard dependency on DuckDB, duckspatial, and the spatial/H3 extensions — including the community extensions (zipfs, h3) which may fail to install on some platforms. Given that the article benchmarks show the pure-R backend is only ~13× slower (and comparable for small municipalities), the absence of a fallback seems unnecessarily restrictive. The article should state whether a pure-R fallback is planned or intentionally excluded, and why.
 
-**Response.** **The omission is intentional, and the manuscript now says so.**
+**Response:** **The omission is intentional, and the manuscript now says so.**
 
 The referee is right that we never stated our position, and that is now fixed in Section 3 of the manuscript and in the roxygen of both functions.
 
@@ -453,7 +451,7 @@ On the substance we would push back gently on the inference from the benchmark. 
 
 > **Data-access risk: availability vs. policy.** Section 6 frames the CNEFE dependency purely as a *technical* risk ("data access depends on the availability and stability of the IBGE FTP server... this does not represent a fundamental barrier in practice, since the CNEFE is open data, freely available to the public"). This overlooks a distinct and less easily mitigated risk: that access *policy* itself could change. CNEFE is unusually granular for an openly published national statistical product — most national statistical offices (including, under GDPR, most EU members) release geocoded address data only as aggregated grids precisely to avoid re-identification concerns, whereas CNEFE publishes individual geocoded points nationwide. The authors should distinguish "server unavailable" from "access restricted" as separate risk categories, and could note how the package's architecture would (or would not) accommodate a future authenticated/restricted-access retrieval path — e.g., whether `read_cnefe()` could ingest a locally-obtained file independent of the FTP download step.
 
-**Response.** **Accepted. The two risks are genuinely different and we conflated them.**
+**Response:** **Accepted. The two risks are genuinely different and we conflated them.**
 
 Section 6 treated the dependency as a question of server uptime and then dismissed it on the grounds that CNEFE is open data. That reasoning only covers availability. It says nothing about the case the referee raises, where the data remains published but the terms of access change. We now separate them.
 
@@ -466,13 +464,13 @@ On architecture, the referee's example is now possible. `read_cnefe()` has a `fi
 
 > **Benchmark completeness.** The benchmarks (Section 5) are well designed, varying both municipality size and H3 resolution. However: (a) they only benchmark `cnefe_counts()`, not `compute_lumi()` or `tracts_to_*()` — users would benefit from knowing the performance profile of all heavy functions; (b) they report only elapsed time, not peak memory usage. For São Paulo (5.7M addresses, 901 MB uncompressed), the in-memory DuckDB approach may require several GB of RAM. Reporting peak memory would help users anticipate hardware requirements; (c) the benchmark was run on a high-end machine (14-core i9, 32 GB RAM) — reporting results on a more modest system would be more representative of typical researcher hardware.
 
-**Response.** We answer (a), (b) and (c) separately below, as R2.8a, R2.8b and R2.8c. Answering them meant rerunning the benchmark, and two things changed along the way that affect the numbers already in Section 5, not only the new ones.
+**Response:** We answer (a), (b) and (c) separately below, as R2.8a, R2.8b and R2.8c. Answering them meant rerunning the benchmark, and two things changed along the way that affect the numbers already in Section 5, not only the new ones.
 
 First, the package itself changed during this revision. The cache is now a gzipped CSV (R1.11), and the pure-R backend now pushes its filters down to Arrow before collecting (R1.10). Second, the measurement protocol changed. The submitted figures came from a single run in which every DuckDB case preceded every pure-R case. On our machine the same call on the same input drifts by up to a factor of two within one session as the CPU changes thermal and frequency state, so timing the backends in blocks loads that drift onto one of them. The new harness discards a warm-up, visits every configuration once per pass in rotation, repeats each pass three to five times in a fresh R session each time, and reports the median with the observed range. Every replicate is committed in `data-raw/bench_r2_8.csv` in the package repository. The speedups in the revised Section 5 therefore differ from the submitted ones for both reasons.
 
 ### R2.8a: Benchmark the other heavy functions
 
-**Response.** **Accepted. All four heavy functions are now benchmarked, and the result is worth stating because it is not uniform.**
+**Response:** **Accepted. All four heavy functions are now benchmarked, and the result is worth stating because it is not uniform.**
 
 `compute_lumi()` turns out to be indistinguishable from `cnefe_counts()`. The ratio between them stays at 1 across a 28-fold range of input size, on both backends, with no trend:
 
@@ -501,7 +499,7 @@ Two things there are worth flagging to readers. The dasymetric functions do not 
 
 ### R2.8b: Report peak memory
 
-**Response.** **Accepted, and the measurement reverses the direction of the concern.**
+**Response:** **Accepted, and the measurement reverses the direction of the concern.**
 
 Peak memory is now reported for every configuration. We measure the operating system's peak working set for the whole R process, through `ps`, rather than R-level allocation tracking such as `bench::mark()`'s `mem_alloc`. That distinction is the point here: R-level tracking counts only the R heap, and DuckDB allocates in C++ outside it, so it would have understated exactly the thing this comment asks about.
 
@@ -525,7 +523,7 @@ options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
 
 ### R2.8c: Report on more modest hardware
 
-**Response.** **Partly accepted. We do not have a second machine, so we report a constrained resource envelope on the one we have and are explicit about what that does and does not demonstrate.**
+**Response:** **Partly accepted. We do not have a second machine, so we report a constrained resource envelope on the one we have and are explicit about what that does and does not demonstrate.**
 
 We cannot honestly claim results from a modest machine we do not own. What we can do, now that the budget is settable, is hold DuckDB to four threads and 4 GB and re-run the largest municipality:
 
@@ -544,7 +542,7 @@ One methodological note, since it is visible in the committed data. Our first at
 
 > **Address count inconsistency with article.** The abstract states "approximately 110 million valid addresses," while Section 2 reports "111.1 million geographic records, of which 98.95% were validated as spatially coherent" and "more than 110.7 million records (99.68%) were geocoded at the address level." The abstract should more precisely say "approximately 111 million" or clarify what "valid" means (all records? only geocoded ones?).
 
-**Response.** **Accepted, and checking it against the primary source showed the problem is larger than reported. We also decline the specific wording the referee proposes, for a reason worth stating.**
+**Response:** **Accepted, and checking it against the primary source showed the problem is larger than reported. We also decline the specific wording the referee proposes, for a reason worth stating.**
 
 We verified every figure against the IBGE methodological note that documents this release, *Censo Demográfico 2022: Coordenadas Geográficas dos Endereços, Nota metodológica n. 01*. The figures in Section 2 of our manuscript are all correct. The total is 111,102,875, of which 109,936,532 (98.95%) had their coordinates validated, and 110,744,837 (99.68%) are geocoded at address level, splitting into 103,943,086 original, 6,054,473 modified and 747,278 estimated. The species breakdown in Section 2 also matches the note's Annex 3 exactly.
 
@@ -564,7 +562,7 @@ We are grateful for this comment. It looked like a rounding inconsistency and tu
 
 > **Citation for BGBI.** The BGBI is attributed to "Pedreira Junior et al. (2025)" on engrXiv, which is a preprint server. This should be clearly labeled as a preprint (e.g., "engrXiv preprint"), and if the method has since been peer-reviewed and published, that citation should replace or supplement the preprint reference.
 
-**Response.** **Accepted. The preprint has since been published and the reference is updated.**
+**Response:** **Accepted. The preprint has since been published and the reference is updated.**
 
 The work the referee asks us to cite properly appeared in peer-reviewed form after submission:
 
@@ -578,7 +576,7 @@ One clarification matters for accuracy. Only the BGBI was published. The adapted
 
 > **`smile` package comparison.** The article mentions the `smile` package in Section 4.4 as a model-based alternative, but does not give a proper citation (no entry in the Bibliography). If this is a published/CRAN package, it should be cited fully; if not, a URL or note would be appropriate.
 
-**Response.** **Accepted. `smile` is on CRAN and is now cited properly.**
+**Response:** **Accepted. `smile` is on CRAN and is now cited properly.**
 
 The package is available on CRAN at version 1.1.0, so a full citation exists and there was no reason to reference it informally. It now has a bibliography entry and is cited where it's mentioned in Section 4.4.
 
@@ -588,7 +586,7 @@ This is the same omission Referee 1 raises in R1.5, alongside `arrow`, `duckspat
 
 > **`LazyData: true` in DESCRIPTION.** The package sets `LazyData: true` but this is deprecated per CRAN policy and generates a NOTE on recent R CMD check versions. It should be removed.
 
-**Response.** **We would ask the referee to reconsider this one, and we keep `LazyData: true`.**
+**Response:** **We would ask the referee to reconsider this one, and we keep `LazyData: true`.**
 
 We tested the premise before deciding. A full `R CMD check` on R 4.6.0 reports `checking LazyData ... OK`, and the log contains no NOTE, warning or error of any kind. The NOTE the referee has in mind is raised when `LazyData` is declared without a `data/` directory, or when the lazy-load database is large enough to warrant `LazyDataCompression`. Neither applies here: the package ships one `data/` file, `tracts_variables_ref.rda`, at 716 bytes.
 
@@ -606,7 +604,7 @@ So the requested change would fix nothing and would break the documented usage o
 >
 > - **Cache management** is well-designed: `clear_cache_muni()` and `clear_cache_tracts()` with flexible UF/codes filtering, plus the `cache = FALSE` option for temporary file usage, give users good control over disk space.
 
-**Response.** Thank you. The package website now has seven articles, including a new one on the cache and on keeping exported copies of the data (see R1.7).
+**Response:** Thank you. The package website now has seven articles, including a new one on the cache and on keeping exported copies of the data (see R1.7).
 
 ## Code quality
 
@@ -614,7 +612,7 @@ So the requested change would fix nothing and would break the documented usage o
 
 > **Substantial code duplication.** The allocation logic (the `alloc_exprs` CASE/WHEN SQL construction) is duplicated nearly verbatim between `tracts_to_h3.R` (lines 334–421) and `tracts_to_polygon.R` (lines 451–538). The DuckDB extension loading pattern (`utils::capture.output(utils::capture.output({...}))`) appears in at least 6 places. The polygon validation logic (checking `inherits(polygon, "sf")`, geometry type, CRS validity) is repeated across `cnefe_counts()`, `compute_lumi()`, and `tracts_to_polygon()`. The diagnostic reporting logic (unallocated totals, NA tracts, no-eligible-dwelling tracts) is also duplicated between the two `tracts_to_*` functions. These should be extracted into shared internal helpers to reduce maintenance burden and the risk of divergence.
 
-**Response.** **Accepted in full. All four are extracted, and consolidating them surfaced two defects.**
+**Response:** **Accepted in full. All four are extracted, and consolidating them surfaced two defects.**
 
 We verified each claim against the code before acting. Three held as described and two were larger than reported.
 
@@ -637,7 +635,7 @@ Second, because the test suite is thin, which is the referee's own point in R2.C
 
 > **`capture.output` masking errors (GitHub issue #57).** The double-nested `utils::capture.output(utils::capture.output({...}, type = "message"), type = "output")` pattern is used extensively to suppress DuckDB progress bars. However, this also swallows error messages from DuckDB, making debugging very difficult when something goes wrong inside the SQL. This is acknowledged in open issue #57. Since DuckDB's config already sets `enable_progress_bar = FALSE` and `print_progress_bar = FALSE` at connection time, the `capture.output` wrapping may be partially redundant. A better approach would be to use `tryCatch` to surface errors while still suppressing routine output, or to rely on the DuckDB config options alone.
 
-**Response.** **Accepted. The mechanism was worse than a lost message.**
+**Response:** **Accepted. The mechanism was worse than a lost message.**
 
 The nested `capture.output(capture.output(expr, type = "message"), type = "output")` installed a message sink around the entire block. That is why DuckDB failures reached users, and CI logs, with the step marked failed and no text at all.
 
@@ -651,7 +649,7 @@ All 13 occurrences of the nested idiom are gone. One remains, inside the helper 
 
 > **DuckDB connection lifecycle inconsistency.** In `.compute_lumi_user_poly_duckdb()` (`compute_lumi.R:869`), the connection is disconnected manually with `DBI::dbDisconnect(con, shutdown = TRUE)` outside the `on.exit()` handler. If an error occurs before that line, the connection leaks. Other functions (e.g., `.cnefe_counts_h3()`, `.cnefe_counts_user_poly_duckdb()`) correctly use `on.exit(DBI::dbDisconnect(...), add = TRUE)`. This inconsistency should be fixed by consistently using `on.exit()`.
 
-**Response.** **Accepted. This was the worst of the six connection sites.**
+**Response:** **Accepted. This was the worst of the six connection sites.**
 
 The referee is right that `.compute_lumi_user_poly_duckdb()` was inconsistent with the rest, and it was the only one with no `on.exit()` at all, disconnecting manually at the end of the function. Any error before that line leaked the connection outright.
 
@@ -663,7 +661,7 @@ Referee 1 raises the same class of problem in R1.12 with a wider scope, and one 
 
 > **Edge case: zero-feature polygon (GitHub issue #71).** When `polygon` has 0 rows, the package produces a cryptic error rather than a clear message. The validation in `cnefe_counts()`, `compute_lumi()`, and `tracts_to_polygon()` checks for `inherits(polygon, "sf")` and geometry type, but not for `nrow(polygon) == 0`. An explicit check with a clear error message should be added.
 
-**Response.** **Accepted, and fixed for three functions rather than one.**
+**Response:** **Accepted, and fixed for three functions rather than one.**
 
 The referee's diagnosis of the failure chain is correct: `sf::st_union()` on a zero-row `sf` yields an empty geometry, `sf::st_centroid()` of that an empty POINT, and `sf::st_coordinates()` a zero-row matrix, so the test on `centroid_coords[2]` saw `NA`.
 
@@ -675,7 +673,7 @@ The error now aborts at input validation and names the common cause, since filte
 
 > **Edge case: `read_cnefe()` with partially NA coordinates.** The function correctly aborts when *all* coordinates are NA (line 177), but silently drops rows with individual NA coordinates (line 175). A `verbose` message reporting how many rows were dropped would help users notice data quality issues.
 
-**Response.** **Accepted. The silence was the problem, not the filtering.**
+**Response:** **Accepted. The silence was the problem, not the filtering.**
 
 Dropping rows without a usable coordinate is the right behaviour, since they cannot become geometry, but doing it silently meant a data quality issue in a municipality file was invisible unless the user happened to compare row counts before and after.
 
@@ -685,7 +683,7 @@ Dropping rows without a usable coordinate is the right behaviour, since they can
 
 > **`compute_lumi()` returns `NULL` for empty results (R backend only).** At `compute_lumi.R:449–450`, the R backend returns `NULL` when no valid points exist after filtering, while the DuckDB backend returns an empty sf object. This inconsistency could cause downstream errors if callers don't check for `NULL`. Both backends should return the same type.
 
-**Response.** **Accepted, and we went further than making the two backends agree.**
+**Response:** **Accepted, and we went further than making the two backends agree.**
 
 The referee is right that the return type was unstable. We would add that `NULL` was a poor contract regardless of which backend produced it: `compute_lumi()` returns an object users pipe into `dplyr` and `sf` calls, and `NULL` forces a defensive check that the documentation never mentioned.
 
@@ -697,7 +695,7 @@ We also moved the accompanying messages from `message()` to cli, which is what t
 
 > **`build_h3_grid()` is documented but marked internal.** It has a `.Rd` file in `man/` but is marked `@keywords internal`. Since it's not exported (not in NAMESPACE), the Rd file is unnecessary clutter. Either export and document it properly (it could be useful for advanced users) or remove the Rd file.
 
-**Response.** **Accepted, resolved by removing the Rd file.**
+**Response:** **Accepted, resolved by removing the Rd file.**
 
 `build_h3_grid()` is not exported, so its manual page was clutter, exactly as the referee says. We swapped `@keywords internal` for `@noRd` and deleted `man/build_h3_grid.Rd`.
 
@@ -713,7 +711,7 @@ We considered the other option the referee offers, exporting it for advanced use
 > - No tests for the `crs_output` parameter behavior.
 > - The file `test-test-tracts_to_h3.R` has a double "test-" prefix, likely a typo.
 
-**Response.** **All five points accepted. Two of them were already closed earlier in this revision, and we note that as fact rather than as credit.**
+**Response:** **All five points accepted. Two of them were already closed earlier in this revision, and we note that as fact rather than as credit.**
 
 **Output correctness for `tracts_to_polygon()`.** The referee is right that it tested only input validation. It now has a suite mirroring the mocked setup of the `tracts_to_h3()` test, built so the arithmetic is exact rather than merely plausible: two tracts, only one containing CNEFE points, so a covering polygon must receive exactly 100 of the 150 available and the other 50 must stay out. It also covers a tract split 50/50 across two polygons, preservation of the caller's columns and CRS, absence of the internal join column, and the two-stage diagnostics. Coverage of that file goes from 10.8% to 83.3%.
 
@@ -733,7 +731,7 @@ And one gap we found that no referee could have: since the cache changed to gzip
 
 > **Portuguese comments.** `utils-internal.R` lines 516 and 531 contain Portuguese comments (e.g., `# Ignorado, mantido para compatibilidade`, `# Usa piggyback para download dos assets do SC`); `tracts_to_h3.R:503` has another (`# capture.output para capturar TUDO (output E messages)`). For consistency in an international codebase, these should be in English.
 
-**Response.** **Accepted. All three translated.**
+**Response:** **Accepted. All three translated.**
 
 `utils-internal.R:516` and `:531` and `tracts_to_h3.R` are now in English. The referee is right that this is inconsistent in an international codebase, and it also violated our own contributing rules, which already required English comments.
 
@@ -741,7 +739,7 @@ And one gap we found that no referee could have: since the cache changed to gzip
 
 > **`tracts_to_h3()` uses unnecessary `exists()` check.** Lines 65–68 check `if (exists(".normalize_code_muni", mode = "function"))` before calling it, with a fallback to `as.integer()`. This function is always available in the package namespace, making the check unnecessary — likely a leftover from development.
 
-**Response.** **Accepted. The referee's reading is exactly right.**
+**Response:** **Accepted. The referee's reading is exactly right.**
 
 It was a leftover from development. `.normalize_code_muni()` is always reachable in the package namespace, so the `exists()` guard could never take its `as.integer()` branch, which meant an untestable fallback silently shadowing the real validation. Both the guard and the fallback are gone and the function is called directly.
 
