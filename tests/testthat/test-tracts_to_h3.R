@@ -4,67 +4,7 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
   testthat::skip_if_not_installed("duckspatial")
   testthat::skip_if_not_installed("h3jsr")
 
-  # Optional: skip if DuckDB cannot load/install required extensions
-  con_check <- DBI::dbConnect(duckdb::duckdb(), dbdir = ":memory:")
-  on.exit(DBI::dbDisconnect(con_check, shutdown = TRUE), add = TRUE)
-
-  ok_zipfs <- tryCatch(
-    {
-      DBI::dbExecute(con_check, "LOAD zipfs;")
-      TRUE
-    },
-    error = function(e) {
-      tryCatch(
-        {
-          DBI::dbExecute(con_check, "INSTALL zipfs; LOAD zipfs;")
-          TRUE
-        },
-        error = function(e2) FALSE
-      )
-    }
-  )
-
-  ok_h3 <- tryCatch(
-    {
-      DBI::dbExecute(con_check, "LOAD h3;")
-      TRUE
-    },
-    error = function(e) {
-      tryCatch(
-        {
-          DBI::dbExecute(con_check, "INSTALL h3; LOAD h3;")
-          TRUE
-        },
-        error = function(e2) FALSE
-      )
-    }
-  )
-
-  ok_spatial <- tryCatch(
-    {
-      DBI::dbExecute(con_check, "LOAD spatial;")
-      TRUE
-    },
-    error = function(e) {
-      tryCatch(
-        {
-          DBI::dbExecute(con_check, "INSTALL spatial; LOAD spatial;")
-          TRUE
-        },
-        error = function(e2) FALSE
-      )
-    }
-  )
-
-  if (!ok_zipfs) {
-    testthat::skip("DuckDB zipfs extension not available.")
-  }
-  if (!ok_h3) {
-    testthat::skip("DuckDB h3 extension not available.")
-  }
-  if (!ok_spatial) {
-    testthat::skip("DuckDB spatial extension not available.")
-  }
+  skip_unless_duckdb_extensions(c("h3", "spatial"))
 
   res <- NULL
 
