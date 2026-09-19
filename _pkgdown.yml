@@ -16,5 +16,6 @@ articles:
 - title: Other
   navbar: Other
   contents:
+  - articles/cache
   - articles/bench_duckdb
   - articles/faq

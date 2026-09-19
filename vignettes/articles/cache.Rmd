@@ -1,0 +1,164 @@
+---
+title: "Cache and exported copies"
+---
+
+```{r, include = FALSE}
+# Nothing on this page needs to run, and running it would download data
+# during the site build, so every chunk is display-only.
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+The first time you ask for a municipality, `cnefetools` downloads it from
+IBGE and keeps a copy on your disk, so later calls reuse that copy instead
+of downloading it again, in the same R session or in any other. This page
+explains where that copy lives, how to move it somewhere else, how to clear
+it, and how to keep a permanent copy of your own with `cnefe_export()`.
+
+## Where the cache lives
+
+The cache folder is chosen from three places, and the first one that is set
+wins:
+
+| Order | Where it comes from | What it affects |
+|:-----:|:--------------------|:----------------|
+| 1 | The `cache_dir` argument of the call | That call only |
+| 2 | The `CNEFETOOLS_CACHE_DIR` environment variable | Every call, in every session that sees the variable |
+| 3 | `tools::R_user_dir("cnefetools", "cache")` | Everything, when neither of the above is set |
+
+If you've never set either of the first two, your cache is in the default
+folder, and you can see where that is with:
+
+```{r}
+tools::R_user_dir("cnefetools", which = "cache")
+```
+
+Inside that folder there's one subfolder per CNEFE edition, and in it one
+gzipped CSV per municipality you've used. The census tract files that
+`tracts_to_h3()` and `tracts_to_polygon()` need are kept in `sc_assets/`, one
+Parquet file per state:
+
+```
+cnefetools/
+└── 2022/
+    ├── 2919207_LAURO_DE_FREITAS.csv.gz
+    ├── 3550308_SAO_PAULO.csv.gz
+    └── sc_assets/
+        ├── sc_29.parquet
+        └── sc_35.parquet
+```
+
+A large municipality takes up a fair amount of space (São Paulo is about 177
+MB), so if you work with many municipalities it's worth thinking about which
+disk the cache should be on.
+
+## Moving the cache to another disk
+
+If you want the cache somewhere else for good, set the environment variable in
+your `.Renviron` file. You can open it with `usethis::edit_r_environ()`, add a
+line like the one below, save the file and restart R:
+
+```
+CNEFETOOLS_CACHE_DIR=D:/cnefe_cache
+```
+
+From then on every function uses that folder without you having to pass
+anything.
+
+If you only want to redirect one call, for example to try something on an
+external drive without changing your setup, pass `cache_dir` instead:
+
+```{r}
+library(cnefetools)
+
+counts <- cnefe_counts(2919207, cache_dir = "E:/cnefe_cache")
+```
+
+Every function that reads CNEFE data accepts `cache_dir`: `read_cnefe()`,
+`cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()`, `tracts_to_polygon()` and
+`cnefe_export()`.
+
+Changing the folder doesn't move what's already in the old one. The package
+will simply download each municipality again the first time you use it. If
+you'd rather not wait for that, copy the old folder's contents over yourself.
+
+## Not using the cache at all
+
+With `cache = FALSE`, the data goes to a temporary file that's deleted as soon
+as the call ends. Nothing is written to the cache, and every call downloads
+the data again, so this only makes sense for a one-off call or when you
+can't write to disk.
+
+```{r}
+cnefe <- read_cnefe(2919207, cache = FALSE)
+```
+
+## Clearing the cache
+
+`clear_cache_muni()` removes cached municipalities, all of them or just one,
+and `clear_cache_tracts()` does the same for the census tract files, all of
+them or just one state:
+
+```{r}
+clear_cache_muni()           # every cached municipality
+clear_cache_muni(2919207)    # only Lauro de Freitas-BA
+
+clear_cache_tracts()         # every census tract file
+clear_cache_tracts("BA")     # only the file for Bahia
+```
+
+Both functions look for the cache in the same order as everything else. If
+you set `CNEFETOOLS_CACHE_DIR`, they find it on their own. If you used
+`cache_dir` in a call, pass the same `cache_dir` to the cleaner, otherwise it
+looks in the default folder and finds nothing to delete:
+
+```{r}
+clear_cache_muni(cache_dir = "E:/cnefe_cache")
+```
+
+If you used a version of `cnefetools` older than 0.3.0, you may also have ZIP
+files at the top of the default folder, since that's how the cache used to be
+stored. `clear_cache_muni()` removes those too.
+
+## Keeping a permanent copy with `cnefe_export()`
+
+The cache belongs to the package and can be cleared at any time. That's fine
+for exploring, but not for a project that has to give the same result a year
+from now. For that, `cnefe_export()` writes a municipality to a folder you
+choose, and the file stays there until you delete it:
+
+```{r}
+path <- cnefe_export(2919207, path = "data/cnefe")
+path
+#> [1] "data/cnefe/cnefe_2022_2919207.parquet"
+```
+
+The default format is Parquet, which is smaller and faster to read than
+the CSV that IBGE publishes. You can also ask for `format = "csv"` or
+`format = "csv.gz"`. If the file already exists, `cnefe_export()` stops with
+an error instead of overwriting it, and you can pass `overwrite = TRUE` when
+you really want to replace it.
+
+To read the copy back, give its path to `read_cnefe()` through `file`. Nothing
+is downloaded, so this works offline and doesn't depend on the IBGE server:
+
+```{r}
+cnefe <- read_cnefe(file = "data/cnefe/cnefe_2022_2919207.parquet")
+
+# Or as an sf object
+cnefe_sf <- read_cnefe(file = "data/cnefe/cnefe_2022_2919207.parquet", output = "sf")
+```
+
+`file` also accepts the ZIP exactly as IBGE publishes it, as well as `.csv`
+and `.csv.gz` files, so you can read a file you got some other way too.
+
+## What reads an exported copy
+
+Only `read_cnefe()` reads an exported file. `cnefe_counts()`, `compute_lumi()`,
+`tracts_to_h3()` and `tracts_to_polygon()` always get their data through the
+cache. If you need those functions to keep working without the IBGE server,
+keep the cache instead of clearing it, and point `CNEFETOOLS_CACHE_DIR` at a
+folder you back up along with the rest of the project.

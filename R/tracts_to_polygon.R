@@ -52,7 +52,7 @@
 #' @param crs_output The CRS for the output object. Default is `NULL`, which uses
 #'   the original CRS of the `polygon` argument. Can be an EPSG code (e.g., 4326,
 #'   31983) or any CRS object accepted by [sf::st_transform()].
-#' @param cache Logical. Whether to use the existing package cache for assets and CNEFE zips.
+#' @param cache Logical. Whether to use the package cache for the census tract assets and the CNEFE files.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
