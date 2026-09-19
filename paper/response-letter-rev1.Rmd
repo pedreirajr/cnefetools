@@ -117,8 +117,6 @@ The mode is now inferred from whether `polygon` is `NULL`. Code that still passe
 
 Two behaviours are preserved deliberately. `polygon_type = "user"` with no `polygon` remains an error, because it states an intent the call cannot satisfy and it errored before. `polygon_type = "hex"` alongside a supplied `polygon` resolves to user polygons, which is what the previous inference did.
 
-We chose deprecation over silent inference because `lifecycle` was already a dependency and unused, the cost to users is a warning rather than a break, and leaving a redundant argument in place would have meant carrying it indefinitely. The manuscript and the package articles no longer use the argument anywhere.
-
 ### R1.7: Cache Location Override
 
 > **Cache Location Override:** The package downloads potentially massive ZIP files (up to 901 MB uncompressed) and hardcodes the cache location to `tools::R_user_dir("cnefetools", "cache")`. While caching is a very useful feature and using this directory aligns with CRAN policies for persistent data, forcing users to store large files on their primary partition can be problematic for those with limited space. The authors might consider allowing users to override this cache path. While packages dealing with large geospatial datasets like `osmextract` rely on environment variables to set the download directory, providing an explicit user-facing function argument (e.g., `cache_dir`) might be more intuitive for novice R users. This ensures they can easily point the download to a larger secondary drive or shared volume.
