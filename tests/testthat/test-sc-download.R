@@ -83,6 +83,41 @@ testthat::test_that(".sc_download_with_piggyback() retries anonymously after a 4
 })
 
 
+testthat::test_that(".sc_download_with_piggyback() shows the progress bar only in interactive sessions (#108)", {
+  dest_dir <- file.path(tempdir(), paste0("sc_download_", Sys.getpid()))
+  seen <- NULL
+
+  testthat::local_mocked_bindings(
+    pb_download = function(file, dest, repo, tag, overwrite, show_progress, ...) {
+      seen <<- show_progress
+      dir.create(dest, recursive = TRUE, showWarnings = FALSE)
+      writeLines("stub", file.path(dest, file))
+      invisible(TRUE)
+    },
+    .package = "piggyback"
+  )
+  testthat::local_mocked_bindings(
+    .validate_sc_parquet = function(...) TRUE,
+    .package = "cnefetools"
+  )
+  on.exit(unlink(dest_dir, recursive = TRUE), add = TRUE)
+
+  download <- function(interactive, verbose) {
+    withr::local_options(rlang_interactive = interactive)
+    suppressMessages(
+      cnefetools:::.sc_download_with_piggyback(uf = "29", cache = FALSE, verbose = verbose)
+    )
+    seen
+  }
+
+  # Knitting a document is not interactive, so the bar must stay off even
+  # with verbose = TRUE.
+  testthat::expect_false(download(interactive = FALSE, verbose = TRUE))
+  testthat::expect_true(download(interactive = TRUE, verbose = TRUE))
+  testthat::expect_false(download(interactive = TRUE, verbose = FALSE))
+})
+
+
 testthat::test_that(".sc_download_with_piggyback() does not retry on non-auth errors (#79)", {
   n_calls <- 0L
 

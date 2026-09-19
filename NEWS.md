@@ -188,6 +188,15 @@
   Freitas-BA, where type 7 is 3.7% of addresses, the error reached 0.13 in
   `p_res` and 0.32 in `bgbi`. The two backends now agree exactly (#96).
 
+* `tracts_to_h3()` and `tracts_to_polygon()` no longer write a text progress
+  bar into knitted documents. The first download of a census tract asset
+  passed `verbose` straight to `piggyback::pb_download()`, so rendering an
+  R Markdown or Quarto file, or running under `Rscript`, printed several
+  hundred lines of bar into the output (342 in each of two package articles).
+  No chunk option suppresses it. The bar now appears only in interactive
+  sessions, and the message announcing the download is kept everywhere
+  (#108).
+
 * `tracts_to_h3()` and `tracts_to_polygon()` no longer fail with
   `GitHub API error (401): Bad credentials` when an expired or invalid GitHub
   token is present in the environment. The census tract assets live in public

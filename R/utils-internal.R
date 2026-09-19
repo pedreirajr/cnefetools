@@ -814,6 +814,12 @@
     cli::cli_progress_step("Downloading {.file {filename}} from GitHub release")
   }
 
+  # The text progress bar is only useful in a console. Anywhere else (knitr,
+  # Quarto, Rscript logs) it is written out line by line, hundreds of lines per
+  # download, and no chunk option suppresses it. `rlang::is_interactive()` is
+  # FALSE while knitr is running, which `interactive()` alone does not detect.
+  show_progress <- isTRUE(verbose) && rlang::is_interactive()
+
   # The first attempt keeps the default token, so users with a valid one still
   # get the authenticated rate limit.
   do_download <- function(token = NULL) {
@@ -823,7 +829,7 @@
       tag = tag,
       dest = tmp_download_dir,
       overwrite = TRUE,
-      show_progress = verbose
+      show_progress = show_progress
     )
     if (!is.null(token)) {
       args$.token <- token
