@@ -4,7 +4,7 @@ A data frame that maps variable names used in
 [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
 and
 [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
-to the official IBGE census tract dataset codes and descriptions.
+to the census tract variable codes and descriptions.
 
 ## Usage
 
@@ -22,7 +22,7 @@ A data frame with 22 rows and 4 columns:
 
 - code_var_ibge:
 
-  Official IBGE variable code from the census tract aggregates.
+  Variable code in the census tract aggregates, as used by censobr.
 
 - desc_var_ibge:
 
@@ -30,12 +30,23 @@ A data frame with 22 rows and 4 columns:
 
 - table_ibge:
 
-  Name of the IBGE census tract table where the variable is found
-  (Domicilios, Pessoas, or ResponsavelRenda).
+  Census tract table where the variable is found (Domicilios, Pessoas,
+  or ResponsavelRenda), which correspond to the censobr datasets
+  Domicilio, Pessoas and ResponsavelRenda.
 
 ## Source
 
-IBGE - Censo Demografico 2022, Agregados por Setores Censitarios.
+IBGE - Censo Demografico 2022, Agregados por Setores Censitarios, as
+repackaged by the censobr package.
+
+## Details
+
+The variable codes are the ones used by the censobr package, which
+repackages the IBGE census tract aggregates and is where the census
+tract assets take their attributes from (see
+`data-raw/sc_assets_build.R` in the package repository), and each table
+corresponds to a censobr dataset. They don't always match the file and
+column names on the IBGE FTP server.
 
 ## Examples
 

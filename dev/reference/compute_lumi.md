@@ -153,10 +153,10 @@ does **not** apply this exclusion and reports these records as
 
 ### The citywide baseline P
 
-The `bgbi` index is referenced against a citywide residential share P.
-It is the only index computed here that uses such a baseline, the others
-being computed entirely within each spatial unit. Two properties of P
-are worth stating.
+Two indices use a citywide residential share P: the `bgbi` index, which
+is referenced against it, and the Balance Index (`bal`), which uses it
+through r = P / (1 - P). The other indices are computed entirely within
+each spatial unit. Two properties of P are worth stating.
 
 First, P is computed from CNEFE address-type counts rather than from
 census population, so it describes the distribution of address types and
@@ -201,13 +201,13 @@ lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [48ms]
+#> ✔ Converting the archive to .csv.gz (done once) [46ms]
 #> 
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
-#> ✔ Step 1/3 (CNEFE data ready) [499ms]
+#> ✔ Step 1/3 (CNEFE data ready) [635ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [173ms]
+#> ✔ Step 2/3 (Addresses counted) [169ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
 #> ✔ Step 3/3 (Land use mix indices computed) [3.4s]
@@ -230,7 +230,7 @@ lumi_poly <- compute_lumi(
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [610ms]
+#> ✔ Converting the archive to .csv.gz (done once) [560ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> ✔ Step 1/3 (Data and polygon ready) [1.9s]
@@ -242,7 +242,7 @@ lumi_poly <- compute_lumi(
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
 #> ℹ 106975 of 107244 points are within the provided polygon.
 #> ℹ 269 points fell outside the polygon and were not counted.
-#> ✔ Step 3/3 (Land use mix indices computed) [56ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [63ms]
 #> 
 # }
 ```

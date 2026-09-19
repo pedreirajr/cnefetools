@@ -347,6 +347,17 @@
   in [`tools::R_user_dir()`](https://rdrr.io/r/tools/userdir.html)
   ([\#110](https://github.com/pedreirajr/cnefetools/issues/110)).
 
+- [`?compute_lumi`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  no longer says that the BGBI is the only index using the citywide
+  share P. The Balance Index uses it too, through r = P / (1 - P)
+  ([\#112](https://github.com/pedreirajr/cnefetools/issues/112)).
+
+- [`?tracts_variables_ref`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_variables_ref.md)
+  now says that its variable codes are the ones used by censobr, which
+  the census tract assets take their attributes from, and not the IBGE
+  file codes
+  ([\#112](https://github.com/pedreirajr/cnefetools/issues/112)).
+
 ## cnefetools 0.2.5
 
 CRAN release: 2026-04-03
