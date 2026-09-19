@@ -173,15 +173,15 @@ spo_lumi <- compute_lumi(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/3550308_SAO_PAULO.csv.gz
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE data ready) [622ms]      
+✔ Step 1/3 (CNEFE data ready) [138ms]      
 #> 
 ℹ Step 2/3: Counting addresses per H3 cell...
 
-✔ Step 2/3 (Addresses counted) [16.6s]       
+✔ Step 2/3 (Addresses counted) [3.3s]        
 #> 
 ℹ Step 3/3: Building grid and computing LUMI...
 
-✔ Step 3/3 (Land use mix indices computed) [2.2s]
+✔ Step 3/3 (Land use mix indices computed) [981ms]
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields

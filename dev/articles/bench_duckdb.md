@@ -272,9 +272,9 @@ bench_med |>
 
 | Municipality            | Addresses | DuckDB speedup |
 |:------------------------|:----------|---------------:|
-| Vitória da Conquista-BA | ~200k     |           1.14 |
-| Curitiba-PR             | ~900k     |           2.03 |
-| São Paulo-SP            | ~5.7M     |          13.29 |
+| Vitória da Conquista-BA | ~200k     |           1.24 |
+| Curitiba-PR             | ~900k     |           2.60 |
+| São Paulo-SP            | ~5.7M     |          16.71 |
 
 ``` r
 
@@ -295,9 +295,9 @@ bench_med |>
 
 | H3 resolution | Mean hexagon area (m2) | DuckDB speedup |
 |--------------:|-----------------------:|---------------:|
-|             7 |             5161293.36 |           1.88 |
-|             9 |              105332.51 |           2.02 |
-|            11 |                2149.64 |           1.02 |
+|             7 |             5161293.36 |           2.17 |
+|             9 |              105332.51 |           2.39 |
+|            11 |                2149.64 |           1.17 |
 
 How much time DuckDB saves depends on the job. It grows with the number
 of address points and shrinks as H3 resolution rises, to the point of

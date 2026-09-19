@@ -102,7 +102,7 @@ ftl_h3 <- tracts_to_h3(
 #> 
 ℹ Step 1/6: connecting to DuckDB and loading extensions...
 
-✔ Step 1/6 (DuckDB ready) [1.2s]                          
+✔ Step 1/6 (DuckDB ready) [323ms]                         
 #> 
 ℹ Step 2/6: preparing census tracts in DuckDB...
 
@@ -110,23 +110,23 @@ ftl_h3 <- tracts_to_h3(
 ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 
-✔ Step 2/6 (Tracts ready) [613ms]               
+✔ Step 2/6 (Tracts ready) [211ms]               
 #> 
 ℹ Step 3/6: preparing CNEFE points in DuckDB...
 
-✔ Step 3/6 (CNEFE points ready) [2.4s]         
+✔ Step 3/6 (CNEFE points ready) [1.3s]         
 #> 
 ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
 
-✔ Step 4/6 (Join and allocation) [3.2s]                           
+✔ Step 4/6 (Join and allocation) [985ms]                          
 #> 
 ℹ Step 5/6: aggregating allocated values to H3 cells...
 
-✔ Step 5/6 (Hex aggregation) [273ms]                   
+✔ Step 5/6 (Hex aggregation) [162ms]                   
 #> 
 ℹ Step 6/6: building H3 grid and joining results...
 
-✔ Step 6/6 (sf output) [1.4s]                      
+✔ Step 6/6 (sf output) [1s]                        
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 
@@ -279,11 +279,11 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
 
-✔ Step 1/6 (CRS alignment) [781ms]
+✔ Step 1/6 (CRS alignment) [292ms]
 #> 
 ℹ Step 2/6: connecting to DuckDB and loading extensions...
 
-✔ Step 2/6 (DuckDB ready) [862ms]                         
+✔ Step 2/6 (DuckDB ready) [414ms]                         
 #> 
 ℹ Step 3/6: preparing census tracts in DuckDB...
 
@@ -291,7 +291,7 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 
-✔ Step 3/6 (Tracts ready) [7.3s]                
+✔ Step 3/6 (Tracts ready) [4.3s]                
 #> 
 ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
@@ -299,15 +299,15 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/3550308_SAO_PAULO.csv.gz
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-✔ Step 4/6 (CNEFE points ready) [10.7s]        
+✔ Step 4/6 (CNEFE points ready) [4.1s]         
 #> 
 ℹ Step 5/6: spatial join (points to tracts) and allocation...
 
-✔ Step 5/6 (Join and allocation) [51.1s]                     
+✔ Step 5/6 (Join and allocation) [10.3s]                     
 #> 
 ℹ Step 6/6: aggregating allocated values to polygons...
 
-✔ Step 6/6 (Polygon aggregation) [1.1s]                
+✔ Step 6/6 (Polygon aggregation) [341ms]               
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 

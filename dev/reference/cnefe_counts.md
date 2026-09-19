@@ -164,13 +164,13 @@ hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
 #> ✔ Converting the archive to .csv.gz (done once) [48ms]
 #> 
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
-#> ✔ Step 1/3 (CNEFE data ready) [1.7s]
+#> ✔ Step 1/3 (CNEFE data ready) [1.2s]
 #> 
 #> ℹ Step 2/3: Building full H3 grid over municipality boundary...
-#> ✔ Step 2/3 (H3 grid built) [6.6s]
+#> ✔ Step 2/3 (H3 grid built) [6.4s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [541ms]
+#> ✔ Step 3/3 (Addresses counted) [336ms]
 #> 
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
@@ -189,10 +189,10 @@ nei_counts <- cnefe_counts(
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [545ms]
+#> ✔ Converting the archive to .csv.gz (done once) [551ms]
 #> 
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
-#> ✔ Step 1/2 (Data and polygon ready) [3.1s]
+#> ✔ Step 1/2 (Data and polygon ready) [2.5s]
 #> 
 #> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.
