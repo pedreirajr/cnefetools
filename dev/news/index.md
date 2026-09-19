@@ -275,6 +275,19 @@
 - [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
   and
   [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  no longer write a text progress bar into knitted documents. The first
+  download of a census tract asset passed `verbose` straight to
+  [`piggyback::pb_download()`](https://docs.ropensci.org/piggyback/reference/pb_download.html),
+  so rendering an R Markdown or Quarto file, or running under `Rscript`,
+  printed several hundred lines of bar into the output (342 in each of
+  two package articles). No chunk option suppresses it. The bar now
+  appears only in interactive sessions, and the message announcing the
+  download is kept everywhere
+  ([\#108](https://github.com/pedreirajr/cnefetools/issues/108)).
+
+- [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
   no longer fail with `GitHub API error (401): Bad credentials` when an
   expired or invalid GitHub token is present in the environment. The
   census tract assets live in public GitHub releases and need no
