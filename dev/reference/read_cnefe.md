@@ -131,8 +131,8 @@ cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [47ms]
 #> 
-#> ℹ Reading file1e573868a74a.csv.gz with arrow
-#> ✔ Reading file1e573868a74a.csv.gz with arrow [24ms]
+#> ℹ Reading file20f61a149bea.csv.gz with arrow
+#> ✔ Reading file20f61a149bea.csv.gz with arrow [23ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
@@ -144,17 +144,17 @@ path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [54ms]
 #> 
-#> ℹ Reading file1e573a18b1de.csv.gz with arrow
-#> ✔ Reading file1e573a18b1de.csv.gz with arrow [22ms]
+#> ℹ Reading file20f629591a59.csv.gz with arrow
+#> ✔ Reading file20f629591a59.csv.gz with arrow [21ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Writing cnefe_2022_2929057.parquet
 #> ✔ Writing cnefe_2022_2929057.parquet [21ms]
 #> 
-#> ✔ Wrote 9354 records to /tmp/RtmptxaEgW/cnefe_2022_2929057.parquet (0.3 MB).
+#> ✔ Wrote 9354 records to /tmp/RtmpAhbC5L/cnefe_2022_2929057.parquet (0.3 MB).
 cnefe_local <- read_cnefe(file = path)
 #> ℹ Reading cnefe_2022_2929057.parquet as Parquet
-#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [14ms]
+#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [13ms]
 #> 
 #> ✔ Read 9354 records from cnefe_2022_2929057.parquet
 
@@ -165,12 +165,12 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [54ms]
 #> 
-#> ℹ Reading file1e57161d4c08.csv.gz with arrow
-#> ✔ Reading file1e57161d4c08.csv.gz with arrow [24ms]
+#> ℹ Reading file20f630e5b0f7.csv.gz with arrow
+#> ✔ Reading file20f630e5b0f7.csv.gz with arrow [22ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object
-#> ✔ Converting to sf object [31ms]
+#> ✔ Converting to sf object [29ms]
 #> 
 #> ✔ Created <sf> object with 9354 points (CRS: EPSG:4674)
 # }
