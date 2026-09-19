@@ -345,13 +345,6 @@ The logic of both functions now also runs on CRAN. The deduplication Referee 2 a
 
 We kept `skip_on_cran()` on the end-to-end tests because of a crash. It was added in version 0.2.1 after the DuckDB spatial extension caused a segfault on CRAN's `r-devel-linux-x86_64-fedora-clang` check machine, an incompatibility between the clang-built DuckDB binary and the GCC-built extension (duckdb/duckdb-r#1107). Removing it would risk the package failing on CRAN again, so we'd rather report the 0% plainly than raise it by dropping a skip that guards against a segfault.
 
-## Referee 1 references
-
-> Kmoch, Alexander, Kevin Sahr, Wai Tik Chan, and Evelyn Uuemaa. 2025. "IGEO7: A New Hierarchically Indexed Hexagonal Equal-Area Discrete Global Grid System." *AGILE: GIScience Series* 6 (June): 1–6. <https://doi.org/10.5194/agile-giss-6-32-2025>.
->
-> Pedreira Junior, Jorge Ubirajara, Thiago Vinícius Louro, Lucas Brandão Monteiro de Assis, and Patrícia Lustosa Brito. 2025. *Measuring Land-Use Mix with Address-Level Census Data*. Engineering Archive. <https://doi.org/10.31224/5975>.
->
-> Song, Yan, Louis Merlin, and Daniel Rodriguez. 2013. "Comparing Measures of Urban Land Use Mix." *Computers, Environment and Urban Systems* 42: 1–13. <https://doi.org/10.1016/j.compenvurbsys.2013.08.001>.
 
 # Referee 2
 
@@ -733,15 +726,8 @@ Additionally, since the cache changed to gzipped CSV under R1.11, every fixture-
 
 It was a leftover from development. `.normalize_code_muni()` is always reachable in the package namespace, so the `exists()` guard could never take its `as.integer()` branch, which meant an untestable fallback silently shadowing the real validation. Both the guard and the fallback are gone and the function is called directly.
 
-\vspace{2\baselineskip}
-
-Sincerely,
-
-Jorge Ubirajara Pedreira Junior and Bruno Henrique Mioto Stabile
 
 # References
-
-These are the works cited in our responses. The references in Referee 1's report are reproduced above as part of the report.
 
 Graham, H. (2026). *a5R: 'A5' Discrete Global Grid System*. R package version 0.6.0. <https://CRAN.R-project.org/package=a5R>
 
