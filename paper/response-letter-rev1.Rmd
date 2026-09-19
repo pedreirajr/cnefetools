@@ -51,7 +51,7 @@ What we have changed is how clearly this is stated, since a reader shouldn't hav
 
 The BGBI has since been peer-reviewed and published (Pedreira Junior et al., 2026, *Land Use Policy* 169, 108135), where it is computed alongside four established indices and validated against job accessibility measures. The manuscript now cites that article for it.
 
-The adapted HHI is still documented only in the engrXiv preprint, which the manuscript keeps and now labels as a preprint. Nevertheless, it consists of a trivial monotone rescaling of the standard HHI, which runs from 0.5 to 1 with two categories, into the range 0 to 1, with a sign that shows which use dominates. It inherits the properties of an established index and adds only a direction, so it doesn't carry a validity claim of its own.
+The adapted HHI is still documented only in the engrXiv preprint (Pedreira Junior et al., 2025), which the manuscript keeps and now labels as a preprint. Nevertheless, it consists of a trivial monotone rescaling of the standard HHI, which runs from 0.5 to 1 with two categories, into the range 0 to 1, with a sign that shows which use dominates. It inherits the properties of an established index and adds only a direction, so it doesn't carry a validity claim of its own.
 
 On scope, three of the six indices (entropy, HHI and the Balance Index) are standard measures from the literature, and the Index of Concentration at Extremes comes from Massey (2001), so only the BGBI and the adapted HHI are ours. The methodological basis of the indices is now explicit in Section 4.3 and in `?compute_lumi`, as described under R1.3.
 
@@ -85,7 +85,7 @@ The manuscript carries the same three points in Section 4.3: the rule, the justi
 
 The referee is right, and we thank them for framing it as a service to users rather than as a defect. H3 uses a gnomonic projection onto an icosahedron, so cell areas are not constant, and across a country the size of Brazil that's worth stating rather than assuming.
 
-Section 4.2, right where the manuscript quotes the average cell area, now carries a short paragraph noting that H3 is not equal-area, that this matters whenever an analysis assumes cells of equal size, as in density estimates, and pointing readers to equal-area alternatives when that is a requirement, namely the A5 grid through the a5R package (now on CRAN and cited) and IGEO7, which is built on the ISEA projection (Kmoch et al., 2025).
+Section 4.2, right where the manuscript quotes the average cell area, now carries a short paragraph noting that H3 is not equal-area, that this matters whenever an analysis assumes cells of equal size, as in density estimates, and pointing readers to equal-area alternatives when that is a requirement, namely the A5 grid through the a5R package (Graham, 2026), now on CRAN and cited and IGEO7, which is built on the ISEA projection (Kmoch et al., 2025).
 
 Rather than quote a global figure, we measured the variation where it matters for our users. Across Brazil, resolution 9 cells range from about 80,000 m² to 127,000 m², so the largest is about 1.6 times the smallest, and 1.47 times between the 1st and 99th percentiles. The manuscript reports that range. It comes from the areas, computed with `h3jsr::cell_area()`, of the 19,998 distinct cells hit by a random sample of 20,000 points inside the national boundary.
 
@@ -129,9 +129,7 @@ The cache location resolves from the most specific source to the least:
 2. the `CNEFETOOLS_CACHE_DIR` environment variable,
 3. `tools::R_user_dir("cnefetools", which = "cache")`, the previous default.
 
-We implemented both on purpose. The referee cites `osmextract`, which uses an environment variable, and also observes that an explicit argument is more discoverable for less experienced users. The argument outranks the variable so a single call can be redirected without changing the session.
-
-`cache_dir` reaches `read_cnefe()`, `cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()`, `tracts_to_polygon()`, and also `clear_cache_muni()` and `clear_cache_tracts()`. The cleaners matter as much as the readers: a redirected cache the cleaners could not see would report success while deleting nothing.
+We implemented both on purpose. The referee cites `osmextract`, which uses an environment variable, and also observes that an explicit argument is more discoverable for less experienced users. The argument outranks the variable so a single call can be redirected without changing the session. `cache_dir` reaches `read_cnefe()`, `cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()`, `tracts_to_polygon()`, and also `clear_cache_muni()` and `clear_cache_tracts()`. 
 
 The CRAN-policy default is unchanged, so users who do nothing see exactly the previous behaviour. Section 3 of the manuscript describes the order and why both mechanisms exist, and a new article on the package website, "Cache and exported copies", shows how to use them.
 
@@ -212,9 +210,9 @@ The per-variable check is committed as `data-raw/sc_assets_build_verification.cs
 
 **Reconstructing it exposed two things the written record got wrong.**
 
-**The variable codes point somewhere other than where they appear to.** The codes recorded in `tracts_variables_ref` (`V00005`, `V01007`, `V06001`) cannot be found in the IBGE tract aggregates published on the FTP server, and `V06001` and `V06004` appear in no 2022 file at all. That briefly suggested the assets might be mixing census editions. They are not. The codes refer to **censobr**, which repackages the same aggregates and prefixes each variable with its source table, so `V00005` arrives as `domicilio01_V00005`, except in `ResponsavelRenda` where the codes are bare. The `table_ibge` column of our own reference table corresponds to censobr datasets rather than IBGE files, which was documented nowhere.
+**The variable codes point somewhere other than where they appear to**, since the codes recorded in `tracts_variables_ref` (`V00005`, `V01007`, `V06001`) could not be found in the IBGE tract aggregates published on the FTP server, and `V06001` and `V06004` appear in no 2022 file at all. That briefly suggested the assets might be mixing census editions, but they are not. The codes refer to **censobr** (Pereira and Barbosa, 2026), which repackages the same aggregates and prefixes each variable with its source table, so `V00005` arrives as `domicilio01_V00005`, except in `ResponsavelRenda` where the codes are bare. The `table_ibge` column of our own reference table corresponds to censobr datasets rather than IBGE files, which was documented nowhere.
 
-**A correctness hazard was sitting in the build.** geobr returns some tracts as several rows, one per disjoint part, carrying identical attributes. This is not rare: 7 such rows for Amapá, 1,026 for Pará, 1,921 for Amazonas. Left as they are, each row enters the spatial join separately and counts that tract's CNEFE points two or three times. The published assets dissolve them, which is how we recovered the intended behaviour: for tract `160010505000008` the published geometry measures 490.313 km², exactly the union of its two parts at 91.273 and 399.041 km². The reconstructed script now dissolves them explicitly and says why.
+**A correctness hazard was sitting in the build,** as geobr returns some tracts as several rows, one per disjoint part, carrying identical attributes. This is not rare: 7 such rows for Amapá, 1,026 for Pará, 1,921 for Amazonas. Left as they are, each row enters the spatial join separately and counts that tract's CNEFE points two or three times. The published assets dissolve them, which is how we recovered the intended behaviour: for tract `160010505000008` the published geometry measures 490.313 km², exactly the union of its two parts at 91.273 and 399.041 km². The reconstructed script now dissolves them explicitly and says why.
 
 Neither of these could have been recovered from the package as it stood. That is the substance of the referee's concern, and we would not have found either without acting on it.
 
@@ -249,15 +247,15 @@ We measured before and after, because the size of the effect matters for how we 
 | Lauro de Freitas-BA | 111k | 49.6 MB | 47.1 MB | |
 | Fortaleza-CE | 1.19M | 108.4 MB | 68.3 MB | **-37%** |
 
-The saving scales with row count and costs roughly 0.2s, the usual trade of time for memory. On a small municipality it is not measurable, which is expected: nobody has a memory problem with Lauro de Freitas.
+The saving scales with row count and costs roughly 0.2s, the usual trade of time for memory. On a small municipality it is not measurable, which is expected.
 
-The qualification concerns the mechanism rather than the fix. The referee writes that materialising first "completely negates the memory advantages of reading with Arrow". That is only partly so. `read_cnefe()` returns an in-memory `arrow::Table`, so the Arrow data is already resident before any backend touches it. What `as.data.frame()` added was a **second** full copy, as an R data frame of all 34 columns, of which three were then kept. That second copy is what the change removes, and it is the larger of the two.
+Importantly, the qualification concerns the mechanism rather than the fix. The referee writes that materialising first "completely negates the memory advantages of reading with Arrow". That is only partly so. `read_cnefe()` returns an in-memory `arrow::Table`, so the Arrow data is already resident before any backend touches it. What `as.data.frame()` added was a **second** full copy, as an R data frame of all 34 columns, of which three were then kept. That second copy is what the change removes, and it is the larger of the two.
 
 Getting the full effect the referee has in mind would require `read_cnefe()` to return a lazy Arrow dataset rather than a materialised table. We considered that under R1.11 and declined it there, for reasons that have nothing to do with this item.
 
 Two other `as.data.frame()` calls remain and are deliberate. `read_cnefe(output = "sf")` and `cnefe_export()` are both asked for every column, so there is nothing to push down. Both now carry a comment saying so, since the pattern otherwise looks like the one just fixed.
 
-The regression test guards the translation rather than the output. Arrow falls back to R when it cannot translate an expression, which would silently restore the old memory profile while leaving every result identical, so a test that only compared values would never notice.
+The regression test guards the translation rather than the output and Arrow falls back to R when it cannot translate an expression, which would silently restore the old memory profile while leaving every result identical. Therefore, a test that only compared values would never notice.
 
 ### R1.11: Architecture Consistency & Efficiency in `read_cnefe()`
 
@@ -284,7 +282,7 @@ Two findings settled it. **Gzip costs nothing on disk**, 27.6 MB against the ZIP
 
 The cache now holds a gzipped CSV. The conversion runs once, on first download, streamed in chunks so peak memory does not scale with the file, and writes through a temporary name so an interrupted run cannot leave something that later passes for a valid cache entry.
 
-**Reducing reliance on community extensions: implemented, and this mattered more than speed.**
+**Reducing reliance on community extensions: implemented.**
 
 The referee's aside about community DuckDB extensions, including macOS code-signing delays of 4 to 5 seconds per load, weighed more with us than the throughput figures. That cost is paid per connection, and the package opens a connection in every function.
 
@@ -298,11 +296,9 @@ This follows `spanishoddata`, which the referee cites. It also answers Referee 2
 
 **A lazy DuckDB relation: declined, and we ask the referee to weigh the reason.**
 
-This is the one suggestion we did not take, and not for cost.
+This is the one suggestion we did not take. A lazy relation, `tbl(con, ...)` in the referee's `suggested_duckdb_impl.R`, is valid only while its connection is alive. Returning one from `read_cnefe()` requires the connection to outlive the call, with ownership transferred to the returned object and released by a finalizer or an explicit close.
 
-A lazy relation, `tbl(con, ...)` in the referee's `suggested_duckdb_impl.R`, is valid only while its connection is alive. Returning one from `read_cnefe()` requires the connection to outlive the call, with ownership transferred to the returned object and released by a finalizer or an explicit close.
-
-That is precisely the pattern **both referees asked us to remove**. Referee 1's R1.12 and Referee 2's R2.C3 identify connections whose cleanup was not deterministic, and R1.12 recommends `withr::defer()` by name. We adopted it: every connection now registers a guarded cleanup on its caller's frame immediately after `dbConnect()` returns. Adopting the lazy relation would reintroduce, deliberately, the class of leak we were asked to eliminate.
+That is precisely the pattern **both referees asked us to remove**. Referee 1's R1.12 and Referee 2's R2.C3 identify connections whose cleanup was not deterministic, and R1.12 recommends `withr::defer()` by name. We adopted it and every connection now registers a guarded cleanup on its caller's frame immediately after `dbConnect()` returns. Adopting the lazy relation would reintroduce, deliberately, the class of leak we were asked to eliminate.
 
 It is also a breaking change to the return type. `read_cnefe()` currently returns an `arrow::Table` or an `sf` object, and a lazy relation is a third type with different semantics, which four internal code paths and two published articles assume.
 
@@ -322,13 +318,13 @@ We audited every connection site rather than only the ones named. Of the six, fo
 
 All six now route through a single internal helper that opens the connection and registers cleanup on the caller's frame immediately, before any extension load can fail. We took the referee's alternative suggestion and used `withr::defer()`, which made the helper considerably cleaner than manipulating `on.exit()` across frames, and we added `withr` to Imports for it. The handler is guarded with `!is.null(con) && DBI::dbIsValid(con)`, the defensive check the referee recommends.
 
-We verified both paths explicitly: the connection is closed when the caller returns normally, and when the caller aborts mid-block.
+We verified both paths explicitly and the connection is closed when the caller returns normally, and when the caller aborts mid-block.
 
 ### R1.13: Test Coverage & Quality
 
 > **Test Coverage & Quality:** While the package includes a `testthat` suite with good use of mocks for offline testing of `read_cnefe()`, the overall package coverage is relatively low at ~25%. Specifically, critical spatial transformation functions such as `tracts_to_h3()` and `tracts_to_polygon()` currently have 0% and ~10% coverage, respectively. Given the complexity of the geospatial logic and the dual-backend architecture, I strongly encourage the authors to expand the test suite to ensure the reliability of these core components.
 
-**Response:** **Accepted, and measuring it turned the referee's own figure into a finding we would otherwise have missed.**
+**Response:** **Accepted.**
 
 We re-measured rather than quoting the report, in both configurations, and that is what explains all three of the referee's numbers.
 
@@ -542,7 +538,7 @@ One methodological note, since it is visible in the committed data. Our first at
 
 **Response:** **Accepted, and checking it against the primary source showed the problem is larger than reported. We also decline the specific wording the referee proposes, for a reason worth stating.**
 
-We verified every figure against the IBGE methodological note that documents this release, *Censo Demográfico 2022: Coordenadas Geográficas dos Endereços, Nota metodológica n. 01*. The figures in Section 2 of our manuscript are all correct. The total is 111,102,875, of which 109,936,532 (98.95%) had their coordinates validated, and 110,744,837 (99.68%) are geocoded at address level, splitting into 103,943,086 original, 6,054,473 modified and 747,278 estimated. The species breakdown in Section 2 also matches the note's Annex 3 exactly.
+We verified every figure against the IBGE methodological note that documents this release, *Censo Demográfico 2022: Coordenadas Geográficas dos Endereços. Nota metodológica n. 01* (IBGE, 2024). The figures in Section 2 of our manuscript are all correct. The total is 111,102,875, of which 109,936,532 (98.95%) had their coordinates validated, and 110,744,837 (99.68%) are geocoded at address level, splitting into 103,943,086 original, 6,054,473 modified and 747,278 estimated. The species breakdown in Section 2 also matches the note's Annex 3 exactly.
 
 The abstract, however, is wrong in a way neither we nor the referee had spotted, and it is not only the undefined word "valid".
 
@@ -745,3 +741,23 @@ It was a leftover from development. `.normalize_code_muni()` is always reachable
 Sincerely,
 
 Jorge Ubirajara Pedreira Junior and Bruno Henrique Mioto Stabile
+
+# References
+
+These are the works cited in our responses. The references in Referee 1's report are reproduced above as part of the report.
+
+Graham, H. (2026). *a5R: 'A5' Discrete Global Grid System*. R package version 0.6.0. <https://CRAN.R-project.org/package=a5R>
+
+Instituto Brasileiro de Geografia e Estatística (IBGE) (2024). *Censo Demográfico 2022: Coordenadas Geográficas dos Endereços. Nota metodológica n. 01*. Rio de Janeiro: IBGE. <https://biblioteca.ibge.gov.br/visualizacao/livros/liv102063.pdf>
+
+Kmoch, A., Sahr, K., Chan, W. T., and Uuemaa, E. (2025). IGEO7: A new hierarchically indexed hexagonal equal-area discrete global grid system. *AGILE: GIScience Series*, 6, 1--6. <https://doi.org/10.5194/agile-giss-6-32-2025>
+
+Massey, D. S. (2001). The prodigal paradigm returns: ecology comes back to sociology. In A. Booth and A. C. Crouter (Eds.), *Does It Take a Village? Community Effects on Children, Adolescents, and Families*. Mahwah, NJ: Lawrence Erlbaum.
+
+Pedreira Junior, J. U., Louro, T. V., de Assis, L. B. M., and Brito, P. L. (2025). Measuring land use mix with address-level census data. engrXiv preprint. <https://doi.org/10.31224/5975>
+
+Pedreira Junior, J. U., Louro, T. V., de Assis, L. B. M., Brito, P. L., and Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional land use mix index for planning and policy evaluation. *Land Use Policy*, 169, 108135. <https://doi.org/10.1016/j.landusepol.2026.108135>
+
+Pereira, R. H. M., and Barbosa, R. J. (2026). censobr: Fácil acesso aos dados dos censos demográficos brasileiros. *Dados*, 69(1), e20240150. <https://doi.org/10.1590/dados.2026.69.1.006>
+
+Song, Y., Merlin, L., and Rodriguez, D. (2013). Comparing measures of urban land use mix. *Computers, Environment and Urban Systems*, 42, 1--13. <https://doi.org/10.1016/j.compenvurbsys.2013.08.001>
