@@ -239,6 +239,14 @@
 * `?read_cnefe` no longer says that the cache holds the published ZIP and
   always lives in `tools::R_user_dir()` (#110).
 
+* `?compute_lumi` no longer says that the BGBI is the only index using the
+  citywide share P. The Balance Index uses it too, through r = P / (1 - P)
+  (#112).
+
+* `?tracts_variables_ref` now says that its variable codes are the ones used
+  by censobr, which the census tract assets take their attributes from, and
+  not the IBGE file codes (#112).
+
 # cnefetools 0.2.5
 
 * Fixed an RTREE spatial-index failure introduced by DuckDB 1.5 (which moved

@@ -8,22 +8,30 @@
 A data frame with 22 rows and 4 columns:
 \describe{
 \item{var_cnefetools}{Variable name used in cnefetools functions.}
-\item{code_var_ibge}{Official IBGE variable code from the census tract aggregates.}
+\item{code_var_ibge}{Variable code in the census tract aggregates, as used by censobr.}
 \item{desc_var_ibge}{Official IBGE variable description in Portuguese.}
-\item{table_ibge}{Name of the IBGE census tract table where the variable is found
-(Domicilios, Pessoas, or ResponsavelRenda).}
+\item{table_ibge}{Census tract table where the variable is found
+(Domicilios, Pessoas, or ResponsavelRenda), which correspond to the
+censobr datasets Domicilio, Pessoas and ResponsavelRenda.}
 }
 }
 \source{
-IBGE - Censo Demografico 2022, Agregados por Setores Censitarios.
+IBGE - Censo Demografico 2022, Agregados por Setores Censitarios,
+as repackaged by the censobr package.
 }
 \usage{
 tracts_variables_ref
 }
 \description{
 A data frame that maps variable names used in \code{\link[=tracts_to_h3]{tracts_to_h3()}} and
-\code{\link[=tracts_to_polygon]{tracts_to_polygon()}} to the official IBGE census tract dataset codes
-and descriptions.
+\code{\link[=tracts_to_polygon]{tracts_to_polygon()}} to the census tract variable codes and descriptions.
+}
+\details{
+The variable codes are the ones used by the censobr package, which
+repackages the IBGE census tract aggregates and is where the census tract
+assets take their attributes from (see \code{data-raw/sc_assets_build.R} in the
+package repository), and each table corresponds to a censobr dataset. They
+don't always match the file and column names on the IBGE FTP server.
 }
 \examples{
 # View the reference table
