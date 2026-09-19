@@ -560,7 +560,7 @@ The work the referee asks us to cite properly appeared in peer-reviewed form aft
 
 The manuscript now cites this article for the BGBI, including in the discussion of Figure 3, and the package references in `?compute_lumi` and the README cite it too.
 
-One clarification matters for accuracy. Only the BGBI was published. The adapted HHI (`hhi_adp`) appears only in the engrXiv preprint, so we keep both references rather than replacing one with the other, and the preprint is now labelled "engrXiv preprint" in the bibliography, as the referee suggests. In updating these entries we also found and corrected the co-authors' first names in the preprint entry, which were wrong in the submitted version.
+One clarification matters for accuracy. Only the BGBI was published. The adapted HHI (`hhi_adp`) appears only in the engrXiv preprint, so we keep both references rather than replacing one with the other, and the preprint is now labelled "engrXiv preprint" in the bibliography, as the referee suggests.
 
 ### R2.11: `smile` package comparison
 
@@ -639,7 +639,7 @@ All 13 occurrences of the nested idiom are gone. One remains, inside the helper 
 
 > **DuckDB connection lifecycle inconsistency.** In `.compute_lumi_user_poly_duckdb()` (`compute_lumi.R:869`), the connection is disconnected manually with `DBI::dbDisconnect(con, shutdown = TRUE)` outside the `on.exit()` handler. If an error occurs before that line, the connection leaks. Other functions (e.g., `.cnefe_counts_h3()`, `.cnefe_counts_user_poly_duckdb()`) correctly use `on.exit(DBI::dbDisconnect(...), add = TRUE)`. This inconsistency should be fixed by consistently using `on.exit()`.
 
-**Response:** **Accepted. This was the worst of the six connection sites.**
+**Response:** **Accepted.**
 
 The referee is right that `.compute_lumi_user_poly_duckdb()` was inconsistent with the rest, and it was the only one with no `on.exit()` at all, disconnecting manually at the end of the function. Any error before that line leaked the connection outright.
 
@@ -701,7 +701,7 @@ We considered the other option the referee offers, exporting it for advanced use
 > - No tests for the `crs_output` parameter behavior.
 > - The file `test-test-tracts_to_h3.R` has a double "test-" prefix, likely a typo.
 
-**Response:** **All five points accepted. Two of them were already closed earlier in this revision, and we note that as fact rather than as credit.**
+**Response:** **All five points accepted. Two of them were already closed earlier in this revision.**
 
 **Output correctness for `tracts_to_polygon()`.** The referee is right that it tested only input validation. It now has a suite mirroring the mocked setup of the `tracts_to_h3()` test, built so the arithmetic is exact rather than merely plausible: two tracts, only one containing CNEFE points, so a covering polygon must receive exactly 100 of the 150 available and the other 50 must stay out. It also covers a tract split 50/50 across two polygons, preservation of the caller's columns and CRS, absence of the internal join column, and the two-stage diagnostics. Coverage of that file goes from 10.8% to 83.3%.
 
@@ -715,7 +715,7 @@ We considered the other option the referee offers, exporting it for advanced use
 
 One further change the referee did not ask for, prompted by working in these files. Three mocks in that test named every formal of the internal function they replaced, so each new internal argument broke them. They broke three times during this revision. They now name only what they read and absorb the rest, following the pattern the helper file already used.
 
-And one gap we found that no referee could have: since the cache changed to gzipped CSV under R1.11, every fixture-based test was serving a `.zip`, so the format all users hit had no coverage with real records while the legacy path had all of it. The fixture now ships in both formats and defaults to the current one.
+Additionally, since the cache changed to gzipped CSV under R1.11, every fixture-based test was serving a `.zip`, so the format all users hit had no coverage with real records while the legacy path had all of it. The fixture now ships in both formats and defaults to the current one.
 
 ### R2.C9: Portuguese comments
 
@@ -733,6 +733,7 @@ And one gap we found that no referee could have: since the cache changed to gzip
 
 It was a leftover from development. `.normalize_code_muni()` is always reachable in the package namespace, so the `exists()` guard could never take its `as.integer()` branch, which meant an untestable fallback silently shadowing the real validation. Both the guard and the fallback are gone and the function is called directly.
 
+\vspace{2\baselineskip}
 
 Sincerely,
 
