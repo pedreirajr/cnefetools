@@ -15,7 +15,7 @@
 
 - cnefetools now requires **geobr (\>= 2.0.0)**. The data server behind
   geobr 1.x no longer responds:
-  [`read_municipality()`](https://rdrr.io/pkg/geobr/man/read_municipality.html)
+  [`read_municipality()`](https://ipea.github.io/geobr/reference/read_municipality.html)
   on geobr 1.9.1 returns `NULL` for every year tested (2020, 2022 and
   2024), while geobr 2.0.1 serves them normally. Since the failure is a
   silent `NULL` rather than an error, leaving the dependency unpinned
@@ -42,8 +42,6 @@
   (550 cells) and Fortaleza-CE (2651 cells), the municipalities used in
   the package articles
   ([\#81](https://github.com/pedreirajr/cnefetools/issues/81)).
-
-### Breaking changes
 
 - `polygon_type` is deprecated in
   [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
@@ -74,7 +72,7 @@
   Names are passed to DuckDB’s `SET` verbatim, so any setting DuckDB
   accepts works. Exceeding `memory_limit` makes DuckDB spill to disk
   rather than fail, so a low value costs time, not correctness
-  ([\#80](https://github.com/pedreirajr/cnefetools/issues/80), R2.8).
+  ([\#80](https://github.com/pedreirajr/cnefetools/issues/80)).
 
 - The pure-R backends of
   [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
@@ -93,16 +91,16 @@
 - The download cache now stores a **gzipped CSV** instead of the
   published ZIP. DuckDB decompresses gzip natively, so the community
   `zipfs` extension is no longer loaded on the normal read path, which
-  Referee 1 flagged as a stability risk (reported macOS code-signing
-  delays of 4 to 5 seconds per load). Our own measurement, in
-  `data-raw/bench_gz_vs_zip.R`, reproduces the referee’s figures: on
-  Fortaleza a DuckDB read is 2.29x faster from `.csv.gz` than through
-  `zipfs`, at the same size on disk (27.6 MB either way). Raw CSV would
-  be 4.86x faster but needs 6.7x the disk, so it is not a sensible cache
-  format. The conversion is done once, on first download, and is
-  streamed in chunks so peak memory does not scale with the file. Caches
-  written by earlier versions are still readable, through the `zipfs`
-  route loaded on demand
+  removes a dependency on a community extension (these have been
+  reported to add code-signing delays of 4 to 5 seconds per load on
+  macOS). Measured in `data-raw/bench_gz_vs_zip.R`, on Fortaleza a
+  DuckDB read is 2.29x faster from `.csv.gz` than through `zipfs`, at
+  the same size on disk (27.6 MB either way). Raw CSV would be 4.86x
+  faster but needs 6.7x the disk, so it is not a sensible cache format.
+  The conversion is done once, on first download, and is streamed in
+  chunks so peak memory does not scale with the file. Caches written by
+  earlier versions are still readable, through the `zipfs` route loaded
+  on demand
   ([\#93](https://github.com/pedreirajr/cnefetools/issues/93)).
 
 - The download cache is now segregated by CNEFE edition, at
@@ -123,7 +121,7 @@
   tracts and 3,144,868 values, with every value matching exactly.
   `sc-assets-v2` remains published, so earlier versions of the package
   keep working
-  ([\#80](https://github.com/pedreirajr/cnefetools/issues/80) R1.9).
+  ([\#80](https://github.com/pedreirajr/cnefetools/issues/80)).
 
 - New
   [`cnefe_export()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_export.md)

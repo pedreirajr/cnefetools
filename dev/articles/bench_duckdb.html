@@ -250,10 +250,9 @@ apart.</p>
 <blockquote>
 <p><strong>Note:</strong> For smaller municipalities, the DuckDB backend
 may offer little or no speedup over pure R, and can even be slightly
-slower. DuckDB pays a fixed cost to initialise the connection, load the
-H3 extension and materialise data into its in-memory storage before any
-computation begins. When the dataset is small, that setup cost outweighs
-the gains from its query engine.</p>
+slower. DuckDB pays a fixed cost to initialise the connection and load
+the H3 extension before any computation begins. When the dataset is
+small, that setup cost outweighs the gains from its query engine.</p>
 </blockquote>
 <div class="section level3">
 <h3 id="memory">Memory<a class="anchor" aria-label="anchor" href="#memory"></a>

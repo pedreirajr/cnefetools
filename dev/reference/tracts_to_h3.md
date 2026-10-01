@@ -136,28 +136,28 @@ hex_pop <- tracts_to_h3(
 )
 #> ℹ Processing code 2929057
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 1/6 (DuckDB ready) [246ms]
+#> ✔ Step 1/6 (DuckDB ready) [231ms]
 #> 
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 #> ℹ Downloading sc_29.parquet from GitHub release
 #> ⠙ 18 items, page 1 | 2ms
 #> ℹ Downloading sc_29.parquet from GitHub release
-#> ✔ Downloading sc_29.parquet from GitHub release [1.9s]
+#> ✔ Downloading sc_29.parquet from GitHub release [2.1s]
 #> 
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
-#> ✔ Step 2/6 (Tracts ready) [2s]
+#> ✔ Step 2/6 (Tracts ready) [2.2s]
 #> 
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 3/6 (CNEFE points ready) [1.3s]
+#> ✔ Step 3/6 (CNEFE points ready) [1.2s]
 #> 
 #> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (Join and allocation) [85ms]
+#> ✔ Step 4/6 (Join and allocation) [86ms]
 #> 
 #> ℹ Step 5/6: aggregating allocated values to H3 cells...
-#> ✔ Step 5/6 (Hex aggregation) [15ms]
+#> ✔ Step 5/6 (Hex aggregation) [16ms]
 #> 
 #> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [3.5s]
+#> ✔ Step 6/6 (sf output) [3.7s]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──

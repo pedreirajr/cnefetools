@@ -105,19 +105,19 @@ path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [47ms]
 #> 
-#> ℹ Reading file20f65d969ed6.csv.gz with arrow
-#> ✔ Reading file20f65d969ed6.csv.gz with arrow [46ms]
+#> ℹ Reading file202b7e11e507.csv.gz with arrow
+#> ✔ Reading file202b7e11e507.csv.gz with arrow [48ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Writing cnefe_2022_2929057.parquet
-#> ✔ Writing cnefe_2022_2929057.parquet [21ms]
+#> ✔ Writing cnefe_2022_2929057.parquet [22ms]
 #> 
-#> ✔ Wrote 9354 records to /tmp/RtmpAhbC5L/cnefe_2022_2929057.parquet (0.3 MB).
+#> ✔ Wrote 9354 records to /tmp/RtmpC4X6wG/cnefe_2022_2929057.parquet (0.3 MB).
 
 # Read it back without touching the network
 cnefe <- read_cnefe(file = path)
 #> ℹ Reading cnefe_2022_2929057.parquet as Parquet
-#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [19ms]
+#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [20ms]
 #> 
 #> ✔ Read 9354 records from cnefe_2022_2929057.parquet
 # }
