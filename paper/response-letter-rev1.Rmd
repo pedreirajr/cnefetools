@@ -1,6 +1,5 @@
 ---
 title: "Response to the referees"
-subtitle: "cnefetools: Access and Analysis of Brazilian CNEFE Address Data in R (submission 2026-37)"
 author: "Jorge Ubirajara Pedreira Junior and Bruno Henrique Mioto Stabile"
 date: "`r paste(as.integer(format(Sys.Date(), '%d')), month.name[as.integer(format(Sys.Date(), '%m'))], format(Sys.Date(), '%Y'))`"
 output:
@@ -8,13 +7,15 @@ output:
     latex_engine: xelatex
     toc: false
     number_sections: false
+subtitle: "cnefetools: Access and Analysis of Brazilian CNEFE Address Data in R (submission
+  2026-37)"
 fontsize: 11pt
 geometry: margin=2.5cm
 urlcolor: blue
 header-includes:
-  - \usepackage{xcolor}
-  - \usepackage{etoolbox}
-  - \AtBeginEnvironment{quote}{\small\color{darkgray}}
+- \usepackage{xcolor}
+- \usepackage{etoolbox}
+- \AtBeginEnvironment{quote}{\small\color{darkgray}}
 ---
 
 Dear Dr Tanaka,
@@ -47,7 +48,7 @@ We have, however, made this much more explicit. Section 4.3 now says that the in
 
 > **Reliance on Unreviewed Methodology:** The package serves as a "pixel-perfect" implementation of the authors' own directional indices (aHHI and BGBI), which are currently documented in an unreviewed engrXiv preprint (Pedreira Junior et al. 2025). While this demonstrates high internal consistency between the paper and the code, it also positions the package as a highly specialized tool for one specific methodological framework rather than a general-purpose geospatial utility. Given that these indices (specifically the BGBI) rely on a nonlinear transformation centered on a global proportion, their scientific validity rests entirely on the unreviewed preprint's claims. For a research-focused package, this narrow methodological scope should be more explicitly signaled to the user.
 
-**Response:** **The BGBI is now published in a peer-reviewed journal; the adapted HHI remains in the preprint, and the manuscript distinguishes the two.**
+**Response:** **The BGBI is now published in a peer-reviewed journal, while the adapted HHI remains in the preprint, and the manuscript distinguishes the two.**
 
 The BGBI has since been peer-reviewed and published (Pedreira Junior et al., 2026, *Land Use Policy* 169, 108135), where it is computed alongside four established indices and validated against job accessibility measures. The manuscript now cites that article for it.
 
@@ -65,7 +66,7 @@ On scope, three of the six indices (entropy, HHI and the Balance Index) are stan
 
 **Response:** **Accepted on all three points.**
 
-`?compute_lumi` now has a `@details` section, which it previously lacked. On point 1, it states the rule: an address is counted as residential when `COD_ESPECIE == 1` and as non-residential otherwise. On point 2, the justification now cites the peer-reviewed article rather than the preprint, since the indices are defined and empirically validated on that two-category basis in Pedreira Junior et al. (2026), *Land Use Policy* 169, 108135. The same `@details` block also documents the type 7 exclusion raised in R2.2 and the citywide baseline P raised in R2.3, so the help page and the article now describe the same behaviour.
+`?compute_lumi` now has a `@details` section, which it previously lacked. On point 1, it states the rule: an address is counted as residential when `COD_ESPECIE == 1` and as non-residential otherwise. On point 2, the justification now cites the peer-reviewed article rather than the preprint, since the indices are defined and empirically validated on that two-category basis in Pedreira Junior et al. (2026), *Land Use Policy* 169, 108135. The same `@details` block also documents the type 7 exclusion raised in R2.2 and the citywide baseline $P$ raised in R2.3, so the help page and the article now describe the same behaviour.
 
 While checking the exclusion in order to document it, we also found a defect in one code path, reported under R2.2 below.
 
@@ -157,9 +158,11 @@ The CRAN-policy default is unchanged, so users who set neither see the previous 
 
 ### R1.8a: Dynamic FTP fallback
 
-**Response:** **We did not add a runtime scan of the FTP server; we address the underlying risk in two other ways.**
+**Response:** **Accepted. When the indexed URL returns 404, the package now scans the IBGE directory listing to find the file.**
 
-A dynamic fallback would have to rebuild URLs from a directory layout that has just changed in an unknown way, so it could only guess, and a wrong guess is harder for a user to diagnose than a clear failure. We have instead addressed the concern through the changes described under R1.8c and R1.11. The pre-flight check now tells the user when a file is missing because the layout changed upstream and asks them to report it, so the index can be rebuilt with `data-raw/cnefe_index_2022.R` and shipped in a patch release. Until then, `read_cnefe(file = ...)` reads a ZIP the user downloads by hand, as IBGE publishes it, without going through the index. Section 3 of the manuscript now describes both.
+We first checked whether a runtime scan could find files reliably. The IBGE server publishes a standard directory listing, and file names follow a fixed pattern, `<7-digit code>_<NAME>.zip`, so a file can be found by its code without guessing. Rebuilding the URLs of all 645 municipalities of São Paulo state from the listing reproduced the internal index exactly.
+
+The scan is a recovery path and doesn't replace the index. It runs only when the pre-flight check described under R1.8c finds that the indexed URL returns 404. It first lists the directory the indexed URL points into, and if the code isn't there, it lists the parent directory, finds the state's folder by its two-digit code and lists that, so it handles both a renamed file and a renamed state folder. It reads directory pages only, about 170 KB per state and never a data file, and it doesn't change the index, so a successful scan fixes that one call. If it finds nothing, the error says so and asks the user to report the URL, so the index can be rebuilt with `data-raw/cnefe_index_2022.R` and shipped in a patch release. Until then, `read_cnefe(file = ...)` reads a ZIP the user downloads by hand, as IBGE publishes it. The tests mock the directory listing, so they need no network access. Section 3 of the manuscript now describes this.
 
 ### R1.8b: "Future censuses" claim versus hardcoded 2022
 
@@ -261,7 +264,7 @@ The regression test checks that the filter is translated to Arrow, not only that
 
 > **Architecture Consistency & Efficiency in `read_cnefe()`:** The current implementation of `read_cnefe()` extracts the ZIP file to a temporary directory using `utils::unzip()` before reading it with `arrow::read_delim_arrow()`. This "unpack-every-time" approach is somewhat wasteful in terms of disk I/O and CPU. While using DuckDB's `zipfs` for zero-extraction streaming is a valid alternative, reading directly from ZIP archives can be computationally expensive for repeated queries. Empirical benchmarks using the Salvador dataset (1.3M rows) show that reading from standard ZIP archives via `zipfs` is significantly slower than native alternatives. Specifically, Gzip was **2.2x faster** than ZIP, and raw CSV was **4.7x faster**. The authors might consider re-compressing the cached data into `.gz` (Gzip) format. DuckDB supports Gzip decompression natively in its core, which avoids the protocol overhead of the community `zipfs` extension. Beyond performance, the authors might also consider the potential stability risks of relying on community-maintained DuckDB extensions in an R package. Some community extensions (e.g., `onager`) are known to encounter issues on macOS due to lack of code-signing and GateKeeper whitelisting. This can cause significant loading delays (4-5 seconds) as the OS re-verifies the extension on every load. While it is unclear if `zipfs` suffers from this specific issue, minimising the surface area of external community dependencies is generally considered a safer practice for production-grade R packages when native alternatives (like Gzip or Parquet) are available. Another resilient option would be to provide a conversion/reorganisation function that allows users to move data from the transient cache to a persistent, optimised structure (like raw CSV or Parquet) on a disk of their choice (see the `spanishoddata` package for an example of this design). Moving toward a lazy DuckDB/DuckSpatial relation (potentially via `duckspatial_df`) instead of a materialised `arrow::Table` would complete this transition to a modern, memory-efficient architecture. I have included three small supplementary scripts: `benchmark_gz_vs_zip.R`, which benchmarks ZIP/`zipfs` reads against native Gzip and raw CSV on the Salvador data; and `suggested_duckdb_impl.R` and `test_duckdb_zipfs.R`, which demonstrate the basic DuckDB/`zipfs` approach. They are not proposed as drop-in production code, but they may help clarify the implementation pattern and provide a starting point for more formal package tests or benchmarks.
 
-**Response:** **Three of the four suggestions are implemented; we did not adopt the lazy relation, for the reasons given below.**
+**Response:** **Three of the four suggestions are implemented. We did not adopt the lazy relation, for the reasons given below.**
 
 We address the four suggestions in turn.
 
@@ -298,7 +301,7 @@ This follows `spanishoddata`, which the referee cites. It also answers Referee 2
 
 This is the one suggestion we did not take. A lazy relation, `tbl(con, ...)` in the referee's `suggested_duckdb_impl.R`, is valid only while its connection is alive. Returning one from `read_cnefe()` requires the connection to outlive the call, with ownership transferred to the returned object and released by a finalizer or an explicit close.
 
-This would conflict with the connection handling requested in R1.12 and R2.C3, which identify connections whose cleanup was not deterministic; R1.12 recommends `withr::defer()`. We adopted it, and every connection now registers a guarded cleanup on its caller's frame immediately after `dbConnect()` returns. Returning a lazy relation would bring back connections that outlive the function call.
+This would conflict with the connection handling requested in R1.12 and R2.C3, which identify connections whose cleanup was not deterministic. R1.12 recommends `withr::defer()` and we adopted it, and every connection now registers a guarded cleanup on its caller's frame immediately after `dbConnect()` returns. Returning a lazy relation would bring back connections that outlive the function call.
 
 It is also a breaking change to the return type. `read_cnefe()` currently returns an `arrow::Table` or an `sf` object, and a lazy relation is a third type with different semantics, which four internal code paths and two published articles assume.
 
@@ -324,7 +327,7 @@ We verified that the connection is closed both when the caller returns normally 
 
 > **Test Coverage & Quality:** While the package includes a `testthat` suite with good use of mocks for offline testing of `read_cnefe()`, the overall package coverage is relatively low at ~25%. Specifically, critical spatial transformation functions such as `tracts_to_h3()` and `tracts_to_polygon()` currently have 0% and ~10% coverage, respectively. Given the complexity of the geospatial logic and the dual-backend architecture, I strongly encourage the authors to expand the test suite to ensure the reliability of these core components.
 
-**Response:** **Accepted. Both functions now have output tests; the CRAN-default figure for `tracts_to_h3()` stays at 0% for the reason given below.**
+**Response:** **Accepted. Both functions now have output tests. The CRAN-default figure for `tracts_to_h3()` stays at 0% for the reason given below.**
 
 We added tests, and coverage rose for the package as a whole and for `tracts_to_polygon()` in particular. The 0% for `tracts_to_h3()` has a specific cause, explained below.
 
@@ -376,7 +379,7 @@ Section 4.3 states what the binary split does and doesn't measure, as described 
 
 > **Exclusion of COD_ESPECIE == 7.** The article explains that type 7 ("under construction or renovation") is excluded from `compute_lumi()` due to its "transitional nature." However, with 3.5 million such records (3.2% of all addresses), and likely concentrated in rapidly urbanizing peripheries, their exclusion could systematically bias LUMI indices in precisely those areas where land-use classification matters most. The article should at minimum discuss the direction and likely magnitude of this bias. Additionally, `cnefe_counts()` does NOT exclude type 7 (it appears in `addr_type7`), creating an inconsistency between the two functions that should be documented.
 
-**Response:** **Accepted for the documentation and the direction of the bias; we have not quantified its magnitude. Checking the exclusion also revealed a defect, now fixed.**
+**Response:** **Accepted for the documentation and the direction of the bias. Checking the exclusion also revealed a defect, now fixed.**
 
 The different treatment of type 7 is now documented in both functions. `?compute_lumi` states that type 7 is excluded and why, `?cnefe_counts` states that it is retained and reported as `addr_type7`, and the two help pages cross-reference each other. The difference is intentional, since a building under construction describes a transitional state and not a realised land use, but it was not documented.
 
@@ -386,17 +389,17 @@ On the magnitude, we have not quantified it. Estimating how the exclusion shifts
 
 While checking that the exclusion was applied consistently, we found that it was not. Of the four code paths in `compute_lumi()`, the DuckDB backend for user-supplied polygons never applied the filter, so every index it returned was computed over a denominator that still contained type 7. Since `backend = "duckdb"` is the default, this was the path most users of `polygon_type = "user"` would have hit. Cross-checked against `cnefe_counts()` on the 19 neighbourhoods of Lauro de Freitas, the discrepancy reached 0.13 in `p_res` and 0.32 in `bgbi`, in a municipality where type 7 is 3.7% of addresses. The fix is one clause of SQL, the two backends now agree to zero difference on all seven indices, and the defect and its evidence are recorded in the package issue tracker.
 
-### R2.3: Global P in BGBI: scope and computation
+### R2.3: Global $P$ in BGBI: scope and computation
 
 > **Global P in BGBI: scope and computation.** The article states that "The citywide residential share P is computed from the full municipality CNEFE" (Section 4.3), which is correct and appropriate. However, two subtleties deserve mention: (a) P is derived from CNEFE dwelling counts, not from the population census, so it reflects the *distribution of address types* rather than the *distribution of residents* — a municipality with many small households and few large institutions would have a high P regardless of population; and (b) when `polygon_type = "user"`, P still reflects the entire municipality, not just the area covered by the user's polygons, which means the BGBI baseline is externally defined rather than locally computed.
 
-**Response:** **Both points are now documented; the computation is unchanged.**
+**Response:** **Both points are now documented, but the computation remains unchanged.**
 
-On (a), P is derived from CNEFE address-type counts rather than from census population, so it describes the distribution of address types and not the distribution of residents. This is now stated explicitly in `?compute_lumi` and in Section 4.3.
+On (a), the referee is right that $P$ is derived from CNEFE address-type counts rather than from census population, so it describes the distribution of address types and not the distribution of residents. We see this as consistent with what land use mix indices are meant to measure. Indeed, they describe how land is divided among uses, and the measures compared by Song et al. (2013) are all computed from the amount of each use in an area, and not from the number of people who live or work there. A share weighted by population would answer a different question, closer to density than to mix, and two areas with the same uses would get different scores only because one of them has more people per dwelling. In the referee's example, a high $P$ means that most addresses in the municipality are dwellings, which is exactly the baseline the BGBI is meant to use.
 
-On (b), P does remain citywide under `polygon_type = "user"`, and this is intentional. P describes the context in which the addresses sit, which is the municipality. A user-supplied sub-area, even when it covers only part of the city, is still part of that wider context, so a citywide baseline is the intended reference. A baseline recomputed over the covered area would measure a different quantity, namely mix relative to the sub-area itself instead of the city, which is the comparison the BGBI was designed to avoid. This reasoning is now explained in both the documentation and the manuscript.
+On (b), $P$ remains citywide when `polygon` is supplied, and this is intentional. $P$ describes the context in which the addresses sit, which is the municipality. A user-supplied sub-area, even when it covers only part of the city, is still part of that wider context, so a citywide baseline is the intended reference. A baseline recomputed over the covered area would measure a different quantity, namely mix relative to the sub-area itself instead of the city, which is the comparison the BGBI was designed to avoid. This reasoning is now explained in both the documentation and the manuscript.
 
-We also note that P is used by two indices, the BGBI and the Balance Index, where it enters through $r = P/(1-P)$. The other indices are computed entirely within each spatial unit.
+We also note that $P$ is used by two indices, the BGBI and the Balance Index, where it enters through $r = P/(1-P)$. The other indices are computed entirely within each spatial unit.
 
 ### R2.4: Dasymetric interpolation: unallocated population and ecological fallacy
 
@@ -496,7 +499,7 @@ The comment anticipates that "the in-memory DuckDB approach may require several 
 | Curitiba-PR (~900k) | 0.43 GB | 1.72 GB | 4.0 |
 | São Paulo-SP (~5.7M) | **0.70 GB** | **9.03 GB** | **12.8** |
 
-DuckDB streams the CSV and aggregates as it goes, so it never materialises the address table and its footprint stays nearly flat, rising only from 0.43 to 0.70 GB across a 28-fold increase in input. The pure-R backend holds the filtered table in R memory, so its footprint scales with the input and reaches 9 GB on São Paulo.
+DuckDB streams the CSV and aggregates as it goes, so it never materialises the address table and its footprint stays nearly flat, rising only from 0.46 GB on Vitória da Conquista-BA to 0.70 GB on São Paulo-SP across a 28-fold increase in input. The pure-R backend holds the filtered table in R memory, so its footprint scales with the input and reaches 9 GB on São Paulo.
 
 This changes advice the package was giving. Both the manuscript and the article recommended the pure-R backend for constrained environments. That is right when the constraint is that DuckDB extensions cannot be installed, which is the case it was written for, and wrong when the constraint is memory. The article now separates the two, and so does Section 5 of the manuscript.
 
@@ -606,7 +609,7 @@ We checked each item against the code. All four were confirmed, and two were mor
 | Polygon validation | duplicated across 3 functions | confirmed, differing only in one error message |
 | Diagnostic reporting | duplicated | confirmed, roughly 200 lines each |
 
-Four internal helpers now carry the shared logic: a DuckDB connect-and-quiet helper, the allocation SQL builder, the polygon validator, and the two-stage diagnostics builder and reporter. `tracts_to_h3.R` went from 801 to 425 lines and `tracts_to_polygon.R` from 973 to 580.
+Four internal helpers now carry the shared logic: a DuckDB connect-and-quiet helper, the allocation SQL builder, the polygon validator, and the two-stage diagnostics builder and reporter. `tracts_to_h3.R` went from 801 to 434 lines and `tracts_to_polygon.R` from 973 to 589.
 
 Two further points.
 
@@ -694,7 +697,7 @@ We considered the other option the referee offers, exporting it for advanced use
 > - No tests for the `crs_output` parameter behavior.
 > - The file `test-test-tracts_to_h3.R` has a double "test-" prefix, likely a typo.
 
-**Response:** **All five points accepted; two had already been addressed earlier in this revision.**
+**Response:** **All five points accepted. Two had already been addressed earlier in this revision.**
 
 **Output correctness for `tracts_to_polygon()`.** The file tested only input validation. It now has a suite mirroring the mocked setup of the `tracts_to_h3()` test, designed so the expected values are exact: two tracts, only one containing CNEFE points, so a covering polygon must receive exactly 100 of the 150 available and the other 50 must stay out. It also covers a tract split 50/50 across two polygons, preservation of the caller's columns and CRS, absence of the internal join column, and the two-stage diagnostics. Coverage of that file goes from 10.8% to 83.3%.
 

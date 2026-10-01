@@ -154,8 +154,9 @@ different numbers of households depending on floor plan and unit size,
 and height or floor data from volunteered geographic information are
 frequently incomplete.
 
-Because each CNEFE record corresponds to one address unit, the point count within a zone
-directly reflects the number of dwellings, making it a more precise
+Because each private household record in the CNEFE is one dwelling, the
+count of such points within a zone directly reflects the number of
+dwellings, making it a more precise
 ancillary variable for identifying population density in verticalized
 urban environments. Beyond interpolation, no R package currently
 provides tools for computing land use mix indices from either
@@ -325,11 +326,13 @@ code is a seven-digit IBGE code present in the index.
 Because the index is fixed when the package is released, it does not
 follow later changes to the FTP layout. Before downloading, the package
 therefore checks whether the server can be reached and whether the file
-exists, and it reports the two failures differently. An unreachable
-server points the user to their connection, while a missing file means
-the layout has changed upstream, and the message asks the user to
-report it. Either way, a ZIP obtained by other means can still be read
-with `read_cnefe(file = ...)`, described below.
+exists. An unreachable server points the user to their connection. When
+the file is missing, the package lists the published directory, where
+file names start with the municipality code, and retries with the URL it
+finds there. Only if that also fails does it report that the layout has
+changed upstream and ask the user to report it. Either way, a ZIP
+obtained by other means can still be read with `read_cnefe(file = ...)`,
+described below.
 
 ## Persistent user-level caching
 
@@ -511,7 +514,7 @@ cnefe |>
 ```
 
 The function accepts the `year` argument (currently only 2022 is
-supported), `cache` to control ZIP caching, and `verbose` to toggle
+supported), `cache` to control caching, and `verbose` to toggle
 informative progress messages. Figure \@ref(fig:fig-read-cnefe) maps the
 educational establishment addresses for Lauro de Freitas which was
 previously read in `cnefe_sf`.
@@ -682,8 +685,9 @@ type 7 (under construction). The citywide residential share $P$ is
 computed in the same way over the whole municipality, and it is used by
 the Balance Index and by the BGBI.
 
-Table \@ref(tab:lumi-table) summarises the seven indices computed by
-`compute_lumi()`. Further methodological details on these indices can be
+Table \@ref(tab:lumi-table) summarises the six indices computed by
+`compute_lumi()`, together with the residential share $p_i$ on which
+they are based, which is also returned. Further methodological details on these indices can be
 found in @song2013, @massey2001, @pedreirajr2025 and
 @pedreirajr2026bgbi.
 
@@ -947,11 +951,13 @@ knitr::kable(
 
 The entire computation pipeline runs within an in-memory DuckDB instance
 and proceeds in six steps, with all heavy operations remaining inside
-DuckDB until the final aggregated result is materialised in R:
+DuckDB until the final aggregated result is materialised in R, followed
+by a diagnostic report:
 
-1.  **DuckDB setup**: an in-memory DuckDB database is opened and two
-    extensions are loaded: `h3` (for H3 cell assignment in SQL) and
-    `spatial` (for `ST_Within` point-in-polygon joins). Reading the
+1.  **DuckDB setup**: an in-memory DuckDB database is opened and the
+    `spatial` extension is loaded for the `ST_Within` point-in-polygon
+    joins, together with the `h3` extension for cell assignment in SQL
+    in the case of `tracts_to_h3()`. Reading the
     cached data needs no extension, since DuckDB decompresses gzip
     natively.
 
