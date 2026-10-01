@@ -430,7 +430,7 @@ cnefe_index <- .get_cnefe_index(year)
   # Register user polygons in DuckDB using duckspatial (quiet)
   invisible(
     .duckdb_quiet(
-      duckspatial::ddbs_write_vector(
+      duckspatial::ddbs_write_table(
         conn = con,
         # Normalize geometry column to "geom"; duckspatial preserves the
         # input sf geometry name, but the SQL below hardcodes "geom".
