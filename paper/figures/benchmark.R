@@ -7,9 +7,9 @@
 # pkgdown article (vignettes/articles/bench_duckdb.Rmd.orig) both read that
 # one file through the shared helpers in data-raw/bench_r2_8_plots.R, so
 # neither can disagree with the other about a speedup, a rounding rule or a
-# label. That divergence is what Referee 1 flagged as R1.3 for the submitted
-# version, where the article's opening claimed "up to 20x" while its own
-# table below showed 13.33.
+# label. That divergence happened in the version first submitted, where the
+# article's opening claimed "up to 20x" while its own table below showed
+# 13.33.
 #
 # An earlier version of this script measured on its own, one run per
 # configuration, all DuckDB cases followed by all pure-R cases. That ordering
