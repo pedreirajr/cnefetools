@@ -40,14 +40,15 @@ remotes::install_github("pedreirajr/cnefetools")
 
 | Function | Description |
 |----|----|
-| `read_cnefe()` | Downloads and reads CNEFE data for a municipality; returns an Arrow table or `sf` object |
+| `read_cnefe()` | Downloads and reads CNEFE data for a municipality, or reads a local file with `file = ...`, and returns an Arrow table or `sf` object |
 | `cnefe_counts()` | Aggregates address counts to H3 hexagons or user-provided polygons |
 | `compute_lumi()` | Computes land-use mix indices on H3 hexagons or user-provided polygons |
 | `tracts_to_h3()` | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points |
 | `tracts_to_polygon()` | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
 | `cnefe_doc()` | Opens the official CNEFE methodological note (PDF) |
 | `cnefe_dictionary()` | Opens the official CNEFE variable dictionary (Excel) |
-| `clear_cache_muni()`, `clear_cache_tracts()` | Delete cached CNEFE ZIP files or census tract Parquet files from the user cache directory |
+| `cnefe_export()` | Writes a municipality to a persistent file of your choice (Parquet, CSV or gzipped CSV) |
+| `clear_cache_muni()`, `clear_cache_tracts()` | Delete cached CNEFE files or census tract Parquet files from the cache directory |
 
 ## Reading CNEFE data
 
@@ -109,25 +110,60 @@ ggplot() +
   theme_minimal()
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
+<img src="man/figures/README-salvador-temples-1.png" alt="" width="100%" />
 
-**Warning:** For large municipalities, CNEFE may contain more than 1
-million address points. Plotting all coordinates at once can be slow and
+**Warning:** For large municipalities, CNEFE may contain millions of
+address points. Plotting all coordinates at once can be slow and
 memory-intensive, so consider filtering or sampling before creating
 maps.
 
 ## Caching behavior
 
-By default, `cache = TRUE` stores the downloaded ZIP file in a
-user-level cache directory specific to this package. If you prefer to
-avoid persistent caching, set:
+By default, `cache = TRUE` keeps each municipality you download, so
+later calls don’t download it again. The ZIP published by IBGE is
+converted once, on the first download, into a gzipped CSV, which takes
+about the same disk space and is faster to read.
+
+The cache lives in `tools::R_user_dir("cnefetools", "cache")` unless you
+point it somewhere else. You can do that for a single call with the
+`cache_dir` argument, which every function that reads data accepts, or
+for the whole session with the `CNEFETOOLS_CACHE_DIR` environment
+variable. The argument wins when both are set:
+
+``` r
+# One call
+tab_ssa <- read_cnefe(code_muni = 2927408, cache_dir = "D:/cnefe-cache")
+
+# The whole session (or set it in your .Renviron)
+Sys.setenv(CNEFETOOLS_CACHE_DIR = "D:/cnefe-cache")
+```
+
+If you prefer to avoid persistent caching, set:
 
 ``` r
 tab_ssa <- read_cnefe(code_muni = 2927408, cache = FALSE)
 ```
 
-In this case, the ZIP file is stored in a temporary location and removed
-after reading.
+In this case, the file is stored in a temporary location and removed
+after reading. The [Cache and exported copies
+article](https://pedreirajr.github.io/cnefetools/articles/cache.html)
+covers all of this in more detail.
+
+## Keeping your own copy
+
+The cache is meant to be disposable, and the cleaning functions below
+empty it. If an analysis needs a copy of the data that stays put,
+`cnefe_export()` writes a municipality to a folder of your choice as
+Parquet (the default), CSV or gzipped CSV, and `read_cnefe(file = ...)`
+reads it back without downloading anything:
+
+``` r
+path <- cnefe_export(2927408, path = "data/cnefe")
+tab_ssa <- read_cnefe(file = path)
+```
+
+`file` also accepts the ZIP exactly as IBGE publishes it, so a file you
+downloaded by other means can be read the same way.
 
 ## Accessing official CNEFE documentation
 
@@ -185,10 +221,11 @@ ggplot(hex_sp) +
   )
 ```
 
-<img src="man/figures/README-unnamed-chunk-9-1.png" width="100%" />
+<img src="man/figures/README-sao-paulo-households-1.png" alt="" width="100%" />
 
-`cnefe_counts()` also supports `polygon_type = "user"` to aggregate
-counts to custom polygons instead of H3 hexagons. See the [cnefe_counts
+`cnefe_counts()` also supports user-supplied polygons to aggregate
+counts to custom polygons instead of H3 hexagons (just pass an `sf`
+object to `polygon`). See the [cnefe_counts
 article](https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.html)
 for details.
 
@@ -202,6 +239,14 @@ Available indicators include the Entropy Index (`ei`), the
 Herfindahl-Hirschman Index (`hhi`), the Balance Index (`bal`), the Index
 of Concentration at Extremes (`ice`), an adapted HHI (`hhi_adp`), and
 the Bidirectional Global-centered Balance Index (`bgbi`).
+
+All of them rest on a binary split: an address counts as residential
+when it’s a private household (`COD_ESPECIE == 1`) and as
+non-residential otherwise, and buildings under construction (type 7) are
+left out. So the indices measure the balance between housing and all
+other uses, not how diverse those other uses are. The residential share
+itself is returned as `p_res`, and if you need the individual
+non-residential types, `cnefe_counts()` keeps all eight.
 
 Below is an example for Fortaleza at H3 resolution 8:
 
@@ -246,10 +291,11 @@ ggplot(lumi_ftl) +
   )
 ```
 
-<img src="man/figures/README-unnamed-chunk-11-1.png" width="100%" />
+<img src="man/figures/README-fortaleza-bgbi-1.png" alt="" width="100%" />
 
-`compute_lumi()` also supports `polygon_type = "user"` to compute
-indices on custom polygons. See the [compute_lumi
+`compute_lumi()` also supports user-supplied polygons to compute indices
+on custom polygons. Likewise, just pass an `sf` object to `polygon`. See
+the [compute_lumi
 article](https://pedreirajr.github.io/cnefetools/articles/compute_lumi.html)
 for details.
 
@@ -298,7 +344,7 @@ ggplot(rec_hex) +
   )
 ```
 
-<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
+<img src="man/figures/README-recife-h3-population-1.png" alt="" width="100%" />
 
 And the average income of the household head (`avg_inc_resp`):
 
@@ -320,7 +366,7 @@ ggplot(rec_hex) +
   )
 ```
 
-<img src="man/figures/README-unnamed-chunk-14-1.png" width="100%" />
+<img src="man/figures/README-recife-h3-income-1.png" alt="" width="100%" />
 
 The full list of available variables is documented in the
 `tracts_variables_ref` dataset (see `?tracts_variables_ref`). For
@@ -375,7 +421,7 @@ ggplot(rec_poly) +
   )
 ```
 
-<img src="man/figures/README-unnamed-chunk-16-1.png" width="100%" />
+<img src="man/figures/README-recife-neighborhoods-income-1.png" alt="" width="100%" />
 
 See the [tracts_to
 article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html)
@@ -384,30 +430,41 @@ for details.
 ## DuckDB-powered spatial operations
 
 Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as
-its default backend to perform spatial operations efficiently, with
-speedups of up to 20x over pure-R code depending on the number of
-address points and the size of the spatial units. This is made possible
-by three DuckDB extensions:
+its default backend. DuckDB reads the cached gzipped CSV directly,
+decompressing it natively, and aggregates as it scans, so the full
+address table never has to sit in memory. Its advantage over pure R
+grows with the size of the municipality. On São Paulo, the largest in
+the country, `cnefe_counts()` runs more than 15 times faster and its
+peak memory is more than 12 times smaller.
 
+Two DuckDB extensions do the spatial work:
+
+- [**h3**](https://duckdb.org/community_extensions/extensions/h3):
+  assigns geographic coordinates to [H3 hexagonal
+  grid](https://h3geo.org/) cells entirely inside DuckDB.
 - [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
   performs spatial joins (e.g., point-in-polygon) in SQL, used when
   aggregating to user-provided polygons or performing dasymetric
   interpolation.
-- [**zipfs**](https://duckdb.org/community_extensions/extensions/zipfs):
-  reads CSV files directly from cached ZIP archives, avoiding the need
-  to extract files to disk.
-- [**h3**](https://duckdb.org/community_extensions/extensions/h3):
-  assigns geographic coordinates to [H3 hexagonal
-  grid](https://h3geo.org/) cells entirely inside DuckDB.
 
 The R package [**duckspatial**](https://cidree.github.io/duckspatial/)
-also bridges `sf` objects and DuckDB’s spatial extension, enabling
-seamless transfers between R and DuckDB.
+bridges `sf` objects and DuckDB’s spatial extension.
 
-All extensions are installed and loaded automatically on first use. A
-pure-R fallback (`backend = "r"`) is also available, using `h3jsr` and
-`sf` for the same operations on `cnefe_counts()` and `compute_lumi()`
-functions (slower, but without the DuckDB dependency).
+All extensions are installed and loaded automatically on first use. You
+can set how many threads and how much memory DuckDB may use:
+
+``` r
+options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
+```
+
+`cnefe_counts()` and `compute_lumi()` also have a pure-R backend
+(`backend = "r"`), built on `h3jsr` and `sf`. Use it when DuckDB
+extensions can’t be installed, for example on some restricted computing
+clusters. It isn’t the lighter option as it holds the address table in R
+memory, so on large municipalities it needs far more RAM than DuckDB.
+See the [benchmark
+article](https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html)
+for the measurements.
 
 ## Managing the local cache
 
@@ -417,13 +474,13 @@ download. **{cnefetools}** provides two dedicated functions for
 fine-grained control over the local cache, allowing you to remove cached
 files selectively or all at once.
 
-`clear_cache_muni()` deletes cached CNEFE ZIP files from the user cache
+`clear_cache_muni()` deletes cached CNEFE files from the cache
 directory. You can remove all cached files at once or target a specific
 municipality by its seven-digit IBGE code:
 
 ``` r
-clear_cache_muni()          # delete all cached CNEFE ZIPs
-clear_cache_muni(2919207)   # delete only the ZIP for Lauro de Freitas-BA
+clear_cache_muni()          # delete all cached CNEFE files
+clear_cache_muni(2919207)   # delete only the file for Lauro de Freitas-BA
 ```
 
 `clear_cache_tracts()` removes cached census tract Parquet files. You
@@ -438,13 +495,16 @@ clear_cache_tracts(29)      # same, using the numeric state code
 clear_cache_tracts(2919207) # same, using a municipality code
 ```
 
+If you moved the cache with `cache_dir`, pass the same `cache_dir` to
+these functions, so they clean the folder you’re actually using.
+
 ## Citation
 
 If you use **{cnefetools}** in your work, please cite it as:
 
 > Pedreira Junior, J.U. & Stabile, B.H.M. (2026). cnefetools: Access and
-> Analysis of Brazilian CNEFE Address Data. GitHub repository:
-> <https://github.com/pedreirajr/cnefetools>
+> Analysis of Brazilian CNEFE Address Data. R package, available on
+> CRAN: <https://CRAN.R-project.org/package=cnefetools>
 
 If you use the land use mix index functions in `compute_lumi()`,
 particularly the BGBI, please also cite:
