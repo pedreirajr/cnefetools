@@ -90,17 +90,18 @@
 
 - The download cache now stores a **gzipped CSV** instead of the
   published ZIP. DuckDB decompresses gzip natively, so the community
-  `zipfs` extension is no longer loaded on the normal read path, which
-  removes a dependency on a community extension (these have been
-  reported to add code-signing delays of 4 to 5 seconds per load on
-  macOS). Measured in `data-raw/bench_gz_vs_zip.R`, on Fortaleza a
-  DuckDB read is 2.29x faster from `.csv.gz` than through `zipfs`, at
-  the same size on disk (27.6 MB either way). Raw CSV would be 4.86x
-  faster but needs 6.7x the disk, so it is not a sensible cache format.
-  The conversion is done once, on first download, and is streamed in
-  chunks so peak memory does not scale with the file. Caches written by
-  earlier versions are still readable, through the `zipfs` route loaded
-  on demand
+  `zipfs` extension is no longer used, which removes a dependency on a
+  community extension (these have been reported to add code-signing
+  delays of 4 to 5 seconds per load on macOS). Measured in
+  `data-raw/bench_gz_vs_zip.R`, on Fortaleza a DuckDB read is 2.29x
+  faster from `.csv.gz` than through `zipfs`, at the same size on disk
+  (27.6 MB either way). Raw CSV would be 4.86x faster but needs 6.7x the
+  disk, so it is not a sensible cache format. The conversion is done
+  once, on first download, and is streamed in chunks so peak memory does
+  not scale with the file. Caches written by earlier versions are not
+  read, so each municipality is downloaded again once, and
+  [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
+  removes the old ZIPs
   ([\#93](https://github.com/pedreirajr/cnefetools/issues/93)).
 
 - The download cache is now segregated by CNEFE edition, at
@@ -127,9 +128,9 @@
   [`cnefe_export()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_export.md)
   writes a municipality to a persistent, optimised file at a location of
   your choosing, as Parquet (default), CSV or gzipped CSV. The package
-  cache is transient by design, lives in a directory the package manages
-  and holds the ZIP exactly as IBGE published it, which is the wrong
-  shape for an analysis that must still run in a year
+  cache is transient by design and lives in a directory the package
+  manages, which is the wrong place for an analysis that must still run
+  in a year
   ([\#93](https://github.com/pedreirajr/cnefetools/issues/93)).
 
 - [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/dev/reference/read_cnefe.md)
