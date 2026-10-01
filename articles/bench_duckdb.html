@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">cnefetools</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/tracts_to.html">Dasymetric interpolation using CNEFE addresses</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/cache.html">Cache and exported copies</a></li>
     <li><a class="dropdown-item" href="../articles/bench_duckdb.html">Performance benchmark: DuckDB vs pure-R backends</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
@@ -82,348 +83,339 @@
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>Under the hood, <strong>{cnefetools}</strong> uses <a href="https://duckdb.org/" class="external-link">DuckDB</a> as its default backend to perform
-spatial operations efficiently, with speedups of up to
-<strong>20x</strong> over pure-R code depending on the number of address
-points and the size of the spatial units.</p>
-<p>This performance boost is made possible by three DuckDB
-extensions:</p>
+<p>Under the hood, <strong>{cnefetools}</strong> uses <a href="https://duckdb.org/" class="external-link">DuckDB</a> as its default backend for the
+heavy work. A pure-R fallback (<code>backend = "r"</code>) is available
+for environments where DuckDB extensions cannot be installed, using <a href="https://github.com/obrl-soil/h3jsr" class="external-link">h3jsr</a> and <a href="https://r-spatial.github.io/sf/" class="external-link">sf</a> for the same
+operations.</p>
+<p>Two DuckDB extensions do the work:</p>
 <ul>
-<li>
-<a href="https://duckdb.org/docs/stable/core_extensions/spatial/overview" class="external-link"><strong>spatial</strong></a>:
-performs spatial joins (e.g., point-in-polygon) in SQL</li>
-<li>
-<a href="https://duckdb.org/community_extensions/extensions/zipfs" class="external-link"><strong>zipfs</strong></a>:
-reads CSV files directly from cached ZIP archives, avoiding the need to
-extract files to disk</li>
 <li>
 <a href="https://duckdb.org/community_extensions/extensions/h3" class="external-link"><strong>h3</strong></a>:
 assigns geographic coordinates to H3 hexagonal grid cells entirely
-inside DuckDB</li>
+inside DuckDB. This is what <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> and
+<code><a href="../reference/compute_lumi.html">compute_lumi()</a></code> rely on.</li>
+<li>
+<a href="https://duckdb.org/docs/stable/core_extensions/spatial/overview" class="external-link"><strong>spatial</strong></a>:
+performs point-in-polygon joins in SQL. This is what the
+<code>tracts_to_*()</code> functions and the user-polygon mode rely on.
+It is not used by the H3 mode benchmarked here.</li>
 </ul>
-<p>A pure-R fallback (<code>backend = "r"</code>) is also available,
-using <a href="https://github.com/obrl-soil/h3jsr" class="external-link">h3jsr</a> and <a href="https://r-spatial.github.io/sf/" class="external-link">sf</a> for the same operations
-(slower, but without the DuckDB dependency).</p>
-<p>In this article, we demonstrate the performance in two different
-settings using the <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> function:</p>
-<ul>
-<li><p>First, we compare three different municipalities: <strong>São
-Paulo-SP</strong> (~5.7 million addresses), <strong>Curitiba-PR</strong>
-(~900,000 addresses), and <strong>Vitória da Conquista-BA</strong>
-(~200,000 addresses);</p></li>
-<li><p>Then, we contrast processing times for three different H3
-resolutions (7, 9, and 11) within the same city
-(<strong>Curitiba</strong>).</p></li>
-</ul>
-<p>Benchmarks were run on a machine equipped with a 14-core, 20-thread
-CPU (13th Gen Intel Core i9-13900H, 2.60 GHz), 32 GB of RAM, and Windows
-11. Tests were executed in R 4.3.2 using DuckDB 1.4.1.</p>
+<p>The cached file itself is a gzipped CSV, which DuckDB decompresses
+natively, so no extension is involved in reading it.</p>
+<p>This article compares the two backends along two dimensions, using
+<code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code>: municipality size, measured in both elapsed
+time and peak memory, and H3 output resolution.</p>
 </div>
 <div class="section level2">
-<h2 id="comparing-cities-of-different-sizes">Comparing cities of different sizes<a class="anchor" aria-label="anchor" href="#comparing-cities-of-different-sizes"></a>
+<h2 id="how-these-numbers-were-produced">How these numbers were produced<a class="anchor" aria-label="anchor" href="#how-these-numbers-were-produced"></a>
 </h2>
-<p>Let’s compare the performance of <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> when
-aggregating CNEFE address points to H3 hexagons at resolution 8.</p>
-<div class="section level3">
-<h3 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
-</h3>
+<p>Running the same call on the same warm input repeatedly, we measured
+elapsed times from 1.63 s to 3.77 s within a single session, with the
+slow runs at the end rather than the beginning, and a fresh session
+minutes later ran uniformly slower than the first session’s early runs.
+That points to CPU thermal and frequency drift rather than to a cold
+page cache, which would have made the first runs slow instead of the
+last, or to thread scheduling, since pinning CPU affinity barely changed
+anything.</p>
+<p>If you time every DuckDB case and then every pure-R case, all of that
+drift lands on one backend, where you can’t tell it apart from the
+effect you’re trying to measure. So the measurements here:</p>
+<ul>
+<li>discard a warm-up run per configuration, so the OS page cache is hot
+and the one-off extension load is already paid;</li>
+<li>visit every configuration once per pass, round-robin, repeated 3 to
+5 times, so drift becomes noise spread across all configurations rather
+than bias loaded onto one;</li>
+<li>report the <strong>median</strong> with the observed min-max range,
+not a single run;</li>
+<li>run each replicate in a <strong>fresh R subprocess</strong>;</li>
+<li>record how much CPU the rest of the machine used during each
+replicate, so contention is visible in the data rather than assumed
+away.</li>
+</ul>
+<p>Peak memory is the operating system’s peak working set for the whole
+process, via <code><a href="https://ps.r-lib.org/reference/ps_memory_info.html" class="external-link">ps::ps_memory_info()</a></code>, and not R-level
+allocation tracking such as <code>bench::mark()</code>’s
+<code>mem_alloc</code>. R-level tracking only counts the R heap, and
+DuckDB allocates in C++ outside it, so it would understate DuckDB by a
+wide margin.</p>
+<p>The raw per-replicate measurements, including the machine-load
+columns, are in <code>data-raw/bench_r2_8.csv</code> in the package
+repository, and the harness that produced them is
+<code>data-raw/bench_r2_8.R</code>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedreirajr/cnefetools" class="external-link">cnefetools</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://haozhu233.github.io/kableExtra/" class="external-link">kableExtra</a></span><span class="op">)</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://haozhu233.github.io/kableExtra/" class="external-link">kableExtra</a></span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Municipality codes</span></span>
-<span><span class="va">cod_spo</span> <span class="op">&lt;-</span> <span class="fl">3550308</span> <span class="co"># São Paulo</span></span>
-<span><span class="va">cod_ctb</span> <span class="op">&lt;-</span> <span class="fl">4106902</span> <span class="co"># Curitiba</span></span>
-<span><span class="va">cod_vca</span> <span class="op">&lt;-</span> <span class="fl">2933307</span> <span class="co"># Vitória da Conquista</span></span>
+<code class="sourceCode R"><span><span class="co"># Summarising, labelling and plotting live in one place, shared with the</span></span>
+<span><span class="co"># manuscript's paper/figures/benchmark.R, so the two cannot disagree on a</span></span>
+<span><span class="co"># speedup, a rounding rule or a label.</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"../../data-raw/bench_r2_8_plots.R"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">cods</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">cod_spo</span>, <span class="va">cod_ctb</span>, <span class="va">cod_vca</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Benchmark DuckDB backend</span></span>
-<span><span class="va">time_duckdb_cities</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span></span>
-<span>  <span class="va">cods</span>,</span>
-<span>  <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>      <span class="va">result_duckdb_cities</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
-<span>        code_muni <span class="op">=</span> <span class="va">i</span>,</span>
-<span>        polygon_type <span class="op">=</span> <span class="st">"hex"</span>,</span>
-<span>        h3_resolution <span class="op">=</span> <span class="fl">8</span>,</span>
-<span>        backend <span class="op">=</span> <span class="st">"duckdb"</span>,</span>
-<span>        verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">}</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Benchmark pure-R backend</span></span>
-<span><span class="va">time_r_cities</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span></span>
-<span>  <span class="va">cods</span>,</span>
-<span>  <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>      <span class="va">result_duckdb_cities</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
-<span>        code_muni <span class="op">=</span> <span class="va">i</span>,</span>
-<span>        polygon_type <span class="op">=</span> <span class="st">"hex"</span>,</span>
-<span>        h3_resolution <span class="op">=</span> <span class="fl">8</span>,</span>
-<span>        backend <span class="op">=</span> <span class="st">"r"</span>,</span>
-<span>        verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">}</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Results</span></span>
-<span><span class="va">benchmark_results_cities</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  city <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"São Paulo"</span>, <span class="st">"Curitiba"</span>, <span class="st">"Vitória da Conquista"</span><span class="op">)</span>,<span class="fl">2</span><span class="op">)</span>,</span>
-<span>  backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Pure R"</span>,<span class="st">"DuckDB"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
-<span>  time_seconds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">time_r_cities</span><span class="op">[</span><span class="st">"elapsed"</span>,<span class="op">]</span>, <span class="va">time_duckdb_cities</span><span class="op">[</span><span class="st">"elapsed"</span>,<span class="op">]</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a>
-</h3>
+<span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu">bench_load</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">bench_med</span> <span class="op">&lt;-</span> <span class="fu">bench_summarise</span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
+<p>The machine: 14-core, 20-thread Intel Core i9-13900H (2.60 GHz), 32
+GB RAM, Windows 11.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">benchmark_results_cities</span></span>
-<span>       <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>         city <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">city</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'Vitória da Conquista'</span>,<span class="st">'Curitiba'</span>,<span class="st">'São Paulo'</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>         backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">backend</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Pure R"</span>, <span class="st">"DuckDB"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>       <span class="op">)</span>,</span>
-<span>       <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">city</span>, y <span class="op">=</span> <span class="va">time_seconds</span>, fill <span class="op">=</span> <span class="va">backend</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.6</span>, position <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_text.html" class="external-link">geom_text</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%.2f s"</span>, <span class="va">time_seconds</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    position <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span>,</span>
-<span>    vjust <span class="op">=</span> <span class="op">-</span><span class="fl">0.4</span>,</span>
-<span>    size <span class="op">=</span> <span class="fl">3</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Pure R"</span> <span class="op">=</span> <span class="st">"#E74C3C"</span>, <span class="st">"DuckDB"</span> <span class="op">=</span> <span class="st">"#2C3E50"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_y_continuous</a></span><span class="op">(</span>expand <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/expansion.html" class="external-link">expansion</a></span><span class="op">(</span>mult <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.08</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"Performance comparison: DuckDB vs Pure R"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="st">"(per city)"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Execution time (seconds)"</span>,</span>
-<span>    fill <span class="op">=</span> <span class="st">"Backend"</span>,</span>
-<span>    x <span class="op">=</span> <span class="cn">NULL</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">13</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span></span>
-<span>    plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>face <span class="op">=</span> <span class="st">"bold"</span>, size <span class="op">=</span> <span class="fl">15</span>, hjust <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
-<span>    plot.subtitle <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
-<span>    panel.grid.major.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="bench_duckdb_files/figure-html/plot-benchmark-cities-1.png" width="100%"></p>
-<blockquote>
-<p><strong>Note:</strong> For smaller municipalities, the DuckDB backend
-may offer little or no speedup over pure R, and in some cases may even
-be slightly slower. This occurs because DuckDB incurs a fixed overhead
-to initialize the database connection, load extensions, and materialize
-the data into its in-memory storage before any computation begins. When
-the dataset is small, this setup cost can outweigh the gains from
-DuckDB’s optimized query execution, making the pure-R backend
-competitive or faster.</p>
-</blockquote>
-</div>
-</div>
-<div class="section level2">
-<h2 id="contrasting-aggregation-across-three-different-spatial-resolutions">Contrasting aggregation across three different spatial
-resolutions<a class="anchor" aria-label="anchor" href="#contrasting-aggregation-across-three-different-spatial-resolutions"></a>
-</h2>
-<p>Now let’s compare the performance of <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> when
-aggregating CNEFE address points at different H3 resolutions for the
-same city.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">h3_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>,<span class="fl">9</span>,<span class="fl">11</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Benchmark DuckDB backend</span></span>
-<span><span class="va">time_duckdb_h3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span></span>
-<span>  <span class="va">h3_res</span>,</span>
-<span>  <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>      <span class="va">result_duckdb_h3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
-<span>        code_muni <span class="op">=</span> <span class="va">cod_ctb</span>,</span>
-<span>        polygon_type <span class="op">=</span> <span class="st">"hex"</span>,</span>
-<span>        h3_resolution <span class="op">=</span> <span class="va">i</span>,</span>
-<span>        backend <span class="op">=</span> <span class="st">"duckdb"</span>,</span>
-<span>        verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">}</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Benchmark pure-R backend</span></span>
-<span><span class="va">time_r_h3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span></span>
-<span>  <span class="va">h3_res</span>,</span>
-<span>  <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>      <span class="va">result_duckdb_h3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
-<span>        code_muni <span class="op">=</span> <span class="va">cod_ctb</span>,</span>
-<span>        polygon_type <span class="op">=</span> <span class="st">"hex"</span>,</span>
-<span>        h3_resolution <span class="op">=</span> <span class="va">i</span>,</span>
-<span>        backend <span class="op">=</span> <span class="st">"r"</span>,</span>
-<span>        verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">}</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Results</span></span>
-<span><span class="va">benchmark_results_h3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  h3_res <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>,<span class="fl">9</span>,<span class="fl">11</span><span class="op">)</span>,<span class="fl">2</span><span class="op">)</span>,</span>
-<span>  backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Pure R"</span>,<span class="st">"DuckDB"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
-<span>  time_seconds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">time_r_h3</span><span class="op">[</span><span class="st">"elapsed"</span>,<span class="op">]</span>, <span class="va">time_duckdb_h3</span><span class="op">[</span><span class="st">"elapsed"</span>,<span class="op">]</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="visualization-1">Visualization<a class="anchor" aria-label="anchor" href="#visualization-1"></a>
-</h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">benchmark_results_h3</span></span>
-<span>       <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>         h3_res <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">as.factor</a></span><span class="op">(</span><span class="va">h3_res</span><span class="op">)</span>,</span>
-<span>         backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">backend</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Pure R"</span>, <span class="st">"DuckDB"</span><span class="op">)</span><span class="op">)</span></span>
-<span>         <span class="op">)</span>,</span>
-<span>       <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">h3_res</span>, y <span class="op">=</span> <span class="va">time_seconds</span>, fill <span class="op">=</span> <span class="va">backend</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.6</span>, position <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_text.html" class="external-link">geom_text</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%.2f s"</span>, <span class="va">time_seconds</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    position <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span>width <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span>,</span>
-<span>    vjust <span class="op">=</span> <span class="op">-</span><span class="fl">0.6</span>,</span>
-<span>    size <span class="op">=</span> <span class="fl">3</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Pure R"</span> <span class="op">=</span> <span class="st">"#E74C3C"</span>, <span class="st">"DuckDB"</span> <span class="op">=</span> <span class="st">"#2C3E50"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_y_continuous</a></span><span class="op">(</span>expand <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/expansion.html" class="external-link">expansion</a></span><span class="op">(</span>mult <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.08</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"Performance comparison: DuckDB vs Pure R"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="st">"(different spatial resolutions)"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Execution time (seconds)"</span>,</span>
-<span>    fill <span class="op">=</span> <span class="st">"Backend"</span>,</span>
-<span>    x <span class="op">=</span> <span class="st">"H3 resolution"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">13</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span></span>
-<span>    plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>face <span class="op">=</span> <span class="st">"bold"</span>, size <span class="op">=</span> <span class="fl">15</span>, hjust <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
-<span>    plot.subtitle <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
-<span>    panel.grid.major.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    <span class="op">)</span></span></code></pre></div>
-<p><img src="bench_duckdb_files/figure-html/plot-benchmark-h3-1.png" width="100%"></p>
-<blockquote>
-<p><strong>Note:</strong> At finer H3 resolutions the hexagons are much
-smaller, so the H3 point-to-cell indexing — which both backends
-ultimately delegate to the same underlying H3 C library — dominates the
-total runtime. Because DuckDB still pays a fixed overhead to initialize
-the connection, load extensions, and materialize data into its in-memory
-store, the relative advantage shrinks as the actual computation becomes
-lighter per cell. At resolution 11 this overhead can even offset
-DuckDB’s gains, making the pure-R backend competitive or faster.</p>
-</blockquote>
-</div>
-</div>
-<div class="section level2">
-<h2 id="conclusions">Conclusions<a class="anchor" aria-label="anchor" href="#conclusions"></a>
-</h2>
-<p>The DuckDB backend is consistently faster than the pure-R
-implementation, and the processing time depends on:</p>
-<ul>
-<li>City size (number of CNEFE addresses):</li>
-</ul>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Computing speedup for each city</span></span>
-<span><span class="va">speedups_cities</span> <span class="op">&lt;-</span> <span class="va">benchmark_results_cities</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">city</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
-<span>    speedup <span class="op">=</span> <span class="va">time_seconds</span><span class="op">[</span><span class="va">backend</span> <span class="op">==</span> <span class="st">'Pure R'</span><span class="op">]</span><span class="op">/</span><span class="va">time_seconds</span><span class="op">[</span><span class="va">backend</span> <span class="op">==</span> <span class="st">'DuckDB'</span><span class="op">]</span></span>
-<span>    <span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Formatting output table</span></span>
-<span><span class="va">speedups_cities</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    city <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">city</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Vitória da Conquista"</span>, <span class="st">"Curitiba"</span>, <span class="st">"São Paulo"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    n_points <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"~900,000"</span>, <span class="st">"~5,700,000"</span>, <span class="st">"~200,000"</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">city</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Curitiba"</span>, <span class="st">"São Paulo"</span>, <span class="st">"Vitória da Conquista"</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>    speedup <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">speedup</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">city</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">city</span>, <span class="va">n_points</span>, <span class="va">speedup</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="co">## Improved table output with kableExtra package:</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"R"</span>, <span class="st">"duckdb"</span>, <span class="st">"cnefetools"</span><span class="op">)</span>,</span>
+<span>  version <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">R.version</span><span class="op">$</span><span class="va">major</span>, <span class="st">"."</span>, <span class="va">R.version</span><span class="op">$</span><span class="va">minor</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"duckdb"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"cnefetools"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<table class="table table" style="margin-left: auto; margin-right: auto;">
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<table class="table table" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead><tr>
 <th style="text-align:left;">
-city
+component
 </th>
 <th style="text-align:left;">
-n_points
-</th>
-<th style="text-align:right;">
-speedup
+version
 </th>
 </tr></thead>
 <tbody>
 <tr>
 <td style="text-align:left;">
-Vitória da Conquista
+R
 </td>
 <td style="text-align:left;">
-~200,000
-</td>
-<td style="text-align:right;">
-1.36
+4.6.0
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Curitiba
+duckdb
 </td>
 <td style="text-align:left;">
-~900,000
-</td>
-<td style="text-align:right;">
-3.68
+1.5.2
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-São Paulo
+cnefetools
 </td>
 <td style="text-align:left;">
-~5,700,000
-</td>
-<td style="text-align:right;">
-13.33
+0.3.0.9000
 </td>
 </tr>
 </tbody>
 </table>
-<ul>
-<li>Resolution of spatial units where CNEFE addresses are counted:</li>
-</ul>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Computing speedup for each H3 resolution</span></span>
-<span><span class="va">speedups_h3</span> <span class="op">&lt;-</span> <span class="va">benchmark_results_h3</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">h3_res</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
-<span>    speedup <span class="op">=</span> <span class="va">time_seconds</span><span class="op">[</span><span class="va">backend</span> <span class="op">==</span> <span class="st">'Pure R'</span><span class="op">]</span><span class="op">/</span><span class="va">time_seconds</span><span class="op">[</span><span class="va">backend</span> <span class="op">==</span> <span class="st">'DuckDB'</span><span class="op">]</span></span>
-<span>    <span class="op">)</span></span>
+</div>
+<div class="section level2">
+<h2 id="comparing-cities-of-different-sizes">Comparing cities of different sizes<a class="anchor" aria-label="anchor" href="#comparing-cities-of-different-sizes"></a>
+</h2>
+<p><code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> aggregating CNEFE address points to H3
+hexagons at resolution 8, across three municipalities of increasing
+size.</p>
+<p>This is the code the harness runs. It is shown rather than executed,
+because this article plots from the committed measurements so that it
+renders without re-downloading hundreds of megabytes, and so that the
+numbers here and in the package’s accompanying paper cannot drift
+apart.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cods</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Vitoria da Conquista-BA"</span> <span class="op">=</span> <span class="fl">2933307</span>,</span>
+<span>  <span class="st">"Curitiba-PR"</span>             <span class="op">=</span> <span class="fl">4106902</span>,</span>
+<span>  <span class="st">"Sao Paulo-SP"</span>            <span class="op">=</span> <span class="fl">3550308</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Formatting output table</span></span>
-<span><span class="va">speedups_h3</span> <span class="op">|&gt;</span></span>
+<span><span class="co"># One replicate. The real harness wraps this in a fresh subprocess, repeats it</span></span>
+<span><span class="co"># round-robin across all configurations, and records peak memory.</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">backend</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"duckdb"</span>, <span class="st">"r"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">cod</span> <span class="kw">in</span> <span class="va">cods</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
+<span>      <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
+<span>        code_muni <span class="op">=</span> <span class="va">cod</span>,</span>
+<span>        h3_resolution <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>        backend <span class="op">=</span> <span class="va">backend</span>,</span>
+<span>        verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>      <span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cities</span> <span class="op">&lt;-</span> <span class="fu">bench_cities</span><span class="op">(</span><span class="va">bench_med</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">bench_plot_time</span><span class="op">(</span></span>
+<span>  <span class="va">cities</span>, <span class="va">city_lbl</span>,</span>
+<span>  subtitle <span class="op">=</span> <span class="st">"median of replicates, bars show min-max"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><img src="bench_duckdb_files/figure-html/plot-benchmark-cities-1.png" alt="" width="100%"></p>
+<blockquote>
+<p><strong>Note:</strong> For smaller municipalities, the DuckDB backend
+may offer little or no speedup over pure R, and can even be slightly
+slower. DuckDB pays a fixed cost to initialise the connection and load
+the H3 extension before any computation begins. When the dataset is
+small, that setup cost outweighs the gains from its query engine.</p>
+</blockquote>
+<div class="section level3">
+<h3 id="memory">Memory<a class="anchor" aria-label="anchor" href="#memory"></a>
+</h3>
+<p>The gap between the backends is much wider in memory than in time,
+and it runs in the direction most readers don’t expect.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">bench_plot_memory</span><span class="op">(</span></span>
+<span>  <span class="va">cities</span>, <span class="va">city_lbl</span>,</span>
+<span>  subtitle <span class="op">=</span> <span class="st">"cnefe_counts() at H3 resolution 8, peak working set of the R process"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><img src="bench_duckdb_files/figure-html/plot-memory-cities-1.png" alt="" width="100%"></p>
+<p>The pure-R backend holds the filtered address table in R memory, so
+its footprint grows with the number of addresses, while DuckDB streams
+the CSV and aggregates as it goes, never materialising the full table,
+so its footprint stays roughly flat. On São Paulo the two are more than
+an order of magnitude apart.</p>
+<p>So <code>backend = "r"</code> is not the lightweight option, even
+though that’s the obvious way to read it. It’s there for environments
+where DuckDB extensions can’t be installed, and on a machine that’s
+short of RAM it’s the expensive choice. What holds DuckDB itself back is
+the <code>cnefetools.duckdb_config</code> option, which sets its thread
+count and memory budget:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>cnefetools.duckdb_config <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>threads <span class="op">=</span> <span class="fl">4</span>, memory_limit <span class="op">=</span> <span class="st">"4GB"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Left alone, DuckDB sets <code>memory_limit</code> to 80% of installed
+RAM, so it already asks for less on a smaller machine, and a query that
+goes over the limit spills to a temporary directory instead of
+failing.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="contrasting-three-spatial-resolutions">Contrasting three spatial resolutions<a class="anchor" aria-label="anchor" href="#contrasting-three-spatial-resolutions"></a>
+</h2>
+<p>The same function on a fixed municipality, Curitiba-PR, across H3
+resolutions 7, 9 and 11.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">for</span> <span class="op">(</span><span class="va">backend</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"duckdb"</span>, <span class="st">"r"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">res</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">9</span>, <span class="fl">11</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
+<span>      <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
+<span>        code_muni <span class="op">=</span> <span class="fl">4106902</span>,</span>
+<span>        h3_resolution <span class="op">=</span> <span class="va">res</span>,</span>
+<span>        backend <span class="op">=</span> <span class="va">backend</span>,</span>
+<span>        verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>      <span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">h3res</span> <span class="op">&lt;-</span> <span class="va">bench_med</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op">==</span> <span class="st">"h3res"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    avg_hex_area_m2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5161293.36</span>, <span class="fl">105332.51</span>, <span class="fl">2149.64</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">h3_res</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">9</span>, <span class="fl">11</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>    speedup <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">speedup</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span>    res_lbl <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">h3_res</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">h3_res</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    backend_lbl <span class="op">=</span> <span class="fu">bench_backend</span><span class="op">(</span><span class="va">backend</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="fu">bench_plot_time</span><span class="op">(</span></span>
+<span>  <span class="va">h3res</span>, <span class="va">res_lbl</span>,</span>
+<span>  xlab <span class="op">=</span> <span class="st">"H3 resolution"</span>,</span>
+<span>  subtitle <span class="op">=</span> <span class="st">"Curitiba-PR, median of replicates, bars show min-max"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><img src="bench_duckdb_files/figure-html/plot-benchmark-h3-1.png" alt="" width="100%"></p>
+<blockquote>
+<p><strong>Note:</strong> At finer H3 resolutions the hexagons are much
+smaller, so the H3 point-to-cell indexing, which both backends
+ultimately delegate to the same underlying H3 C library, dominates the
+total runtime. Because DuckDB still pays its fixed startup cost while
+the actual computation gets lighter per cell, its relative advantage
+shrinks as resolution rises.</p>
+</blockquote>
+</div>
+<div class="section level2">
+<h2 id="conclusions">Conclusions<a class="anchor" aria-label="anchor" href="#conclusions"></a>
+</h2>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bench_med</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op">==</span> <span class="st">"cities"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>muni <span class="op">=</span> <span class="fu">bench_city</span><span class="op">(</span><span class="va">muni</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">bench_speedup</span><span class="op">(</span><span class="st">"muni"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span></span>
+<span>    <span class="va">bench_med</span> <span class="op">|&gt;</span></span>
+<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op">==</span> <span class="st">"cities"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>muni <span class="op">=</span> <span class="fu">bench_city</span><span class="op">(</span><span class="va">muni</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="va">muni</span>, <span class="va">n_addresses</span><span class="op">)</span>,</span>
+<span>    by <span class="op">=</span> <span class="st">"muni"</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">h3_res</span>, <span class="va">avg_hex_area_m2</span>, <span class="va">speedup</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="co">## Improved table output with kableExtra package:</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">muni</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span>Municipality <span class="op">=</span> <span class="va">muni</span>, Addresses <span class="op">=</span> <span class="va">n_addresses</span>,</span>
+<span>            `DuckDB speedup` <span class="op">=</span> <span class="va">speedup</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<table class="table table" style="margin-left: auto; margin-right: auto;">
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<table class="table table" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;">
+Municipality
+</th>
+<th style="text-align:left;">
+Addresses
+</th>
+<th style="text-align:right;">
+DuckDB speedup
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Vitória da Conquista-BA
+</td>
+<td style="text-align:left;">
+~200k
+</td>
+<td style="text-align:right;">
+1.24
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Curitiba-PR
+</td>
+<td style="text-align:left;">
+~900k
+</td>
+<td style="text-align:right;">
+2.60
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+São Paulo-SP
+</td>
+<td style="text-align:left;">
+~5.7M
+</td>
+<td style="text-align:right;">
+16.71
+</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bench_med</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">block</span> <span class="op">==</span> <span class="st">"h3res"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">bench_speedup</span><span class="op">(</span><span class="st">"h3_res"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    `Mean hexagon area (m2)` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5161293.36</span>, <span class="fl">105332.51</span>, <span class="fl">2149.64</span><span class="op">)</span><span class="op">[</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">h3_res</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">9</span>, <span class="fl">11</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="op">]</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">h3_res</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span>`H3 resolution` <span class="op">=</span> <span class="va">h3_res</span>, <span class="va">`Mean hexagon area (m2)`</span>,</span>
+<span>            `DuckDB speedup` <span class="op">=</span> <span class="va">speedup</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<table class="table table" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead><tr>
 <th style="text-align:right;">
-h3_res
+H3 resolution
 </th>
 <th style="text-align:right;">
-avg_hex_area_m2
+Mean hexagon area (m2)
 </th>
 <th style="text-align:right;">
-speedup
+DuckDB speedup
 </th>
 </tr></thead>
 <tbody>
@@ -435,7 +427,7 @@ speedup
 5161293.36
 </td>
 <td style="text-align:right;">
-4.32
+2.17
 </td>
 </tr>
 <tr>
@@ -446,7 +438,7 @@ speedup
 105332.51
 </td>
 <td style="text-align:right;">
-3.09
+2.39
 </td>
 </tr>
 <tr>
@@ -457,14 +449,27 @@ speedup
 2149.64
 </td>
 <td style="text-align:right;">
-1.34
+1.17
 </td>
 </tr>
 </tbody>
 </table>
-<p><strong>Recommendation</strong>: Use the DuckDB backend (default) for
-best performance. The pure R backend (<code>backend = "r"</code>) is
-available only if you cannot install DuckDB in your environment.</p>
+<p>How much time DuckDB saves depends on the job. It grows with the
+number of address points and shrinks as H3 resolution rises, to the
+point of disappearing at resolution 11, where the two backends come
+within a couple of percent of each other because H3 indexing dominates
+and both hand it to the same underlying C library. On the smallest
+municipality they’re close enough that the choice doesn’t matter much,
+and in one configuration measured here pure R came out marginally
+ahead.</p>
+<p>Memory behaves differently. That gap doesn’t shrink with resolution
+and it widens with municipality size, because only one of the two
+backends materialises the address table.</p>
+<p><strong>Recommendation</strong>: use the DuckDB backend, which is the
+default. The pure-R backend is there for environments where DuckDB
+extensions can’t be installed, and choosing it costs far more in memory
+than it does in time. If you’re short of RAM, set
+<code>cnefetools.duckdb_config</code> instead of switching backends.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -477,7 +482,7 @@ available only if you cannot install DuckDB in your environment.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

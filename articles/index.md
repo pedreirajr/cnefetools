@@ -13,6 +13,8 @@
 
 ### Other
 
+- [Cache and exported
+  copies](https://pedreirajr.github.io/cnefetools/articles/cache.md):
 - [Performance benchmark: DuckDB vs pure-R
   backends](https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.md):
 - [FAQ](https://pedreirajr.github.io/cnefetools/articles/faq.md):

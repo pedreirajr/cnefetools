@@ -4,14 +4,16 @@ assigns each address point to spatial units (either H3 hexagonal cells or
 user-provided polygons), and computes the residential proportion (p_res) and land-use mix
 indices, such as the Entropy Index (ei), the Herfindahl-Hirschman Index (hhi),
 the Balance Index (bal), the Index of Concentration at Extremes (ice), the adapted HHI (hhi_adp),
-and the Bidirectional Global-centered Index (bgbi), following the methodology proposed in
-Pedreira Jr. et al. (2025)."><meta property="og:description" content="compute_lumi() reads CNEFE records for a given municipality,
+and the Bidirectional Global-centered Balance Index (bgbi), following the methodology
+proposed in Pedreira Junior et al. (2025, 2026). The 2026 article introduces the BGBI,
+and the adapted HHI is documented in the 2025 preprint."><meta property="og:description" content="compute_lumi() reads CNEFE records for a given municipality,
 assigns each address point to spatial units (either H3 hexagonal cells or
 user-provided polygons), and computes the residential proportion (p_res) and land-use mix
 indices, such as the Entropy Index (ei), the Herfindahl-Hirschman Index (hhi),
 the Balance Index (bal), the Index of Concentration at Extremes (ice), the adapted HHI (hhi_adp),
-and the Bidirectional Global-centered Index (bgbi), following the methodology proposed in
-Pedreira Jr. et al. (2025)."><meta property="og:image" content="https://pedreirajr.github.io/cnefetools/logo.svg"></head><body>
+and the Bidirectional Global-centered Balance Index (bgbi), following the methodology
+proposed in Pedreira Junior et al. (2025, 2026). The 2026 article introduces the BGBI,
+and the adapted HHI is documented in the 2025 preprint."><meta property="og:image" content="https://pedreirajr.github.io/cnefetools/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -19,7 +21,7 @@ Pedreira Jr. et al. (2025)."><meta property="og:image" content="https://pedreira
 
     <a class="navbar-brand me-2" href="../index.html">cnefetools</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +38,7 @@ Pedreira Jr. et al. (2025)."><meta property="og:image" content="https://pedreira
     <li><a class="dropdown-item" href="../articles/tracts_to.html">Dasymetric interpolation using CNEFE addresses</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/cache.html">Cache and exported copies</a></li>
     <li><a class="dropdown-item" href="../articles/bench_duckdb.html">Performance benchmark: DuckDB vs pure-R backends</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -61,8 +64,9 @@ assigns each address point to spatial units (either H3 hexagonal cells or
 user-provided polygons), and computes the residential proportion (<code>p_res</code>) and land-use mix
 indices, such as the Entropy Index (<code>ei</code>), the Herfindahl-Hirschman Index (<code>hhi</code>),
 the Balance Index (<code>bal</code>), the Index of Concentration at Extremes (<code>ice</code>), the adapted HHI (<code>hhi_adp</code>),
-and the Bidirectional Global-centered Index (<code>bgbi</code>), following the methodology proposed in
-Pedreira Jr. et al. (2025).</p>
+and the Bidirectional Global-centered Balance Index (<code>bgbi</code>), following the methodology
+proposed in Pedreira Junior et al. (2025, 2026). The 2026 article introduces the BGBI,
+and the adapted HHI is documented in the 2025 preprint.</p>
     </div>
 
     <div class="section level2">
@@ -70,12 +74,13 @@ Pedreira Jr. et al. (2025).</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compute_lumi</span><span class="op">(</span></span>
 <span>  <span class="va">code_muni</span>,</span>
 <span>  year <span class="op">=</span> <span class="fl">2022</span>,</span>
-<span>  polygon_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"hex"</span>, <span class="st">"user"</span><span class="op">)</span>,</span>
+<span>  polygon_type <span class="op">=</span> <span class="fu">lifecycle</span><span class="fu">::</span><span class="fu"><a href="https://lifecycle.r-lib.org/reference/deprecated.html" class="external-link">deprecated</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  polygon <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  crs_output <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  h3_resolution <span class="op">=</span> <span class="fl">9</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  cache <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  cache_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"duckdb"</span>, <span class="st">"r"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -94,28 +99,29 @@ Defaults to 2022.</p></dd>
 
 
 <dt id="arg-polygon-type">polygon_type<a class="anchor" aria-label="anchor" href="#arg-polygon-type"></a></dt>
-<dd><p>Character. Type of polygon aggregation: <code>"hex"</code> (default)
-uses an H3 hexagonal grid; <code>"user"</code> uses polygons provided via the <code>polygon</code>
-parameter.</p></dd>
+<dd><p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated" class="external-link"><img src="figures/lifecycle-deprecated.svg" alt="[Deprecated]"></a> The aggregation mode is
+now inferred from <code>polygon</code>: leave it <code>NULL</code> for an H3 grid, or pass an
+<code><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">sf::sf</a></code> object for user polygons. Passing <code>polygon_type</code> still works and
+warns.</p></dd>
 
 
 <dt id="arg-polygon">polygon<a class="anchor" aria-label="anchor" href="#arg-polygon"></a></dt>
-<dd><p>An <code><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">sf::sf</a></code> object with polygon geometries. Required when
-<code>polygon_type = "user"</code>. A warning is issued reporting the percentage of
+<dd><p>An <code><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">sf::sf</a></code> object with polygon geometries. Supplying it
+switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
 CNEFE points covered by the polygon area. If no CNEFE points fall within
 the polygon, an error is raised.</p></dd>
 
 
 <dt id="arg-crs-output">crs_output<a class="anchor" aria-label="anchor" href="#arg-crs-output"></a></dt>
-<dd><p>The CRS for the output object. Only used when
-<code>polygon_type = "user"</code>. Default is <code>NULL</code>, which uses the original CRS of
+<dd><p>The CRS for the output object. Only used when <code>polygon</code> is
+supplied. Default is <code>NULL</code>, which uses the original CRS of
 the <code>polygon</code> argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 object accepted by <code><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">sf::st_transform()</a></code>.</p></dd>
 
 
 <dt id="arg-h-resolution">h3_resolution<a class="anchor" aria-label="anchor" href="#arg-h-resolution"></a></dt>
-<dd><p>Integer. H3 grid resolution (default: 9). Only used when
-<code>polygon_type = "hex"</code>.</p></dd>
+<dd><p>Integer. H3 grid resolution (default: 9). Only used for
+the H3 grid, so it is ignored when <code>polygon</code> is supplied.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -123,19 +129,39 @@ object accepted by <code><a href="https://r-spatial.github.io/sf/reference/st_tr
 
 
 <dt id="arg-cache">cache<a class="anchor" aria-label="anchor" href="#arg-cache"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), the downloaded ZIP is stored
-in the user cache directory and reused in future calls. If <code>FALSE</code>,
-a temporary file is used and deleted after the call.</p></dd>
+<dd><p>Logical. If <code>TRUE</code> (default), the downloaded data is stored as
+a gzipped CSV in the user cache directory and reused in future calls. If
+<code>FALSE</code>, a temporary file is used and deleted after the call.</p></dd>
+
+
+<dt id="arg-cache-dir">cache_dir<a class="anchor" aria-label="anchor" href="#arg-cache-dir"></a></dt>
+<dd><p>Character. Directory to use for cached downloads. If <code>NULL</code>
+(default), the <code>CNEFETOOLS_CACHE_DIR</code> environment variable is used when it
+is set, otherwise <code><a href="https://rdrr.io/r/tools/userdir.html" class="external-link">tools::R_user_dir()</a></code> with <code>which = "cache"</code>. Use this to
+point large downloads at a secondary drive or a shared volume.</p></dd>
 
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
-<dd><p>Character. <code>"duckdb"</code> (default) uses DuckDB + H3 extension
-reading directly from the cached ZIP. <code>"r"</code> computes H3 in R using h3jsr.</p></dd>
+<dd><p>Character. <code>"duckdb"</code> (default) uses DuckDB with the H3
+extension, reading the cached gzipped CSV directly. <code>"r"</code> computes H3 in R
+using h3jsr instead, and needs no DuckDB extension.</p>
+<p><code>"r"</code> exists for environments where DuckDB extensions cannot be installed,
+such as some restricted computing clusters. It is <strong>not</strong> the lighter
+option: it materialises the filtered address table in R memory, so its
+footprint grows with the municipality, while DuckDB aggregates in a
+streaming fashion and stays nearly flat. On São Paulo (5.7 million
+addresses) the measured peak is about 8.4 GB under <code>"r"</code> against 0.6 GB
+under <code>"duckdb"</code>, alongside being roughly 15 times slower.</p>
+<p>If the constraint is memory rather than installability, keep the DuckDB
+backend and cap it with the <code>cnefetools.duckdb_config</code> option instead. See
+<code><a href="cnefetools-package.html">?cnefetools</a></code> for that option, and the benchmark article at
+<a href="https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html">https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html</a> for
+the measurements.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An <code><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">sf::sf</a></code> object containing:</p><dl><dt>When <code>polygon_type = "hex"</code>:</dt>
+    <p>An <code><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">sf::sf</a></code> object containing:</p><dl><dt>When <code>polygon</code> is <code>NULL</code> (H3 grid):</dt>
 <dd>
 <ul><li><p><code>id_hex</code>: H3 cell identifier</p></li>
 <li><p><code>p_res</code>, <code>ei</code>, <code>hhi</code>, <code>bal</code>, <code>ice</code>, <code>hhi_adp</code>, <code>bgbi</code>: land-use
@@ -143,7 +169,7 @@ mix indicators</p></li>
 <li><p><code>geometry</code>: hexagon geometry (CRS 4326)</p></li>
 </ul></dd>
 
-<dt>When <code>polygon_type = "user"</code>:</dt>
+<dt>When <code>polygon</code> is supplied:</dt>
 <dd>
 <ul><li><p>Original columns from <code>polygon</code></p></li>
 <li><p><code>p_res</code>, <code>ei</code>, <code>hhi</code>, <code>bal</code>, <code>ice</code>, <code>hhi_adp</code>, <code>bgbi</code>: land-use
@@ -154,13 +180,67 @@ mix indicators</p></li>
 
 </dl></div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+
+<div class="section">
+<h3 id="binary-land-use-classification">Binary land-use classification<a class="anchor" aria-label="anchor" href="#binary-land-use-classification"></a></h3>
+
+
+<p>The indices computed here rest on a binary split. An address is counted as
+residential when <code>COD_ESPECIE == 1</code> (private household), and as
+non-residential otherwise. This follows the formulation of the indices as
+published in Pedreira Junior et al. (2026), where the measures are defined
+and empirically validated on that two-category basis.</p>
+</div>
+
+<div class="section">
+<h3 id="exclusion-of-buildings-under-construction">Exclusion of buildings under construction<a class="anchor" aria-label="anchor" href="#exclusion-of-buildings-under-construction"></a></h3>
+
+
+<p><code>compute_lumi()</code> drops records with <code>COD_ESPECIE == 7</code> (building under
+construction or renovation), because such records describe a transitional
+state rather than a realised land use. Note that <code><a href="cnefe_counts.html">cnefe_counts()</a></code> does <strong>not</strong>
+apply this exclusion and reports these records as <code>addr_type7</code>.</p>
+</div>
+
+<div class="section">
+<h3 id="the-citywide-baseline-p">The citywide baseline P<a class="anchor" aria-label="anchor" href="#the-citywide-baseline-p"></a></h3>
+
+
+<p>Two indices use a citywide residential share P: the <code>bgbi</code> index, which is
+referenced against it, and the Balance Index (<code>bal</code>), which uses it through
+r = P / (1 - P). The other indices are computed entirely within each spatial
+unit. Two properties of P are worth stating.</p>
+<p>First, P is computed from CNEFE address-type counts rather than from census
+population, so it describes the distribution of address types and not the
+distribution of residents.</p>
+<p>Second, P is always computed over the full municipality, including when
+<code>polygon</code> is supplied, so it does not adapt to the area the supplied
+polygons happen to cover. This is intended, as P describes the context the
+addresses sit in, which is the municipality, and a sub-area of a city is
+still part of that wider context. A baseline recomputed over the sub-area
+would measure something different, namely mix relative to the sub-area
+itself rather than relative to the city.</p>
+</div>
+
+    </div>
+    <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
-    <p>Pedreira Jr., J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.
-Measuring land use mix with address-level census data (2025).
-<em>engrXiv</em>. https://engrxiv.org/preprint/view/5975</p>
-<p>Booth, A.; Crouter, A. C. (Eds.). (2001).
+    <p>Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
+Bomfim, F. G. (2026).
+BGBI: A citywide-referenced and bidirectional land use mix index for
+planning and policy evaluation.
+<em>Land Use Policy</em>, 169, 108135.
+https://doi.org/10.1016/j.landusepol.2026.108135</p>
+<p>Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L. (2025).
+Measuring land use mix with address-level census data.
+<em>engrXiv</em> preprint. https://engrxiv.org/preprint/view/5975
+(where the adapted HHI (<code>hhi_adp</code>) is documented)</p>
+<p>Massey, D. S. (2001).
+The prodigal paradigm returns: ecology comes back to sociology.
+In A. Booth &amp; A. C. Crouter (Eds.),
 <em>Does It Take a Village? Community Effects on Children, Adolescents, and Families</em>.
-Psychology Press.</p>
+Lawrence Erlbaum.</p>
 <p>Song, Y.; Merlin, L.; Rodriguez, D. (2013).
 Comparing measures of urban land use mix.
 <em>Computers, Environment and Urban Systems</em>, 42, 1–13.
@@ -173,48 +253,51 @@ https://doi.org/10.1016/j.compenvurbsys.2013.08.001</p>
 <span class="r-in"><span><span class="co"># Compute land-use mix indices on H3 hexagons</span></span></span>
 <span class="r-in"><span><span class="va">lumi</span> <span class="op">&lt;-</span> <span class="fu">compute_lumi</span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">2929057</span>, cache <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Processing municipality code <span style="color: #0000BB;">2929057</span>...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring ZIP and inspecting archive...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring the CNEFE data file...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (CNEFE ZIP ready) <span style="color: #B2B2B2;">[471ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[52ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring the CNEFE data file...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (CNEFE data ready) <span style="color: #B2B2B2;">[585ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per H3 cell...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (Addresses counted) <span style="color: #B2B2B2;">[247ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (Addresses counted) <span style="color: #B2B2B2;">[162ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Building grid and computing LUMI...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Land use mix indices computed) <span style="color: #B2B2B2;">[3.6s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Land use mix indices computed) <span style="color: #B2B2B2;">[3.2s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)</span></span></span>
 <span class="r-in"><span><span class="co"># Using geobr to download neighborhood boundaries</span></span></span>
-<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ipeagit.github.io/geobr/" class="external-link">geobr</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ipea.github.io/geobr/" class="external-link">geobr</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">nei_ldf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://ipeagit.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://ipea.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  <span class="va">code_muni</span> <span class="op">==</span> <span class="fl">2919207</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Using year/date 2022</span>
 <span class="r-in"><span><span class="va">lumi_poly</span> <span class="op">&lt;-</span> <span class="fu">compute_lumi</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  code_muni <span class="op">=</span> <span class="fl">2919207</span>,</span></span>
-<span class="r-in"><span>  polygon_type <span class="op">=</span> <span class="st">"user"</span>,</span></span>
 <span class="r-in"><span>  polygon <span class="op">=</span> <span class="va">nei_ldf</span>,</span></span>
 <span class="r-in"><span>  cache <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Processing municipality code <span style="color: #0000BB;">2919207</span>...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring data and preparing polygon...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (Data and polygon ready) <span style="color: #B2B2B2;">[946ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[741ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Ensuring data and preparing polygon...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (Data and polygon ready) <span style="color: #B2B2B2;">[2.5s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per polygon...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Table &lt;user_polygons&gt; dropped</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per polygon...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Table user_polygons successfully imported</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Counting addresses per polygon...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (Addresses counted) <span style="color: #B2B2B2;">[1.2s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (Addresses counted) <span style="color: #B2B2B2;">[1.1s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Computing land use mix indices...</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Polygon coverage: <span style="color: #0000BB;">"99.7%"</span> of CNEFE points captured.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">111100</span> of <span style="color: #0000BB;">111385</span> points are within the provided polygon.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">285</span> points fell outside the polygon and were not counted.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Land use mix indices computed) <span style="color: #B2B2B2;">[66ms]</span></span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">106975</span> of <span style="color: #0000BB;">107244</span> points are within the provided polygon.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">269</span> points fell outside the polygon and were not counted.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Land use mix indices computed) <span style="color: #B2B2B2;">[48ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
@@ -229,7 +312,7 @@ https://doi.org/10.1016/j.compenvurbsys.2013.08.001</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

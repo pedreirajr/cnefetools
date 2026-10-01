@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">cnefetools</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,6 +47,7 @@
     <li><a class="dropdown-item" href="articles/tracts_to.html">Dasymetric interpolation using CNEFE addresses</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="articles/cache.html">Cache and exported copies</a></li>
     <li><a class="dropdown-item" href="articles/bench_duckdb.html">Performance benchmark: DuckDB vs pure-R backends</a></li>
     <li><a class="dropdown-item" href="articles/faq.html">FAQ</a></li>
   </ul>
@@ -103,7 +104,7 @@
 <tbody>
 <tr>
 <td><code><a href="reference/read_cnefe.html">read_cnefe()</a></code></td>
-<td>Downloads and reads CNEFE data for a municipality; returns an Arrow table or <code>sf</code> object</td>
+<td>Downloads and reads CNEFE data for a municipality, or reads a local file with <code>file = ...</code>, and returns an Arrow table or <code>sf</code> object</td>
 </tr>
 <tr>
 <td><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code></td>
@@ -130,10 +131,14 @@
 <td>Opens the official CNEFE variable dictionary (Excel)</td>
 </tr>
 <tr>
+<td><code><a href="reference/cnefe_export.html">cnefe_export()</a></code></td>
+<td>Writes a municipality to a persistent file of your choice (Parquet, CSV or gzipped CSV)</td>
+</tr>
+<tr>
 <td>
 <code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code>, <code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code>
 </td>
-<td>Delete cached CNEFE ZIP files or census tract Parquet files from the user cache directory</td>
+<td>Delete cached CNEFE files or census tract Parquet files from the cache directory</td>
 </tr>
 </tbody>
 </table>
@@ -190,22 +195,39 @@
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">temples_ssa</span>, size <span class="op">=</span> <span class="fl">0.3</span>, alpha <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">coord_sf</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-5-1.png" width="100%"></p>
-<p><strong>Warning:</strong> For large municipalities, CNEFE may contain more than 1 million address points. Plotting all coordinates at once can be slow and memory-intensive, so consider filtering or sampling before creating maps.</p>
+<p><img src="reference/figures/README-salvador-temples-1.png" alt="" width="100%"></p>
+<p><strong>Warning:</strong> For large municipalities, CNEFE may contain millions of address points. Plotting all coordinates at once can be slow and memory-intensive, so consider filtering or sampling before creating maps.</p>
 </div>
 <div class="section level2">
 <h2 id="caching-behavior">Caching behavior<a class="anchor" aria-label="anchor" href="#caching-behavior"></a>
 </h2>
-<p>By default, <code>cache = TRUE</code> stores the downloaded ZIP file in a user-level cache directory specific to this package. If you prefer to avoid persistent caching, set:</p>
+<p>By default, <code>cache = TRUE</code> keeps each municipality you download, so later calls don’t download it again. The ZIP published by IBGE is converted once, on the first download, into a gzipped CSV, which takes about the same disk space and is faster to read.</p>
+<p>The cache lives in <code>tools::R_user_dir("cnefetools", "cache")</code> unless you point it somewhere else. You can do that for a single call with the <code>cache_dir</code> argument, which every function that reads data accepts, or for the whole session with the <code>CNEFETOOLS_CACHE_DIR</code> environment variable. The argument wins when both are set:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># One call</span></span>
+<span><span class="va">tab_ssa</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_cnefe.html">read_cnefe</a></span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">2927408</span>, cache_dir <span class="op">=</span> <span class="st">"D:/cnefe-cache"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The whole session (or set it in your .Renviron)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CNEFETOOLS_CACHE_DIR <span class="op">=</span> <span class="st">"D:/cnefe-cache"</span><span class="op">)</span></span></code></pre></div>
+<p>If you prefer to avoid persistent caching, set:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tab_ssa</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_cnefe.html">read_cnefe</a></span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">2927408</span>, cache <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>In this case, the ZIP file is stored in a temporary location and removed after reading.</p>
+<p>In this case, the file is stored in a temporary location and removed after reading. The <a href="https://pedreirajr.github.io/cnefetools/articles/cache.html">Cache and exported copies article</a> covers all of this in more detail.</p>
+</div>
+<div class="section level2">
+<h2 id="keeping-your-own-copy">Keeping your own copy<a class="anchor" aria-label="anchor" href="#keeping-your-own-copy"></a>
+</h2>
+<p>The cache is meant to be disposable, and the cleaning functions below empty it. If an analysis needs a copy of the data that stays put, <code><a href="reference/cnefe_export.html">cnefe_export()</a></code> writes a municipality to a folder of your choice as Parquet (the default), CSV or gzipped CSV, and <code>read_cnefe(file = ...)</code> reads it back without downloading anything:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cnefe_export.html">cnefe_export</a></span><span class="op">(</span><span class="fl">2927408</span>, path <span class="op">=</span> <span class="st">"data/cnefe"</span><span class="op">)</span></span>
+<span><span class="va">tab_ssa</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_cnefe.html">read_cnefe</a></span><span class="op">(</span>file <span class="op">=</span> <span class="va">path</span><span class="op">)</span></span></code></pre></div>
+<p><code>file</code> also accepts the ZIP exactly as IBGE publishes it, so a file you downloaded by other means can be read the same way.</p>
 </div>
 <div class="section level2">
 <h2 id="accessing-official-cnefe-documentation">Accessing official CNEFE documentation<a class="anchor" aria-label="anchor" href="#accessing-official-cnefe-documentation"></a>
 </h2>
 <p><strong>{cnefetools}</strong> includes local copies of the official methodological note and the variable dictionary for the 2022 CNEFE released by IBGE.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Open the official methodological note (PDF)</span></span>
 <span><span class="fu"><a href="reference/cnefe_doc.html">cnefe_doc</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span></span>
 <span></span>
@@ -217,7 +239,7 @@
 <a class="anchor" aria-label="anchor" href="#counting-addresses-with-cnefe_counts"></a>
 </h2>
 <p><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> aggregates CNEFE address points into spatial units and returns an <code>sf</code> object with counts by address category (<code>addr_type1</code> to <code>addr_type8</code>). Below is an example using H3 hexagons for São Paulo at resolution 9:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedreirajr/cnefetools" class="external-link">cnefetools</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
@@ -230,7 +252,7 @@
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <p>Below we plot the count of private households (<code>addr_type1</code>) per hexagon:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plotting private households (addr_type1) for São Paulo</span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">hex_sp</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">addr_type1</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
@@ -247,16 +269,17 @@
 <span>    axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>    axis.text.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-9-1.png" width="100%"></p>
-<p><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> also supports <code>polygon_type = "user"</code> to aggregate counts to custom polygons instead of H3 hexagons. See the <a href="https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.html">cnefe_counts article</a> for details.</p>
+<p><img src="reference/figures/README-sao-paulo-households-1.png" alt="" width="100%"></p>
+<p><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> also supports user-supplied polygons to aggregate counts to custom polygons instead of H3 hexagons (just pass an <code>sf</code> object to <code>polygon</code>). See the <a href="https://pedreirajr.github.io/cnefetools/articles/cnefe_counts.html">cnefe_counts article</a> for details.</p>
 </div>
 <div class="section level2">
 <h2 id="land-use-mix-indices-with-compute_lumi">Land-use mix indices with <code>compute_lumi()</code>
 <a class="anchor" aria-label="anchor" href="#land-use-mix-indices-with-compute_lumi"></a>
 </h2>
 <p><code><a href="reference/compute_lumi.html">compute_lumi()</a></code> computes land-use mix indicators on spatial units for any municipality covered by the 2022 CNEFE dataset (<a href="https://www.sciencedirect.com/science/article/pii/S026483772600219X?via%3Dihub" class="external-link">Pedreira Junior et al., 2026</a>). Available indicators include the Entropy Index (<code>ei</code>), the Herfindahl-Hirschman Index (<code>hhi</code>), the Balance Index (<code>bal</code>), the Index of Concentration at Extremes (<code>ice</code>), an adapted HHI (<code>hhi_adp</code>), and the Bidirectional Global-centered Balance Index (<code>bgbi</code>).</p>
+<p>All of them rest on a binary split: an address counts as residential when it’s a private household (<code>COD_ESPECIE == 1</code>) and as non-residential otherwise, and buildings under construction (type 7) are left out. So the indices measure the balance between housing and all other uses, not how diverse those other uses are. The residential share itself is returned as <code>p_res</code>, and if you need the individual non-residential types, <code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> keeps all eight.</p>
 <p>Below is an example for Fortaleza at H3 resolution 8:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedreirajr/cnefetools" class="external-link">cnefetools</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
@@ -269,7 +292,7 @@
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <p>Below we plot the Bidirectional Global-centered Balance Index (BGBI), where positive values indicate residential dominance and negative values indicate non-residential dominance:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plotting the BGBI index</span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">lumi_ftl</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">bgbi</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
@@ -290,15 +313,15 @@
 <span>    axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>    axis.text.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-11-1.png" width="100%"></p>
-<p><code><a href="reference/compute_lumi.html">compute_lumi()</a></code> also supports <code>polygon_type = "user"</code> to compute indices on custom polygons. See the <a href="https://pedreirajr.github.io/cnefetools/articles/compute_lumi.html">compute_lumi article</a> for details.</p>
+<p><img src="reference/figures/README-fortaleza-bgbi-1.png" alt="" width="100%"></p>
+<p><code><a href="reference/compute_lumi.html">compute_lumi()</a></code> also supports user-supplied polygons to compute indices on custom polygons. Likewise, just pass an <code>sf</code> object to <code>polygon</code>. See the <a href="https://pedreirajr.github.io/cnefetools/articles/compute_lumi.html">compute_lumi article</a> for details.</p>
 </div>
 <div class="section level2">
 <h2 id="dasymetric-interpolation-with-tracts_to_h3">Dasymetric interpolation with <code>tracts_to_h3()</code>
 <a class="anchor" aria-label="anchor" href="#dasymetric-interpolation-with-tracts_to_h3"></a>
 </h2>
 <p><code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code> performs a dasymetric interpolation, considering two stages: first, census tract totals are allocated to individual CNEFE dwelling points inside each tract; then, the allocated values are aggregated to an H3 grid at the chosen resolution. This leverages the fine-grained spatial distribution of addresses in CNEFE to produce more realistic sub-tract estimates than simple areal weighting.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/pedreirajr/cnefetools" class="external-link">cnefetools</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span></span>
@@ -311,7 +334,7 @@
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The resulting H3 grid can be mapped to visualize the spatial distribution of each variable. Below we plot the private-household population (<code>pop_ph</code>):</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">rec_hex</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">pop_ph</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
@@ -327,9 +350,9 @@
 <span>    axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>    axis.text.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-13-1.png" width="100%"></p>
+<p><img src="reference/figures/README-recife-h3-population-1.png" alt="" width="100%"></p>
 <p>And the average income of the household head (<code>avg_inc_resp</code>):</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">rec_hex</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">avg_inc_resp</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_fill_viridis_c</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
@@ -345,19 +368,19 @@
 <span>    axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>    axis.text.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-14-1.png" width="100%"></p>
+<p><img src="reference/figures/README-recife-h3-income-1.png" alt="" width="100%"></p>
 <p>The full list of available variables is documented in the <code>tracts_variables_ref</code> dataset (see <code><a href="reference/tracts_variables_ref.html">?tracts_variables_ref</a></code>). For allocation rules and diagnostic details, see the <a href="https://pedreirajr.github.io/cnefetools/articles/tracts_to.html">tracts_to article</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="dasymetric-interpolation-with-tracts_to_polygon">Dasymetric interpolation with <code>tracts_to_polygon()</code>
 <a class="anchor" aria-label="anchor" href="#dasymetric-interpolation-with-tracts_to_polygon"></a>
 </h2>
-<p><code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> follows the same two-stage workflow as <code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code>, but aggregates the allocated values to user-provided polygons (e.g. neighborhoods, administrative divisions, or custom areas) instead of an H3 grid. Let’s generate the neighborhoods of Recife with the <code><a href="https://ipeagit.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood()</a></code> function from the <code>geobr</code> package and interpolate the average income of household heads per neighborhood:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ipeagit.github.io/geobr/" class="external-link">geobr</a></span><span class="op">)</span></span>
+<p><code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> follows the same two-stage workflow as <code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code>, but aggregates the allocated values to user-provided polygons (e.g. neighborhoods, administrative divisions, or custom areas) instead of an H3 grid. Let’s generate the neighborhoods of Recife with the <code><a href="https://ipea.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood()</a></code> function from the <code>geobr</code> package and interpolate the average income of household heads per neighborhood:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ipea.github.io/geobr/" class="external-link">geobr</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Reading neighborhoods from geobr package</span></span>
-<span><span class="va">rec_nei</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ipeagit.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span>, simplified <span class="op">=</span> <span class="cn">F</span>, showProgress <span class="op">=</span> <span class="cn">F</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="va">rec_nei</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ipea.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span>, simplified <span class="op">=</span> <span class="cn">F</span>, showProgress <span class="op">=</span> <span class="cn">F</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">name_muni</span> <span class="op">==</span> <span class="st">'Recife'</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Dasymetric interpolation to neighborhoods</span></span>
@@ -369,7 +392,7 @@
 <span>  verbose <span class="op">=</span> <span class="cn">F</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Below we plot the interpolated average income of the household head (<code>avg_inc_resp</code>) at the neighborhood level:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plotting variables at the neighborhood level</span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">rec_poly</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">avg_inc_resp</span><span class="op">)</span>, color <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
@@ -386,45 +409,48 @@
 <span>    axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>    axis.text.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-16-1.png" width="100%"></p>
+<p><img src="reference/figures/README-recife-neighborhoods-income-1.png" alt="" width="100%"></p>
 <p>See the <a href="https://pedreirajr.github.io/cnefetools/articles/tracts_to.html">tracts_to article</a> for details.</p>
 </div>
 <div class="section level2">
 <h2 id="duckdb-powered-spatial-operations">DuckDB-powered spatial operations<a class="anchor" aria-label="anchor" href="#duckdb-powered-spatial-operations"></a>
 </h2>
-<p>Under the hood, <strong>{cnefetools}</strong> uses <a href="https://duckdb.org/" class="external-link">DuckDB</a> as its default backend to perform spatial operations efficiently, with speedups of up to 20x over pure-R code depending on the number of address points and the size of the spatial units. This is made possible by three DuckDB extensions:</p>
+<p>Under the hood, <strong>{cnefetools}</strong> uses <a href="https://duckdb.org/" class="external-link">DuckDB</a> as its default backend. DuckDB reads the cached gzipped CSV directly, decompressing it natively, and aggregates as it scans, so the full address table never has to sit in memory. Its advantage over pure R grows with the size of the municipality. On São Paulo, the largest in the country, <code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> runs more than 15 times faster and its peak memory is more than 12 times smaller.</p>
+<p>Two DuckDB extensions do the spatial work:</p>
 <ul>
 <li>
-<a href="https://duckdb.org/docs/stable/core_extensions/spatial/overview" class="external-link"><strong>spatial</strong></a>: performs spatial joins (e.g., point-in-polygon) in SQL, used when aggregating to user-provided polygons or performing dasymetric interpolation.</li>
-<li>
-<a href="https://duckdb.org/community_extensions/extensions/zipfs" class="external-link"><strong>zipfs</strong></a>: reads CSV files directly from cached ZIP archives, avoiding the need to extract files to disk.</li>
-<li>
 <a href="https://duckdb.org/community_extensions/extensions/h3" class="external-link"><strong>h3</strong></a>: assigns geographic coordinates to <a href="https://h3geo.org/" class="external-link">H3 hexagonal grid</a> cells entirely inside DuckDB.</li>
+<li>
+<a href="https://duckdb.org/docs/stable/core_extensions/spatial/overview" class="external-link"><strong>spatial</strong></a>: performs spatial joins (e.g., point-in-polygon) in SQL, used when aggregating to user-provided polygons or performing dasymetric interpolation.</li>
 </ul>
-<p>The R package <a href="https://cidree.github.io/duckspatial/" class="external-link"><strong>duckspatial</strong></a> also bridges <code>sf</code> objects and DuckDB’s spatial extension, enabling seamless transfers between R and DuckDB.</p>
-<p>All extensions are installed and loaded automatically on first use. A pure-R fallback (<code>backend = "r"</code>) is also available, using <code>h3jsr</code> and <code>sf</code> for the same operations on <code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> functions (slower, but without the DuckDB dependency).</p>
+<p>The R package <a href="https://cidree.github.io/duckspatial/" class="external-link"><strong>duckspatial</strong></a> bridges <code>sf</code> objects and DuckDB’s spatial extension.</p>
+<p>All extensions are installed and loaded automatically on first use. You can set how many threads and how much memory DuckDB may use:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>cnefetools.duckdb_config <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>threads <span class="op">=</span> <span class="fl">4</span>, memory_limit <span class="op">=</span> <span class="st">"4GB"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> also have a pure-R backend (<code>backend = "r"</code>), built on <code>h3jsr</code> and <code>sf</code>. Use it when DuckDB extensions can’t be installed, for example on some restricted computing clusters. It isn’t the lighter option as it holds the address table in R memory, so on large municipalities it needs far more RAM than DuckDB. See the <a href="https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html">benchmark article</a> for the measurements.</p>
 </div>
 <div class="section level2">
 <h2 id="managing-the-local-cache">Managing the local cache<a class="anchor" aria-label="anchor" href="#managing-the-local-cache"></a>
 </h2>
 <p>While caching speeds up repeated analyses by avoiding redundant downloads, users may want to free up disk space or force a fresh download. <strong>{cnefetools}</strong> provides two dedicated functions for fine-grained control over the local cache, allowing you to remove cached files selectively or all at once.</p>
-<p><code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code> deletes cached CNEFE ZIP files from the user cache directory. You can remove all cached files at once or target a specific municipality by its seven-digit IBGE code:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="op">)</span>          <span class="co"># delete all cached CNEFE ZIPs</span></span>
-<span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>   <span class="co"># delete only the ZIP for Lauro de Freitas-BA</span></span></code></pre></div>
+<p><code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code> deletes cached CNEFE files from the cache directory. You can remove all cached files at once or target a specific municipality by its seven-digit IBGE code:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="op">)</span>          <span class="co"># delete all cached CNEFE files</span></span>
+<span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>   <span class="co"># delete only the file for Lauro de Freitas-BA</span></span></code></pre></div>
 <p><code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> removes cached census tract Parquet files. You can filter by state using a two-letter UF abbreviation, a two-digit numeric state code, or a seven-digit municipality code (resolved to its state automatically):</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># delete all cached census tract Parquets</span></span>
 <span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span>    <span class="co"># delete only the Parquet for Bahia</span></span>
 <span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">29</span><span class="op">)</span>      <span class="co"># same, using the numeric state code</span></span>
 <span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span> <span class="co"># same, using a municipality code</span></span></code></pre></div>
+<p>If you moved the cache with <code>cache_dir</code>, pass the same <code>cache_dir</code> to these functions, so they clean the folder you’re actually using.</p>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
 <p>If you use <strong>{cnefetools}</strong> in your work, please cite it as:</p>
 <blockquote>
-<p>Pedreira Junior, J.U. &amp; Stabile, B.H.M. (2026). cnefetools: Access and Analysis of Brazilian CNEFE Address Data. GitHub repository: <a href="https://github.com/pedreirajr/cnefetools" class="external-link uri">https://github.com/pedreirajr/cnefetools</a></p>
+<p>Pedreira Junior, J.U. &amp; Stabile, B.H.M. (2026). cnefetools: Access and Analysis of Brazilian CNEFE Address Data. R package, available on CRAN: <a href="https://CRAN.R-project.org/package=cnefetools" class="external-link uri">https://CRAN.R-project.org/package=cnefetools</a></p>
 </blockquote>
 <p>If you use the land use mix index functions in <code><a href="reference/compute_lumi.html">compute_lumi()</a></code>, particularly the BGBI, please also cite:</p>
 <blockquote>
@@ -477,7 +503,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

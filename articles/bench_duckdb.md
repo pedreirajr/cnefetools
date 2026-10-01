@@ -3,49 +3,71 @@
 ## Introduction
 
 Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as
-its default backend to perform spatial operations efficiently, with
-speedups of up to **20x** over pure-R code depending on the number of
-address points and the size of the spatial units.
+its default backend for the heavy work. A pure-R fallback
+(`backend = "r"`) is available for environments where DuckDB extensions
+cannot be installed, using [h3jsr](https://github.com/obrl-soil/h3jsr)
+and [sf](https://r-spatial.github.io/sf/) for the same operations.
 
-This performance boost is made possible by three DuckDB extensions:
+Two DuckDB extensions do the work:
 
-- [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
-  performs spatial joins (e.g., point-in-polygon) in SQL
-- [**zipfs**](https://duckdb.org/community_extensions/extensions/zipfs):
-  reads CSV files directly from cached ZIP archives, avoiding the need
-  to extract files to disk
 - [**h3**](https://duckdb.org/community_extensions/extensions/h3):
   assigns geographic coordinates to H3 hexagonal grid cells entirely
-  inside DuckDB
+  inside DuckDB. This is what
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
+  and
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md)
+  rely on.
+- [**spatial**](https://duckdb.org/docs/stable/core_extensions/spatial/overview):
+  performs point-in-polygon joins in SQL. This is what the
+  `tracts_to_*()` functions and the user-polygon mode rely on. It is not
+  used by the H3 mode benchmarked here.
 
-A pure-R fallback (`backend = "r"`) is also available, using
-[h3jsr](https://github.com/obrl-soil/h3jsr) and
-[sf](https://r-spatial.github.io/sf/) for the same operations (slower,
-but without the DuckDB dependency).
+The cached file itself is a gzipped CSV, which DuckDB decompresses
+natively, so no extension is involved in reading it.
 
-In this article, we demonstrate the performance in two different
-settings using the
-[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
-function:
+This article compares the two backends along two dimensions, using
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md):
+municipality size, measured in both elapsed time and peak memory, and H3
+output resolution.
 
-- First, we compare three different municipalities: **São Paulo-SP**
-  (~5.7 million addresses), **Curitiba-PR** (~900,000 addresses), and
-  **Vitória da Conquista-BA** (~200,000 addresses);
+## How these numbers were produced
 
-- Then, we contrast processing times for three different H3 resolutions
-  (7, 9, and 11) within the same city (**Curitiba**).
+Running the same call on the same warm input repeatedly, we measured
+elapsed times from 1.63 s to 3.77 s within a single session, with the
+slow runs at the end rather than the beginning, and a fresh session
+minutes later ran uniformly slower than the first session’s early runs.
+That points to CPU thermal and frequency drift rather than to a cold
+page cache, which would have made the first runs slow instead of the
+last, or to thread scheduling, since pinning CPU affinity barely changed
+anything.
 
-Benchmarks were run on a machine equipped with a 14-core, 20-thread CPU
-(13th Gen Intel Core i9-13900H, 2.60 GHz), 32 GB of RAM, and Windows 11.
-Tests were executed in R 4.3.2 using DuckDB 1.4.1.
+If you time every DuckDB case and then every pure-R case, all of that
+drift lands on one backend, where you can’t tell it apart from the
+effect you’re trying to measure. So the measurements here:
 
-## Comparing cities of different sizes
+- discard a warm-up run per configuration, so the OS page cache is hot
+  and the one-off extension load is already paid;
+- visit every configuration once per pass, round-robin, repeated 3 to 5
+  times, so drift becomes noise spread across all configurations rather
+  than bias loaded onto one;
+- report the **median** with the observed min-max range, not a single
+  run;
+- run each replicate in a **fresh R subprocess**;
+- record how much CPU the rest of the machine used during each
+  replicate, so contention is visible in the data rather than assumed
+  away.
 
-Let’s compare the performance of
-[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
-when aggregating CNEFE address points to H3 hexagons at resolution 8.
+Peak memory is the operating system’s peak working set for the whole
+process, via
+[`ps::ps_memory_info()`](https://ps.r-lib.org/reference/ps_memory_info.html),
+and not R-level allocation tracking such as `bench::mark()`’s
+`mem_alloc`. R-level tracking only counts the R heap, and DuckDB
+allocates in C++ outside it, so it would understate DuckDB by a wide
+margin.
 
-### Setup
+The raw per-replicate measurements, including the machine-load columns,
+are in `data-raw/bench_r2_8.csv` in the package repository, and the
+harness that produced them is `data-raw/bench_r2_8.R`.
 
 ``` r
 
@@ -57,260 +79,239 @@ library(kableExtra)
 
 ``` r
 
-# Municipality codes
-cod_spo <- 3550308 # São Paulo
-cod_ctb <- 4106902 # Curitiba
-cod_vca <- 2933307 # Vitória da Conquista
+# Summarising, labelling and plotting live in one place, shared with the
+# manuscript's paper/figures/benchmark.R, so the two cannot disagree on a
+# speedup, a rounding rule or a label.
+source("../../data-raw/bench_r2_8_plots.R")
 
-cods <- c(cod_spo, cod_ctb, cod_vca)
-
-# Benchmark DuckDB backend
-time_duckdb_cities <- sapply(
-  cods,
-  function(i){
-    system.time({
-      result_duckdb_cities <- cnefe_counts(
-        code_muni = i,
-        polygon_type = "hex",
-        h3_resolution = 8,
-        backend = "duckdb",
-        verbose = FALSE
-      )
-    })
-  }
-)
-
-# Benchmark pure-R backend
-time_r_cities <- sapply(
-  cods,
-  function(i){
-    system.time({
-      result_duckdb_cities <- cnefe_counts(
-        code_muni = i,
-        polygon_type = "hex",
-        h3_resolution = 8,
-        backend = "r",
-        verbose = FALSE
-      )
-    })
-  }
-)
-
-# Results
-benchmark_results_cities <- data.frame(
-  city = rep(c("São Paulo", "Curitiba", "Vitória da Conquista"),2),
-  backend = rep(c("Pure R","DuckDB"), each = 3),
-  time_seconds = c(time_r_cities["elapsed",], time_duckdb_cities["elapsed",])
-)
+bench <- bench_load()
+bench_med <- bench_summarise(bench)
 ```
 
-### Visualization
+The machine: 14-core, 20-thread Intel Core i9-13900H (2.60 GHz), 32 GB
+RAM, Windows 11.
 
 ``` r
 
-ggplot(benchmark_results_cities
-       |> mutate(
-         city = factor(city, levels = c('Vitória da Conquista','Curitiba','São Paulo')),
-         backend = factor(backend, levels = c("Pure R", "DuckDB")),
-       ),
-       aes(x = city, y = time_seconds, fill = backend)) +
-  geom_col(width = 0.6, position = position_dodge(width = 0.6)) +
-  geom_text(
-    aes(label = sprintf("%.2f s", time_seconds)),
-    position = position_dodge(width = 0.6),
-    vjust = -0.4,
-    size = 3
-  ) +
-  scale_fill_manual(values = c("Pure R" = "#E74C3C", "DuckDB" = "#2C3E50")) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.08))) +
-  labs(
-    title = "Performance comparison: DuckDB vs Pure R",
-    subtitle = "(per city)",
-    y = "Execution time (seconds)",
-    fill = "Backend",
-    x = NULL
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(
-    plot.title = element_text(face = "bold", size = 15, hjust = 0.5),
-    plot.subtitle = element_text(hjust = 0.5),
-    panel.grid.major.y = element_blank()
+data.frame(
+  component = c("R", "duckdb", "cnefetools"),
+  version = c(
+    paste0(R.version$major, ".", R.version$minor),
+    as.character(packageVersion("duckdb")),
+    as.character(packageVersion("cnefetools"))
   )
+) |>
+  kbl() |>
+  kable_styling(full_width = FALSE)
+```
+
+| component  | version    |
+|:-----------|:-----------|
+| R          | 4.6.0      |
+| duckdb     | 1.5.2      |
+| cnefetools | 0.3.0.9000 |
+
+## Comparing cities of different sizes
+
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
+aggregating CNEFE address points to H3 hexagons at resolution 8, across
+three municipalities of increasing size.
+
+This is the code the harness runs. It is shown rather than executed,
+because this article plots from the committed measurements so that it
+renders without re-downloading hundreds of megabytes, and so that the
+numbers here and in the package’s accompanying paper cannot drift apart.
+
+``` r
+
+cods <- c(
+  "Vitoria da Conquista-BA" = 2933307,
+  "Curitiba-PR"             = 4106902,
+  "Sao Paulo-SP"            = 3550308
+)
+
+# One replicate. The real harness wraps this in a fresh subprocess, repeats it
+# round-robin across all configurations, and records peak memory.
+for (backend in c("duckdb", "r")) {
+  for (cod in cods) {
+    system.time(
+      cnefe_counts(
+        code_muni = cod,
+        h3_resolution = 8,
+        backend = backend,
+        verbose = FALSE
+      )
+    )
+  }
+}
+```
+
+``` r
+
+cities <- bench_cities(bench_med)
+
+bench_plot_time(
+  cities, city_lbl,
+  subtitle = "median of replicates, bars show min-max"
+)
 ```
 
 ![](bench_duckdb_files/figure-html/plot-benchmark-cities-1.png)
 
 > **Note:** For smaller municipalities, the DuckDB backend may offer
-> little or no speedup over pure R, and in some cases may even be
-> slightly slower. This occurs because DuckDB incurs a fixed overhead to
-> initialize the database connection, load extensions, and materialize
-> the data into its in-memory storage before any computation begins.
-> When the dataset is small, this setup cost can outweigh the gains from
-> DuckDB’s optimized query execution, making the pure-R backend
-> competitive or faster.
+> little or no speedup over pure R, and can even be slightly slower.
+> DuckDB pays a fixed cost to initialise the connection and load the H3
+> extension before any computation begins. When the dataset is small,
+> that setup cost outweighs the gains from its query engine.
 
-## Contrasting aggregation across three different spatial resolutions
+### Memory
 
-Now let’s compare the performance of
-[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
-when aggregating CNEFE address points at different H3 resolutions for
-the same city.
+The gap between the backends is much wider in memory than in time, and
+it runs in the direction most readers don’t expect.
 
 ``` r
 
-h3_res <- c(7,9,11)
-
-# Benchmark DuckDB backend
-time_duckdb_h3 <- sapply(
-  h3_res,
-  function(i){
-    system.time({
-      result_duckdb_h3 <- cnefe_counts(
-        code_muni = cod_ctb,
-        polygon_type = "hex",
-        h3_resolution = i,
-        backend = "duckdb",
-        verbose = FALSE
-      )
-    })
-  }
-)
-
-# Benchmark pure-R backend
-time_r_h3 <- sapply(
-  h3_res,
-  function(i){
-    system.time({
-      result_duckdb_h3 <- cnefe_counts(
-        code_muni = cod_ctb,
-        polygon_type = "hex",
-        h3_resolution = i,
-        backend = "r",
-        verbose = FALSE
-      )
-    })
-  }
-)
-
-# Results
-benchmark_results_h3 <- data.frame(
-  h3_res = rep(c(7,9,11),2),
-  backend = rep(c("Pure R","DuckDB"), each = 3),
-  time_seconds = c(time_r_h3["elapsed",], time_duckdb_h3["elapsed",])
+bench_plot_memory(
+  cities, city_lbl,
+  subtitle = "cnefe_counts() at H3 resolution 8, peak working set of the R process"
 )
 ```
 
-### Visualization
+![](bench_duckdb_files/figure-html/plot-memory-cities-1.png)
+
+The pure-R backend holds the filtered address table in R memory, so its
+footprint grows with the number of addresses, while DuckDB streams the
+CSV and aggregates as it goes, never materialising the full table, so
+its footprint stays roughly flat. On São Paulo the two are more than an
+order of magnitude apart.
+
+So `backend = "r"` is not the lightweight option, even though that’s the
+obvious way to read it. It’s there for environments where DuckDB
+extensions can’t be installed, and on a machine that’s short of RAM it’s
+the expensive choice. What holds DuckDB itself back is the
+`cnefetools.duckdb_config` option, which sets its thread count and
+memory budget:
 
 ``` r
 
-ggplot(benchmark_results_h3
-       |> mutate(
-         h3_res = as.factor(h3_res),
-         backend = factor(backend, levels = c("Pure R", "DuckDB"))
-         ),
-       aes(x = h3_res, y = time_seconds, fill = backend)) +
-  geom_col(width = 0.6, position = position_dodge(width = 0.6)) +
-  geom_text(
-    aes(label = sprintf("%.2f s", time_seconds)),
-    position = position_dodge(width = 0.6),
-    vjust = -0.6,
-    size = 3
-  ) +
-  scale_fill_manual(values = c("Pure R" = "#E74C3C", "DuckDB" = "#2C3E50")) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.08))) +
-  labs(
-    title = "Performance comparison: DuckDB vs Pure R",
-    subtitle = "(different spatial resolutions)",
-    y = "Execution time (seconds)",
-    fill = "Backend",
-    x = "H3 resolution"
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(
-    plot.title = element_text(face = "bold", size = 15, hjust = 0.5),
-    plot.subtitle = element_text(hjust = 0.5),
-    panel.grid.major.y = element_blank(),
+options(cnefetools.duckdb_config = list(threads = 4, memory_limit = "4GB"))
+```
+
+Left alone, DuckDB sets `memory_limit` to 80% of installed RAM, so it
+already asks for less on a smaller machine, and a query that goes over
+the limit spills to a temporary directory instead of failing.
+
+## Contrasting three spatial resolutions
+
+The same function on a fixed municipality, Curitiba-PR, across H3
+resolutions 7, 9 and 11.
+
+``` r
+
+for (backend in c("duckdb", "r")) {
+  for (res in c(7, 9, 11)) {
+    system.time(
+      cnefe_counts(
+        code_muni = 4106902,
+        h3_resolution = res,
+        backend = backend,
+        verbose = FALSE
+      )
     )
+  }
+}
+```
+
+``` r
+
+h3res <- bench_med |>
+  filter(block == "h3res") |>
+  mutate(
+    res_lbl = factor(h3_res, levels = sort(unique(h3_res))),
+    backend_lbl = bench_backend(backend)
+  )
+
+bench_plot_time(
+  h3res, res_lbl,
+  xlab = "H3 resolution",
+  subtitle = "Curitiba-PR, median of replicates, bars show min-max"
+)
 ```
 
 ![](bench_duckdb_files/figure-html/plot-benchmark-h3-1.png)
 
 > **Note:** At finer H3 resolutions the hexagons are much smaller, so
-> the H3 point-to-cell indexing — which both backends ultimately
-> delegate to the same underlying H3 C library — dominates the total
-> runtime. Because DuckDB still pays a fixed overhead to initialize the
-> connection, load extensions, and materialize data into its in-memory
-> store, the relative advantage shrinks as the actual computation
-> becomes lighter per cell. At resolution 11 this overhead can even
-> offset DuckDB’s gains, making the pure-R backend competitive or
-> faster.
+> the H3 point-to-cell indexing, which both backends ultimately delegate
+> to the same underlying H3 C library, dominates the total runtime.
+> Because DuckDB still pays its fixed startup cost while the actual
+> computation gets lighter per cell, its relative advantage shrinks as
+> resolution rises.
 
 ## Conclusions
 
-The DuckDB backend is consistently faster than the pure-R
-implementation, and the processing time depends on:
+``` r
 
-- City size (number of CNEFE addresses):
+bench_med |>
+  filter(block == "cities") |>
+  mutate(muni = bench_city(muni)) |>
+  bench_speedup("muni") |>
+  left_join(
+    bench_med |>
+      filter(block == "cities") |>
+      mutate(muni = bench_city(muni)) |>
+      distinct(muni, n_addresses),
+    by = "muni"
+  ) |>
+  arrange(muni) |>
+  transmute(Municipality = muni, Addresses = n_addresses,
+            `DuckDB speedup` = speedup) |>
+  kbl() |>
+  kable_styling(full_width = FALSE)
+```
+
+| Municipality            | Addresses | DuckDB speedup |
+|:------------------------|:----------|---------------:|
+| Vitória da Conquista-BA | ~200k     |           1.24 |
+| Curitiba-PR             | ~900k     |           2.60 |
+| São Paulo-SP            | ~5.7M     |          16.71 |
 
 ``` r
 
-# Computing speedup for each city
-speedups_cities <- benchmark_results_cities |>
-  group_by(city) |>
-  summarize(
-    speedup = time_seconds[backend == 'Pure R']/time_seconds[backend == 'DuckDB']
-    )
-
-# Formatting output table
-speedups_cities |>
+bench_med |>
+  filter(block == "h3res") |>
+  bench_speedup("h3_res") |>
   mutate(
-    city = factor(city, levels = c("Vitória da Conquista", "Curitiba", "São Paulo")),
-    n_points = c("~900,000", "~5,700,000", "~200,000")[match(city, c("Curitiba", "São Paulo", "Vitória da Conquista"))],
-    speedup = round(speedup, 2)
+    `Mean hexagon area (m2)` = c(5161293.36, 105332.51, 2149.64)[
+      match(h3_res, c(7, 9, 11))
+    ]
   ) |>
-  arrange(city) |>
-  select(city, n_points, speedup) |>
-  ## Improved table output with kableExtra package:
+  arrange(h3_res) |>
+  transmute(`H3 resolution` = h3_res, `Mean hexagon area (m2)`,
+            `DuckDB speedup` = speedup) |>
   kbl() |>
-  kable_styling()
+  kable_styling(full_width = FALSE)
 ```
 
-| city                 | n_points   | speedup |
-|:---------------------|:-----------|--------:|
-| Vitória da Conquista | ~200,000   |    1.36 |
-| Curitiba             | ~900,000   |    3.68 |
-| São Paulo            | ~5,700,000 |   13.33 |
+| H3 resolution | Mean hexagon area (m2) | DuckDB speedup |
+|--------------:|-----------------------:|---------------:|
+|             7 |             5161293.36 |           2.17 |
+|             9 |              105332.51 |           2.39 |
+|            11 |                2149.64 |           1.17 |
 
-- Resolution of spatial units where CNEFE addresses are counted:
+How much time DuckDB saves depends on the job. It grows with the number
+of address points and shrinks as H3 resolution rises, to the point of
+disappearing at resolution 11, where the two backends come within a
+couple of percent of each other because H3 indexing dominates and both
+hand it to the same underlying C library. On the smallest municipality
+they’re close enough that the choice doesn’t matter much, and in one
+configuration measured here pure R came out marginally ahead.
 
-``` r
+Memory behaves differently. That gap doesn’t shrink with resolution and
+it widens with municipality size, because only one of the two backends
+materialises the address table.
 
-# Computing speedup for each H3 resolution
-speedups_h3 <- benchmark_results_h3 |>
-  group_by(h3_res) |>
-  summarize(
-    speedup = time_seconds[backend == 'Pure R']/time_seconds[backend == 'DuckDB']
-    )
-
-# Formatting output table
-speedups_h3 |>
-  mutate(
-    avg_hex_area_m2 = c(5161293.36, 105332.51, 2149.64)[match(h3_res, c(7, 9, 11))],
-    speedup = round(speedup, 2)
-  ) |>
-  select(h3_res, avg_hex_area_m2, speedup) |>
-  ## Improved table output with kableExtra package:
-  kbl() |>
-  kable_styling()
-```
-
-| h3_res | avg_hex_area_m2 | speedup |
-|-------:|----------------:|--------:|
-|      7 |      5161293.36 |    4.32 |
-|      9 |       105332.51 |    3.09 |
-|     11 |         2149.64 |    1.34 |
-
-**Recommendation**: Use the DuckDB backend (default) for best
-performance. The pure R backend (`backend = "r"`) is available only if
-you cannot install DuckDB in your environment.
+**Recommendation**: use the DuckDB backend, which is the default. The
+pure-R backend is there for environments where DuckDB extensions can’t
+be installed, and choosing it costs far more in memory than it does in
+time. If you’re short of RAM, set `cnefetools.duckdb_config` instead of
+switching backends.

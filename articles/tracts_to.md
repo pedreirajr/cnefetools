@@ -101,10 +101,8 @@ ftl_h3 <- tracts_to_h3(
 #> ℹ Processing code 2304400
 #> 
 ℹ Step 1/6: connecting to DuckDB and loading extensions...
-✔ Spatial extension loaded
-#> ℹ Step 1/6: connecting to DuckDB and loading extensions...
 
-✔ Step 1/6 (DuckDB ready) [525ms]                         
+✔ Step 1/6 (DuckDB ready) [323ms]                         
 #> 
 ℹ Step 2/6: preparing census tracts in DuckDB...
 
@@ -112,25 +110,23 @@ ftl_h3 <- tracts_to_h3(
 ℹ Using cached file: 'sc_23.parquet'
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
 
-✔ Step 2/6 (Tracts ready) [372ms]               
+✔ Step 2/6 (Tracts ready) [211ms]               
 #> 
 ℹ Step 3/6: preparing CNEFE points in DuckDB...
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2304400_FORTALEZA.zip
-#> ℹ Step 3/6: preparing CNEFE points in DuckDB...
 
-✔ Step 3/6 (CNEFE points ready) [4s]           
+✔ Step 3/6 (CNEFE points ready) [1.3s]         
 #> 
 ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
 
-✔ Step 4/6 (Join and allocation) [1.2s]                           
+✔ Step 4/6 (Join and allocation) [985ms]                          
 #> 
 ℹ Step 5/6: aggregating allocated values to H3 cells...
 
-✔ Step 5/6 (Hex aggregation) [251ms]                   
+✔ Step 5/6 (Hex aggregation) [162ms]                   
 #> 
 ℹ Step 6/6: building H3 grid and joining results...
 
-✔ Step 6/6 (sf output) [3.3s]                      
+✔ Step 6/6 (sf output) [1s]                        
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 
@@ -283,13 +279,11 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
 
-✔ Step 1/6 (CRS alignment) [359ms]
+✔ Step 1/6 (CRS alignment) [292ms]
 #> 
 ℹ Step 2/6: connecting to DuckDB and loading extensions...
-✔ Spatial extension loaded
-#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
 
-✔ Step 2/6 (DuckDB ready) [567ms]                         
+✔ Step 2/6 (DuckDB ready) [414ms]                         
 #> 
 ℹ Step 3/6: preparing census tracts in DuckDB...
 
@@ -297,23 +291,23 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 
-✔ Step 3/6 (Tracts ready) [5.1s]                
+✔ Step 3/6 (Tracts ready) [4.3s]                
 #> 
 ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
                                                 
-ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/3550308_SAO_PAULO.zip
+ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/3550308_SAO_PAULO.csv.gz
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-✔ Step 4/6 (CNEFE points ready) [18.1s]        
+✔ Step 4/6 (CNEFE points ready) [4.1s]         
 #> 
 ℹ Step 5/6: spatial join (points to tracts) and allocation...
 
-✔ Step 5/6 (Join and allocation) [15.1s]                     
+✔ Step 5/6 (Join and allocation) [10.3s]                     
 #> 
 ℹ Step 6/6: aggregating allocated values to polygons...
 
-✔ Step 6/6 (Polygon aggregation) [377ms]               
+✔ Step 6/6 (Polygon aggregation) [341ms]               
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 
@@ -324,7 +318,7 @@ sp_zones_census <- tracts_to_polygon(
 #> ! Unmatched CNEFE points (no tract): 2935 of 4996529 points (0.06% of total
 #>   points)
 #> ! Tracts with NA totals: pop_ph in 622 of 27301 tracts (2.28% of total tracts);
-#>   age_70m in 1316 of 27301 tracts (4.82% of total tracts).
+#>   age_70m in 1316 of 27301 tracts (4.82% of total tracts)
 #> ! Tracts with no eligible dwellings: pop_ph in 324 of 27301 tracts (1.19% of
 #>   total tracts); age_70m in 297 of 27301 tracts (1.09% of total tracts)
 #> 
@@ -394,6 +388,10 @@ apply
 [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/reference/tracts_to_polygon.md)
 to each municipality and then combine the results with
 [`dplyr::bind_rows()`](https://dplyr.tidyverse.org/reference/bind_rows.html).
+
+A worked example of this iterative workflow, applied to the whole São
+Paulo metropolitan region, is available
+[here](https://pedreirajr.github.io/website/posts/2026-02-18-census-tracts-rmsp/).
 
 ### Future versions
 

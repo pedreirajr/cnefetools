@@ -11,6 +11,18 @@ following steps:
 
 The function uses DuckDB with spatial extensions for the heavy work.
 
+Unlike
+[`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/reference/cnefe_counts.md)
+and
+[`compute_lumi()`](https://pedreirajr.github.io/cnefetools/reference/compute_lumi.md),
+this function does not expose a `backend` argument and relies on DuckDB
+exclusively. The dominant cost here is a spatial overlay between the
+full CNEFE point set of the municipality and the census tract polygons,
+which is a different workload from the tabular aggregation those other
+functions perform. Running that overlay in R would take prohibitively
+long in medium and large municipalities, so a pure-R fallback would
+offer users a path that does not finish rather than a slower one.
+
 ## Usage
 
 ``` r
@@ -21,6 +33,7 @@ tracts_to_polygon(
   vars = c("pop_ph", "pop_ch"),
   crs_output = NULL,
   cache = TRUE,
+  cache_dir = NULL,
   verbose = TRUE
 )
 ```
@@ -100,8 +113,17 @@ tracts_to_polygon(
 
 - cache:
 
-  Logical. Whether to use the existing package cache for assets and
-  CNEFE zips.
+  Logical. Whether to use the package cache for the census tract assets
+  and the CNEFE files.
+
+- cache_dir:
+
+  Character. Directory to use for cached downloads. If `NULL` (default),
+  the `CNEFETOOLS_CACHE_DIR` environment variable is used when it is
+  set, otherwise
+  [`tools::R_user_dir()`](https://rdrr.io/r/tools/userdir.html) with
+  `which = "cache"`. Use this to point large downloads at a secondary
+  drive or a shared volume.
 
 - verbose:
 
@@ -135,31 +157,33 @@ poly_pop <- tracts_to_polygon(
 #> ℹ Step 1/6: aligning CRS...
 #> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
 #> ℹ Step 1/6: aligning CRS...
-#> ✔ Step 1/6 (CRS alignment) [38ms]
+#> ✔ Step 1/6 (CRS alignment) [37ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ spatial extension loaded
-#> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [300ms]
+#> ✔ Step 2/6 (DuckDB ready) [248ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 #> ℹ Downloading sc_29.parquet from GitHub release
 #> ℹ All local files already up-to-date!
 #> ℹ Downloading sc_29.parquet from GitHub release
-#> ✔ Downloading sc_29.parquet from GitHub release [32ms]
+#> ✔ Downloading sc_29.parquet from GitHub release [37ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ✔ Step 3/6 (Tracts ready) [269ms]
+#> ✔ Step 3/6 (Tracts ready) [223ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
-#> ✔ Step 4/6 (CNEFE points ready) [2.6s]
+#> ℹ Converting the archive to .csv.gz (done once)
+#> ✔ Converting the archive to .csv.gz (done once) [515ms]
+#> 
+#> ℹ Step 4/6: preparing CNEFE points in DuckDB...
+#> ✔ Step 4/6 (CNEFE points ready) [4.3s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [1.1s]
+#> ✔ Step 5/6 (Join and allocation) [1s]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
-#> ✔ Step 6/6 (Polygon aggregation) [28ms]
+#> ✔ Step 6/6 (Polygon aggregation) [27ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
@@ -172,7 +196,7 @@ poly_pop <- tracts_to_polygon(
 #> ! Unmatched CNEFE points (no tract): 186 of 95739 points (0.19% of total
 #>   points)
 #> ! Tracts with NA totals: pop_ph in 4 of 354 tracts (1.13% of total tracts);
-#>   pop_ch in 6 of 354 tracts (1.69% of total tracts).
+#>   pop_ch in 6 of 354 tracts (1.69% of total tracts)
 #> 
 #> ── Stage 2: CNEFE points → Polygons 
 #> ℹ Polygon coverage: 95492 of 95553 allocated points captured (99.94%)
