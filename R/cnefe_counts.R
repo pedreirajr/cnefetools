@@ -629,7 +629,7 @@ cnefe_counts <- function(
   # Write user polygon to DuckDB via duckspatial
   invisible(
     .duckdb_quiet(
-      duckspatial::ddbs_write_vector(
+      duckspatial::ddbs_write_table(
         conn = con,
         # Normalize geometry column to "geom"; duckspatial preserves the
         # input sf geometry name, but the SQL below hardcodes "geom".
