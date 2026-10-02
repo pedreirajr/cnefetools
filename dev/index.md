@@ -539,7 +539,8 @@ If you use **{cnefetools}** in your work, please cite it as:
 
 > Pedreira Junior, J. U. & Stabile, B. H. M. (2026). cnefetools: Access
 > and Analysis of Brazilian CNEFE Address Data. R package version 0.3.0.
-> [DOI](https://doi.org/10.32614/CRAN.package.cnefetools).
+> DOI
+> [10.32614/CRAN.package.cnefetools](https://doi.org/10.32614/CRAN.package.cnefetools).
 
 If you use the land use mix index functions in
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md),
@@ -548,5 +549,5 @@ particularly the BGBI, please also cite:
 > Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
 > Bomfim, F. G. (2026). BGBI: A citywide-referenced and bidirectional
 > land use mix index for planning and policy evaluation. **Land Use
-> Policy**, 169, 108135.
-> [DOI](https://doi.org/10.1016/j.landusepol.2026.108135)
+> Policy**, 169, 108135. DOI
+> [10.1016/j.landusepol.2026.108135](https://doi.org/10.1016/j.landusepol.2026.108135)
