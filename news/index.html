@@ -40,11 +40,11 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pedreirajr/cnefetools/blob/v0.3.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.3.0" id="cnefetools-030">cnefetools 0.3.0<a class="anchor" aria-label="anchor" href="#cnefetools-030"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="cnefetools-030">cnefetools 0.3.0<a class="anchor" aria-label="anchor" href="#cnefetools-030"></a></h2><p class="text-muted">CRAN release: 2026-10-01</p>
 <div class="section level3">
 <h3 id="breaking-changes-0-3-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h3>
 <ul><li><p>cnefetools now requires <strong>R (&gt;= 4.4.0)</strong>, raised from 4.1.0. duckspatial (&gt;= 1.1.0) calls the null-coalescing operator <code>%||%</code> without importing it, so it resolves only against the base R version added in 4.4.0. On older R the failure surfaced from geobr as a misleading “a file must have been corrupted during download” message. Declaring the requirement turns a confusing runtime error into a clear message at install time (<a href="https://github.com/pedreirajr/cnefetools/issues/78" class="external-link">#78</a>).</p></li>
