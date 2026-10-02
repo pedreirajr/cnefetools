@@ -537,9 +537,9 @@ these functions, so they clean the folder you’re actually using.
 
 If you use **{cnefetools}** in your work, please cite it as:
 
-> Pedreira Junior, J.U. & Stabile, B.H.M. (2026). cnefetools: Access and
-> Analysis of Brazilian CNEFE Address Data. R package, available on
-> CRAN: <https://CRAN.R-project.org/package=cnefetools>
+> Pedreira Junior, J. U. & Stabile, B. H. M. (2026). cnefetools: Access
+> and Analysis of Brazilian CNEFE Address Data. R package version 0.3.0.
+> [DOI](https://doi.org/10.32614/CRAN.package.cnefetools).
 
 If you use the land use mix index functions in
 [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md),
