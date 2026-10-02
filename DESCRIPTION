@@ -55,7 +55,7 @@ Imports:
     tidyr,
     DBI,
     duckdb,
-    duckspatial,
+    duckspatial (>= 1.0.0),
     cli (>= 3.6.0),
     checkmate,
     fs,
