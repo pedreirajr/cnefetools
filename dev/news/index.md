@@ -2,6 +2,10 @@
 
 ## cnefetools (development version)
 
+## cnefetools 0.3.0
+
+CRAN release: 2026-10-01
+
 ### Breaking changes
 
 - cnefetools now requires **R (\>= 4.4.0)**, raised from 4.1.0.
