@@ -362,6 +362,57 @@
   )
 }
 
+#' Delete a temporary data file when the calling function exits
+#'
+#' With `cache = FALSE`, [.cnefe_ensure_zip()] writes the municipality to a
+#' temporary file and flags it with `cleanup_zip = TRUE`, and the census tract
+#' download leaves its Parquet in a temporary folder. The caller owns those
+#' files and has to delete them on success and on error alike, which the
+#' functions did not do before comment 3 of the second-round review (#121).
+#'
+#' The handler is registered with `priority = "last"` so that it runs after the
+#' DuckDB disconnect registered by [.duckdb_connect()] on the same frame. A
+#' DuckDB view reads the file, and on Windows an open handle would make the
+#' deletion fail silently.
+#'
+#' Call it right after the file is created, before anything that can fail.
+#'
+#' @param path Path of the temporary file. `NULL` is a no-op.
+#' @param envir Frame whose exit triggers the deletion. Defaults to the caller.
+#'
+#' @return `path`, invisibly.
+#'
+#' @keywords internal
+#' @noRd
+.defer_unlink <- function(path, envir = parent.frame()) {
+  if (is.null(path) || !nzchar(path)) {
+    return(invisible(path))
+  }
+  withr::defer(
+    if (file.exists(path)) unlink(path),
+    envir = envir,
+    priority = "last"
+  )
+  invisible(path)
+}
+
+#' Register deletion of the file returned by `.cnefe_ensure_zip()` if it is
+#' temporary
+#'
+#' @param zip_info The list returned by [.cnefe_ensure_zip()].
+#' @param envir Frame whose exit triggers the deletion. Defaults to the caller.
+#'
+#' @return `zip_info`, invisibly.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_defer_cleanup <- function(zip_info, envir = parent.frame()) {
+  if (is.list(zip_info) && isTRUE(zip_info$cleanup_zip)) {
+    .defer_unlink(zip_info$zip_path, envir = envir)
+  }
+  invisible(zip_info)
+}
+
 #' @keywords internal
 #' @noRd
 .cnefe_download_zip_with_retry <- function(
@@ -805,7 +856,7 @@
   }
 
   # Download to a unique temp location to avoid conflicts
-  tmp_download_dir <- file.path(tempdir(), paste0("sc_download_", Sys.getpid()))
+  tmp_download_dir <- .sc_tmp_download_dir()
   if (!dir.exists(tmp_download_dir)) {
     dir.create(tmp_download_dir, recursive = TRUE, showWarnings = FALSE)
   }
@@ -915,6 +966,33 @@
   return(tmp_file)
 }
 
+#' Folder that holds census tract downloads before they reach the cache
+#'
+#' With `cache = FALSE`, or when the cached copy is locked, the Parquet is used
+#' straight from here, which makes a file in this folder a temporary one that
+#' the calling function has to delete.
+#'
+#' @keywords internal
+#' @noRd
+.sc_tmp_download_dir <- function() {
+  file.path(tempdir(), paste0("sc_download_", Sys.getpid()))
+}
+
+#' Whether a census tract Parquet is a temporary download
+#'
+#' Decided by location rather than by `cache`, since a locked cache file also
+#' falls back to the temporary copy. A `cache_dir` the user places under
+#' `tempdir()` is not mistaken for it, because only this exact folder counts.
+#'
+#' @keywords internal
+#' @noRd
+.sc_is_tmp_download <- function(path) {
+  norm <- function(x) normalizePath(x, winslash = "/", mustWork = FALSE)
+  identical(norm(dirname(path)), norm(.sc_tmp_download_dir()))
+}
+
+#' @param .envir Frame whose exit deletes a temporary Parquet. Defaults to the
+#'   caller, which also owns the DuckDB connection whose views read the file.
 #' @keywords internal
 #' @noRd
 .sc_create_views_in_duckdb <- function(
@@ -923,7 +1001,8 @@
   cache = TRUE,
   cache_dir = NULL,
   year = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  .envir = parent.frame()
 ) {
 
   code_muni <- .normalize_code_muni(code_muni)
@@ -932,6 +1011,13 @@
   # Ensure UF parquet is available locally
   parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose)
   parquet_path <- normalizePath(parquet_path, winslash = "/", mustWork = TRUE)
+
+  # A temporary download is deleted when the caller exits, after its DuckDB
+  # connection closes. The views below read it lazily, so it cannot go any
+  # sooner (#121).
+  if (.sc_is_tmp_download(parquet_path)) {
+    .defer_unlink(parquet_path, envir = .envir)
+  }
 
   # 7-digit municipality prefix inside 15-digit tract code
   muni_prefix <- sprintf("%07d", code_muni)
@@ -978,7 +1064,8 @@
   cache = TRUE,
   cache_dir = NULL,
   year = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  .envir = parent.frame()
 ) {
   code_muni <- .normalize_code_muni(code_muni)
 
@@ -991,6 +1078,11 @@
     year = year,
     verbose = verbose
   )
+
+  # The views below read the file lazily, so it has to outlive this function.
+  # The deletion is attached to the caller's frame instead, and registered now
+  # so that an error anywhere later still removes it (#121).
+  .cnefe_defer_cleanup(zip_info, envir = .envir)
 
   zip_path <- zip_info$zip_path
   zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
@@ -1044,10 +1136,10 @@
     )
   })
 
-  # Return zip_info so callers can manage cleanup after materialising the views.
-  # Do NOT register on.exit here: cnefe_pts is a lazy VIEW that reads from the
-  # ZIP file; if the ZIP were deleted on function exit, any subsequent
-  # CREATE TABLE ... AS SELECT * FROM cnefe_pts in the caller would fail.
+  # A temporary file is deleted when the caller exits, after its DuckDB
+  # connection closes, not when this function returns. cnefe_pts is a lazy
+  # VIEW, so deleting the file here would break the caller's
+  # CREATE TABLE ... AS SELECT * FROM cnefe_pts.
   invisible(zip_info)
 }
 
@@ -1209,9 +1301,10 @@
     )
   )
 
-  .duckdb_apply_user_config(con)
-
-  # Registered before anything else can fail. This is the whole point.
+  # Registered before anything else can fail. This is the whole point. The
+  # user configuration is applied only after this, since an unknown setting or
+  # a malformed option errors and would otherwise leave the connection open
+  # (comment 3 of the second-round review, #121).
   withr::defer(
     {
       if (!is.null(con) && DBI::dbIsValid(con)) {
@@ -1220,6 +1313,8 @@
     },
     envir = .envir
   )
+
+  .duckdb_apply_user_config(con)
 
   if (isTRUE(spatial)) {
     rlang::check_installed("duckspatial", reason = reason)
