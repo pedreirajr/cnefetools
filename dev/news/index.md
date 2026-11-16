@@ -2,6 +2,35 @@
 
 ## cnefetools (development version)
 
+### Bug fixes
+
+- With `cache = FALSE`,
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
+  and
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  on the R backend no longer download the municipality twice. They now
+  read the file they already retrieved
+  ([\#121](https://github.com/pedreirajr/cnefetools/issues/121)).
+
+- With `cache = FALSE`, temporary files are now deleted when the
+  function exits, whether it succeeds or fails. Before,
+  [`cnefe_counts()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_counts.md)
+  and
+  [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
+  left a `.csv.gz` in the session’s temporary folder on either backend,
+  and
+  [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  left the census tract Parquet. They could also leave the CNEFE file
+  behind when they failed partway through
+  ([\#121](https://github.com/pedreirajr/cnefetools/issues/121)).
+
+- A `cnefetools.duckdb_config` option with an unknown setting or the
+  wrong shape no longer leaves a DuckDB connection open. The connection
+  is now set to close before the option is applied
+  ([\#121](https://github.com/pedreirajr/cnefetools/issues/121)).
+
 ## cnefetools 0.3.0
 
 CRAN release: 2026-10-01
