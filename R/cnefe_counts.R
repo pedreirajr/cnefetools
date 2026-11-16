@@ -184,6 +184,11 @@ cnefe_counts <- function(
   )
   zip_path <- zip_info$zip_path
 
+  # With cache = FALSE this is a temporary file owned by this function. The
+  # deletion is registered before anything else can fail, and runs after the
+  # DuckDB connection closes (#121).
+  .cnefe_defer_cleanup(zip_info)
+
 
   if (verbose) {
   cli::cli_progress_done("Step 1/3: Ensuring the CNEFE data file...")
@@ -276,14 +281,10 @@ cnefe_counts <- function(
 
   } else {
     # Backend "r" (slower): read Arrow, compute H3 in R
-    tab <- read_cnefe(
-      code_muni = code_muni,
-      year = year,
-      output = "arrow",
-      cache = cache,
-      cache_dir = cache_dir,
-      verbose = FALSE
-    )
+    # Reads the file retrieved in step 1. Passing code_muni instead would
+    # retrieve it again, which with cache = FALSE meant a second download
+    # (#121).
+    tab <- read_cnefe(file = zip_path, output = "arrow", verbose = FALSE)
 
     # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
     # as.data.frame() first would materialise all 34 columns as an R data frame
@@ -415,6 +416,11 @@ cnefe_counts <- function(
   )
   zip_path <- zip_info$zip_path
 
+  # With cache = FALSE this is a temporary file owned by this function. The
+  # deletion is registered before anything else can fail, and runs after the
+  # DuckDB connection closes (#121).
+  .cnefe_defer_cleanup(zip_info)
+
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
 
@@ -465,12 +471,9 @@ cnefe_counts <- function(
   } else {
     # Backend "r": read via Arrow, spatial join via sf
     join_result <- .cnefe_counts_user_poly_r(
-      code_muni = code_muni,
-      year = year,
       polygon = polygon_4326,
       verbose = verbose,
-      cache = cache,
-      cache_dir = cache_dir
+      zip_path = zip_path
     )
   }
 
@@ -710,22 +713,13 @@ cnefe_counts <- function(
 # Internal: R backend for user polygon aggregation
 # -----------------------------------------------------------------------------
 .cnefe_counts_user_poly_r <- function(
-  code_muni,
-  year,
   polygon,
   verbose,
-  cache = TRUE,
-  cache_dir = NULL
+  zip_path
 ) {
-  # Read CNEFE data via Arrow
-  tab <- read_cnefe(
-    code_muni = code_muni,
-    year = year,
-    output = "arrow",
-    cache = cache,
-    cache_dir = cache_dir,
-    verbose = FALSE
-  )
+  # Read the file the caller already retrieved, so cache = FALSE does not
+  # download the municipality a second time (#121).
+  tab <- read_cnefe(file = zip_path, output = "arrow", verbose = FALSE)
 
   # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
   # as.data.frame() first would materialise all 34 columns as an R data frame

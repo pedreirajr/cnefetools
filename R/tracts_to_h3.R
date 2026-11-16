@@ -230,10 +230,8 @@ tracts_to_h3 <- function(
     }
   })
 
-  # ZIP data is now fully in DuckDB — safe to delete the temp file.
-  if (is.list(zip_info_cnefe) && isTRUE(zip_info_cnefe$cleanup_zip)) {
-    on.exit(unlink(zip_info_cnefe$zip_path), add = TRUE)
-  }
+  # A temporary CNEFE file was registered for deletion on exit by
+  # .cnefe_create_points_view_in_duckdb(), before anything here could fail.
 
   if (verbose) {
     cli::cli_progress_done("Step 3/6: preparing CNEFE points in DuckDB...")
