@@ -166,7 +166,7 @@ compute_lumi <- function(
 ) {
   polygon_type <- .resolve_polygon_mode(polygon, polygon_type, fn = "compute_lumi")
   backend <- match.arg(backend)
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
   year <- .validate_year(year)
 
   # Validate polygon argument
@@ -176,20 +176,6 @@ compute_lumi <- function(
 
   # Get the appropriate index for the requested year
   cnefe_index <- .get_cnefe_index(year)
-
-  # Name (optional)
-  info <- cnefe_index[
-    cnefe_index$code_muni == code_muni,
-    ,
-    drop = FALSE
-  ]
-  city_name <- if (
-    nrow(info) > 0 && "name_muni" %in% names(info) && !is.na(info$name_muni[1])
-  ) {
-    info$name_muni[1]
-  } else {
-    as.character(code_muni)
-  }
 
   if (verbose) {
     cli::cli_alert_info("Processing municipality code {.val {code_muni}}...")
@@ -345,21 +331,14 @@ compute_lumi <- function(
                            msg_done = "Step 1/3 (CNEFE data ready)")
   }
 
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  zip_infos <- .cnefe_ensure_zips(
+    code_muni,
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose,
-    retry_timeouts = c(300L, 600L, 1800L)
+    verbose = verbose
   )
-  zip_path <- zip_info$zip_path
-
-  # With cache = FALSE this is a temporary file owned by this function. The
-  # deletion is registered before anything else can fail, and runs after the
-  # DuckDB connection closes (#121).
-  .cnefe_defer_cleanup(zip_info)
 
 
   if (verbose) {
@@ -388,35 +367,32 @@ compute_lumi <- function(
       verbose = verbose
     )
 
-    {
-      {
-        src <- .cnefe_csv_uri(zip_path)
-        if (isTRUE(src$needs_zipfs)) {
-          # A cache written by an older version is still a ZIP.
-          .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-        }
-        uri <- src$uri
-        uri_sql <- gsub("'", "''", uri)
+    # One SELECT per municipality file, joined by UNION ALL. The H3 cell comes
+    # from the coordinates of each address, so a cell on a shared border gets the
+    # addresses of both sides in the same GROUP BY and appears once, and the
+    # totals that make up P cover the whole region (#120, R2 comment 1).
+    src_sql <- .cnefe_points_union_sql(
+      con,
+      zip_infos,
+      code_muni,
+      verbose = verbose
+    )
 
-        # only keep the columns needed; exclude COD_ESPECIE == 7
-        sql <- sprintf(
-          "
+    # only keep the columns needed; exclude COD_ESPECIE == 7
+    sql <- sprintf(
+      "
         WITH src AS (
-          SELECT
-            CAST(LONGITUDE AS DOUBLE) AS lon,
-            CAST(LATITUDE  AS DOUBLE) AS lat,
-            try_cast(COD_ESPECIE AS INTEGER) AS cod
-          FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+          %s
         ),
         filtered AS (
           SELECT
             lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
-            cod
+            COD_ESPECIE AS cod
           FROM src
           WHERE
             lon IS NOT NULL AND lat IS NOT NULL
-            AND cod BETWEEN 1 AND 8
-            AND cod != 7
+            AND COD_ESPECIE BETWEEN 1 AND 8
+            AND COD_ESPECIE != 7
         )
         SELECT
           id_hex,
@@ -425,47 +401,28 @@ compute_lumi <- function(
         FROM filtered
         GROUP BY 1;
       ",
-          uri_sql,
-          as.integer(h3_resolution)
-        )
+      src_sql,
+      as.integer(h3_resolution)
+    )
 
-        counts_hex <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
-          dplyr::as_tibble() |>
-          dplyr::mutate(
-            id_hex = as.character(.data$id_hex),
-            n_res = as.integer(.data$n_res),
-            n_tot = as.integer(.data$n_tot)
-          )
-      }
-    }
+    counts_hex <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
+      dplyr::as_tibble() |>
+      dplyr::mutate(
+        id_hex = as.character(.data$id_hex),
+        n_res = as.integer(.data$n_res),
+        n_tot = as.integer(.data$n_tot)
+      )
 
   } else {
-    # backend "r"
-    # Reads the file retrieved in step 1. Passing code_muni instead would
-    # retrieve it again, which with cache = FALSE meant a second download
-    # (#121).
-    tab <- read_cnefe(file = zip_path, output = "arrow", verbose = FALSE)
+    # backend "r": each municipality is reduced to its counts per cell before
+    # the next one is read, so the peak memory is that of the largest one.
+    counts_hex <- lapply(
+      zip_infos,
+      function(info) .compute_lumi_h3_r(info$zip_path, h3_resolution)
+    ) |>
+      dplyr::bind_rows()
 
-    # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
-    # as.data.frame() first would materialise all 34 columns as an R data frame
-    # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
-    # memory falls from 108.4 MB to 68.3 MB.
-    df <- tab |>
-      dplyr::transmute(
-        LONGITUDE = as.numeric(.data$LONGITUDE),
-        LATITUDE = as.numeric(.data$LATITUDE),
-        COD_ESPECIE = as.integer(.data$COD_ESPECIE)
-      ) |>
-      dplyr::filter(
-        !is.na(.data$LONGITUDE),
-        !is.na(.data$LATITUDE),
-        !is.na(.data$COD_ESPECIE),
-        .data$COD_ESPECIE %in% 1L:8L,
-        .data$COD_ESPECIE != 7L
-      ) |>
-      dplyr::collect()
-
-    if (nrow(df) == 0L) {
+    if (nrow(counts_hex) == 0L) {
       if (verbose) {
         cli::cli_alert_warning(
           "No valid CNEFE points after filtering (COD_ESPECIE 1:8, excluding 7). Returning an empty {.cls sf}."
@@ -474,27 +431,12 @@ compute_lumi <- function(
       return(.empty_lumi_sf())
     }
 
-    coords <- df |>
-      dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
-
-    id_hex <- suppressMessages(h3jsr::point_to_cell(
-      coords,
-      res = h3_resolution,
-      simple = TRUE
-    ))
-
-    counts_hex <- df |>
-      dplyr::mutate(id_hex = as.character(id_hex)) |>
-      dplyr::filter(!is.na(.data$id_hex)) |>
+    counts_hex <- counts_hex |>
       dplyr::group_by(.data$id_hex) |>
       dplyr::summarise(
-        n_res = sum(.data$COD_ESPECIE == 1L, na.rm = TRUE),
-        n_tot = dplyr::n(),
+        n_res = as.integer(sum(.data$n_res)),
+        n_tot = as.integer(sum(.data$n_tot)),
         .groups = "drop"
-      ) |>
-      dplyr::mutate(
-        n_res = as.integer(.data$n_res),
-        n_tot = as.integer(.data$n_tot)
       )
   }
 
@@ -554,6 +496,68 @@ compute_lumi <- function(
 
 
 # -----------------------------------------------------------------------------
+# Internal: R backend, counts per H3 cell for one municipality file
+# -----------------------------------------------------------------------------
+.compute_lumi_h3_r <- function(zip_path, h3_resolution) {
+  tab <- read_cnefe(
+    file = zip_path,
+    output = "arrow",
+    verbose = FALSE
+  )
+
+  # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
+  # as.data.frame() first would materialise all 34 columns as an R data frame
+  # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
+  # memory falls from 108.4 MB to 68.3 MB.
+  df <- tab |>
+    dplyr::transmute(
+      LONGITUDE = as.numeric(.data$LONGITUDE),
+      LATITUDE = as.numeric(.data$LATITUDE),
+      COD_ESPECIE = as.integer(.data$COD_ESPECIE)
+    ) |>
+    dplyr::filter(
+      !is.na(.data$LONGITUDE),
+      !is.na(.data$LATITUDE),
+      !is.na(.data$COD_ESPECIE),
+      .data$COD_ESPECIE %in% 1L:8L,
+      .data$COD_ESPECIE != 7L
+    ) |>
+    dplyr::collect()
+
+  if (nrow(df) == 0L) {
+    return(dplyr::tibble(
+      id_hex = character(0),
+      n_res = integer(0),
+      n_tot = integer(0)
+    ))
+  }
+
+  coords <- df |>
+    dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
+
+  id_hex <- suppressMessages(h3jsr::point_to_cell(
+    coords,
+    res = h3_resolution,
+    simple = TRUE
+  ))
+
+  df |>
+    dplyr::mutate(id_hex = as.character(id_hex)) |>
+    dplyr::filter(!is.na(.data$id_hex)) |>
+    dplyr::group_by(.data$id_hex) |>
+    dplyr::summarise(
+      n_res = sum(.data$COD_ESPECIE == 1L, na.rm = TRUE),
+      n_tot = dplyr::n(),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      n_res = as.integer(.data$n_res),
+      n_tot = as.integer(.data$n_tot)
+    )
+}
+
+
+# -----------------------------------------------------------------------------
 # Internal: User-provided polygon aggregation
 # -----------------------------------------------------------------------------
 .compute_lumi_user_poly <- function(
@@ -575,21 +579,14 @@ compute_lumi <- function(
                            msg_done = "Step 1/3 (Data and polygon ready)")
   }
 
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  zip_infos <- .cnefe_ensure_zips(
+    code_muni,
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose,
-    retry_timeouts = c(300L, 600L, 1800L)
+    verbose = verbose
   )
-  zip_path <- zip_info$zip_path
-
-  # With cache = FALSE this is a temporary file owned by this function. The
-  # deletion is registered before anything else can fail, and runs after the
-  # DuckDB connection closes (#121).
-  .cnefe_defer_cleanup(zip_info)
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -634,16 +631,24 @@ compute_lumi <- function(
     )
 
     join_result <- .compute_lumi_user_poly_duckdb(
-      zip_path = zip_path,
+      zip_infos = zip_infos,
+      code_munis = code_muni,
       polygon = polygon_4326,
       verbose = verbose
     )
   } else {
-    join_result <- .compute_lumi_user_poly_r(
-      polygon = polygon_4326,
-      verbose = verbose,
-      zip_path = zip_path
-    )
+    # One municipality at a time, reduced to counts per polygon before the next
+    # file is read, so the peak memory is that of the largest municipality.
+    join_result <- .combine_poly_joins(lapply(
+      zip_infos,
+      function(info) {
+        .compute_lumi_user_poly_r(
+          zip_path = info$zip_path,
+          polygon = polygon_4326,
+          verbose = verbose
+        )
+      }
+    ))
   }
 
   if (verbose) {
@@ -740,7 +745,8 @@ compute_lumi <- function(
 # Internal: DuckDB backend for user polygon spatial join (compute_lumi)
 # -----------------------------------------------------------------------------
 .compute_lumi_user_poly_duckdb <- function(
-  zip_path,
+  zip_infos,
+  code_munis,
   polygon,
   verbose
 ) {
@@ -755,30 +761,34 @@ compute_lumi <- function(
 
   .duckdb_quiet({
     {
-      src <- .cnefe_csv_uri(zip_path)
-      if (isTRUE(src$needs_zipfs)) {
-        # A cache written by an older version is still a ZIP.
-        .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-      }
-      uri <- src$uri
-      uri_sql <- gsub("'", "''", uri)
+      # One SELECT per municipality file, joined by UNION ALL: the points of the
+      # whole region go through a single spatial join, and the global totals
+      # that make up P cover all of them (#120, R2 comment 1).
+      src_sql <- .cnefe_points_union_sql(
+        con,
+        zip_infos,
+        code_munis,
+        verbose = verbose
+      )
 
       DBI::dbExecute(con, sprintf(
         "
       CREATE TABLE cnefe_pts AS
       SELECT
         ROW_NUMBER() OVER () AS pt_id,
-        CAST(LONGITUDE AS DOUBLE) AS lon,
-        CAST(LATITUDE  AS DOUBLE) AS lat,
-        try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE,
-        ST_Point(CAST(LONGITUDE AS DOUBLE), CAST(LATITUDE AS DOUBLE)) AS geom
-      FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+        lon,
+        lat,
+        COD_ESPECIE,
+        ST_Point(lon, lat) AS geom
+      FROM (
+        %s
+      )
       WHERE
-        LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
-        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8
-        AND try_cast(COD_ESPECIE AS INTEGER) != 7;
+        lon IS NOT NULL AND lat IS NOT NULL
+        AND COD_ESPECIE BETWEEN 1 AND 8
+        AND COD_ESPECIE != 7;
       ",
-        uri_sql
+        src_sql
       ))
 
       total_points <- DBI::dbGetQuery(
@@ -901,13 +911,16 @@ compute_lumi <- function(
 # Internal: R backend for user polygon spatial join (compute_lumi)
 # -----------------------------------------------------------------------------
 .compute_lumi_user_poly_r <- function(
+  zip_path,
   polygon,
-  verbose,
-  zip_path
+  verbose
 ) {
-  # Read the file the caller already retrieved, so cache = FALSE does not
-  # download the municipality a second time (#121).
-  tab <- read_cnefe(file = zip_path, output = "arrow", verbose = FALSE)
+  # Read CNEFE data via Arrow
+  tab <- read_cnefe(
+      file = zip_path,
+      output = "arrow",
+      verbose = FALSE
+    )
 
   # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
   # as.data.frame() first would materialise all 34 columns as an R data frame

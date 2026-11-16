@@ -109,7 +109,7 @@ cnefe_counts <- function(
 ) {
   polygon_type <- .resolve_polygon_mode(polygon, polygon_type, fn = "cnefe_counts")
   backend <- match.arg(backend)
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
   year <- .validate_year(year)
 
   # Validate polygon argument
@@ -173,21 +173,14 @@ cnefe_counts <- function(
                            msg_done = "Step 1/3 (CNEFE data ready)")
   }
 
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  zip_infos <- .cnefe_ensure_zips(
+    code_muni,
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose,
-    retry_timeouts = c(300L, 600L, 1800L)
+    verbose = verbose
   )
-  zip_path <- zip_info$zip_path
-
-  # With cache = FALSE this is a temporary file owned by this function. The
-  # deletion is registered before anything else can fail, and runs after the
-  # DuckDB connection closes (#121).
-  .cnefe_defer_cleanup(zip_info)
 
 
   if (verbose) {
@@ -240,34 +233,33 @@ cnefe_counts <- function(
       verbose = verbose
     )
 
-    src <- .cnefe_csv_uri(zip_path)
-    if (isTRUE(src$needs_zipfs)) {
-      # A cache written by an older version is still a ZIP.
-      .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-    }
-    uri <- src$uri
-    uri_sql <- gsub("'", "''", uri)
+    # One SELECT per municipality file, joined by UNION ALL. The H3 cell is
+    # computed from each address's own coordinates, never from a municipal
+    # boundary, so a cell on a shared border receives the addresses of both
+    # sides in the same GROUP BY and appears once (#120, R2 comment 1).
+    src_sql <- .cnefe_points_union_sql(
+      con,
+      zip_infos,
+      code_muni,
+      verbose = verbose
+    )
 
     sql <- sprintf(
-          "
+      "
         WITH src AS (
-          SELECT
-            CAST(LONGITUDE AS DOUBLE) AS lon,
-            CAST(LATITUDE  AS DOUBLE) AS lat,
-            try_cast(COD_ESPECIE AS INTEGER) AS cod
-          FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+          %s
         )
         SELECT
           lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
-          cod AS COD_ESPECIE,
+          COD_ESPECIE,
           COUNT(*)::BIGINT AS n
         FROM src
         WHERE
           lon IS NOT NULL AND lat IS NOT NULL
-          AND cod BETWEEN 1 AND 8
+          AND COD_ESPECIE BETWEEN 1 AND 8
         GROUP BY 1, 2;
       ",
-      uri_sql,
+      src_sql,
       as.integer(h3_resolution)
     )
 
@@ -280,53 +272,17 @@ cnefe_counts <- function(
       )
 
   } else {
-    # Backend "r" (slower): read Arrow, compute H3 in R
-    # Reads the file retrieved in step 1. Passing code_muni instead would
-    # retrieve it again, which with cache = FALSE meant a second download
-    # (#121).
-    tab <- read_cnefe(file = zip_path, output = "arrow", verbose = FALSE)
-
-    # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
-    # as.data.frame() first would materialise all 34 columns as an R data frame
-    # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
-    # memory falls from 108.4 MB to 68.3 MB.
-    df <- tab |>
-      dplyr::transmute(
-        LONGITUDE = as.numeric(.data$LONGITUDE),
-        LATITUDE = as.numeric(.data$LATITUDE),
-        COD_ESPECIE = as.integer(.data$COD_ESPECIE)
-      ) |>
-      dplyr::filter(
-        !is.na(.data$LONGITUDE),
-        !is.na(.data$LATITUDE),
-        !is.na(.data$COD_ESPECIE),
-        .data$COD_ESPECIE %in% 1L:8L
-      ) |>
-      dplyr::collect()
-
-    if (nrow(df) > 0L) {
-      coords <- df |>
-        dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
-
-      id_hex <- suppressMessages(
-        h3jsr::point_to_cell(coords, res = h3_resolution, simple = TRUE)
-      )
-
-      counts_long <- df |>
-        dplyr::mutate(id_hex = as.character(id_hex)) |>
-        dplyr::filter(!is.na(.data$id_hex)) |>
-        dplyr::count(.data$id_hex, .data$COD_ESPECIE, name = "n") |>
-        dplyr::mutate(
-          COD_ESPECIE = as.integer(.data$COD_ESPECIE),
-          n = as.integer(.data$n)
-        )
-    } else {
-      counts_long <- dplyr::tibble(
-        id_hex = character(0),
-        COD_ESPECIE = integer(0),
-        n = integer(0)
-      )
-    }
+    # Backend "r" (slower): read Arrow, compute H3 in R. Each municipality is
+    # reduced to its counts per cell before the next one is read, so the peak
+    # memory is that of the largest municipality, not of their sum.
+    counts_long <- lapply(
+      zip_infos,
+      function(info) .cnefe_counts_h3_r(info$zip_path, h3_resolution)
+    ) |>
+      dplyr::bind_rows() |>
+      dplyr::group_by(.data$id_hex, .data$COD_ESPECIE) |>
+      dplyr::summarise(n = sum(.data$n), .groups = "drop") |>
+      dplyr::mutate(n = as.integer(.data$n))
   }
 
   # Wide with addr_type1..addr_type8 and robust typing
@@ -384,6 +340,60 @@ cnefe_counts <- function(
 
 
 # -----------------------------------------------------------------------------
+# Internal: R backend, counts per H3 cell for one municipality file
+# -----------------------------------------------------------------------------
+.cnefe_counts_h3_r <- function(zip_path, h3_resolution) {
+  tab <- read_cnefe(
+    file = zip_path,
+    output = "arrow",
+    verbose = FALSE
+  )
+
+  # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
+  # as.data.frame() first would materialise all 34 columns as an R data frame
+  # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
+  # memory falls from 108.4 MB to 68.3 MB.
+  df <- tab |>
+    dplyr::transmute(
+      LONGITUDE = as.numeric(.data$LONGITUDE),
+      LATITUDE = as.numeric(.data$LATITUDE),
+      COD_ESPECIE = as.integer(.data$COD_ESPECIE)
+    ) |>
+    dplyr::filter(
+      !is.na(.data$LONGITUDE),
+      !is.na(.data$LATITUDE),
+      !is.na(.data$COD_ESPECIE),
+      .data$COD_ESPECIE %in% 1L:8L
+    ) |>
+    dplyr::collect()
+
+  if (nrow(df) == 0L) {
+    return(dplyr::tibble(
+      id_hex = character(0),
+      COD_ESPECIE = integer(0),
+      n = integer(0)
+    ))
+  }
+
+  coords <- df |>
+    dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
+
+  id_hex <- suppressMessages(
+    h3jsr::point_to_cell(coords, res = h3_resolution, simple = TRUE)
+  )
+
+  df |>
+    dplyr::mutate(id_hex = as.character(id_hex)) |>
+    dplyr::filter(!is.na(.data$id_hex)) |>
+    dplyr::count(.data$id_hex, .data$COD_ESPECIE, name = "n") |>
+    dplyr::mutate(
+      COD_ESPECIE = as.integer(.data$COD_ESPECIE),
+      n = as.integer(.data$n)
+    )
+}
+
+
+# -----------------------------------------------------------------------------
 # Internal: User-provided polygon aggregation
 # -----------------------------------------------------------------------------
 .cnefe_counts_user_poly <- function(
@@ -405,21 +415,14 @@ cnefe_counts <- function(
                            msg_done = "Step 1/2 (Data and polygon ready)")
   }
 
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  zip_infos <- .cnefe_ensure_zips(
+    code_muni,
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose,
-    retry_timeouts = c(300L, 600L, 1800L)
+    verbose = verbose
   )
-  zip_path <- zip_info$zip_path
-
-  # With cache = FALSE this is a temporary file owned by this function. The
-  # deletion is registered before anything else can fail, and runs after the
-  # DuckDB connection closes (#121).
-  .cnefe_defer_cleanup(zip_info)
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -464,17 +467,25 @@ cnefe_counts <- function(
     )
 
     join_result <- .cnefe_counts_user_poly_duckdb(
-      zip_path = zip_path,
+      zip_infos = zip_infos,
+      code_munis = code_muni,
       polygon = polygon_4326,
       verbose = verbose
     )
   } else {
-    # Backend "r": read via Arrow, spatial join via sf
-    join_result <- .cnefe_counts_user_poly_r(
-      polygon = polygon_4326,
-      verbose = verbose,
-      zip_path = zip_path
-    )
+    # Backend "r": read via Arrow, spatial join via sf, one municipality at a
+    # time. Each file is reduced to its counts per polygon before the next one
+    # is read, so the peak memory is that of the largest municipality.
+    join_result <- .combine_poly_joins(lapply(
+      zip_infos,
+      function(info) {
+        .cnefe_counts_user_poly_r(
+          zip_path = info$zip_path,
+          polygon = polygon_4326,
+          verbose = verbose
+        )
+      }
+    ))
   }
 
   # Extract coverage statistics
@@ -577,7 +588,8 @@ cnefe_counts <- function(
 # Internal: DuckDB backend for user polygon aggregation
 # -----------------------------------------------------------------------------
 .cnefe_counts_user_poly_duckdb <- function(
-  zip_path,
+  zip_infos,
+  code_munis,
   polygon,
   verbose
 ) {
@@ -588,13 +600,15 @@ cnefe_counts <- function(
     verbose = verbose
   )
 
-  src <- .cnefe_csv_uri(zip_path)
-  if (isTRUE(src$needs_zipfs)) {
-    # A cache written by an older version is still a ZIP.
-    .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-  }
-  uri <- src$uri
-  uri_sql <- gsub("'", "''", uri)
+  # One SELECT per municipality file, joined by UNION ALL: the points of the
+  # whole region go through a single spatial join, so a polygon that crosses a
+  # municipal border receives the addresses of both sides (#120).
+  src_sql <- .cnefe_points_union_sql(
+    con,
+    zip_infos,
+    code_munis,
+    verbose = verbose
+  )
 
   # Create CNEFE points table in DuckDB with point geometry
   DBI::dbExecute(con, sprintf(
@@ -602,16 +616,18 @@ cnefe_counts <- function(
     CREATE TABLE cnefe_pts AS
     SELECT
       ROW_NUMBER() OVER () AS pt_id,
-      CAST(LONGITUDE AS DOUBLE) AS lon,
-      CAST(LATITUDE  AS DOUBLE) AS lat,
-      try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE,
-      ST_Point(CAST(LONGITUDE AS DOUBLE), CAST(LATITUDE AS DOUBLE)) AS geom
-    FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+      lon,
+      lat,
+      COD_ESPECIE,
+      ST_Point(lon, lat) AS geom
+    FROM (
+      %s
+    )
     WHERE
-      LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
-      AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8;
+      lon IS NOT NULL AND lat IS NOT NULL
+      AND COD_ESPECIE BETWEEN 1 AND 8;
     ",
-    uri_sql
+    src_sql
   ))
 
   total_points <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_pts;")$n[1]
@@ -713,13 +729,16 @@ cnefe_counts <- function(
 # Internal: R backend for user polygon aggregation
 # -----------------------------------------------------------------------------
 .cnefe_counts_user_poly_r <- function(
+  zip_path,
   polygon,
-  verbose,
-  zip_path
+  verbose
 ) {
-  # Read the file the caller already retrieved, so cache = FALSE does not
-  # download the municipality a second time (#121).
-  tab <- read_cnefe(file = zip_path, output = "arrow", verbose = FALSE)
+  # Read CNEFE data via Arrow
+  tab <- read_cnefe(
+      file = zip_path,
+      output = "arrow",
+      verbose = FALSE
+    )
 
   # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
   # as.data.frame() first would materialise all 34 columns as an R data frame

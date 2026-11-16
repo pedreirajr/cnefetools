@@ -94,6 +94,36 @@
 }
 
 
+#' Normalise one or several IBGE municipality codes
+#'
+#' `cnefe_counts()`, `compute_lumi()` and the two interpolation functions take a
+#' vector of codes, so that a region spanning several municipalities is built in
+#' one pass: one grid over the union of the boundaries, one reference share `P`
+#' over the whole region, and no cell that appears twice (#120, R2 comment 1).
+#' Each element goes through [.normalize_code_muni()], repeated codes are
+#' dropped, and the first-seen order is kept.
+#'
+#' @param code_muni One or more seven-digit IBGE municipality codes.
+#'
+#' @return An integer vector without duplicates, at least one element long.
+#'
+#' @keywords internal
+#' @noRd
+.normalize_code_munis <- function(code_muni) {
+  if (length(code_muni) < 1L) {
+    cli::cli_abort("{.arg code_muni} must contain at least one municipality code.")
+  }
+
+  codes <- vapply(
+    seq_along(code_muni),
+    function(i) .normalize_code_muni(code_muni[[i]]),
+    integer(1)
+  )
+
+  unique(codes)
+}
+
+
 ## Theme: Cache management
 
 #' Resolve the cache directory
@@ -361,6 +391,175 @@
     url = url
   )
 }
+
+#' Retrieve the CNEFE file of every requested municipality
+#'
+#' Loops over [.cnefe_ensure_zip()] and registers the cleanup of an uncached
+#' file right after each retrieval, so a failure while fetching the second
+#' municipality still removes the first one's temporary file.
+#'
+#' @param code_munis Integer vector of municipality codes.
+#' @param envir Frame the cleanup handlers attach to, the caller by default.
+#' @inheritParams .cnefe_ensure_zip
+#'
+#' @return A list of `.cnefe_ensure_zip()` results, one per code, in order.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_ensure_zips <- function(
+  code_munis,
+  index,
+  cache = TRUE,
+  cache_dir = NULL,
+  year = NULL,
+  verbose = TRUE,
+  retry_timeouts = c(300L, 600L, 1800L),
+  envir = parent.frame()
+) {
+  infos <- vector("list", length(code_munis))
+
+  for (i in seq_along(code_munis)) {
+    if (verbose && length(code_munis) > 1L) {
+      cli::cli_alert_info(
+        "Municipality {i} of {length(code_munis)}: {.val {code_munis[[i]]}}"
+      )
+    }
+    infos[[i]] <- .cnefe_ensure_zip(
+      code_muni = code_munis[[i]],
+      index = index,
+      cache = cache,
+      cache_dir = cache_dir,
+      year = year,
+      verbose = verbose,
+      retry_timeouts = retry_timeouts
+    )
+    .cnefe_defer_cleanup(infos[[i]], envir = envir)
+  }
+
+  infos
+}
+
+
+#' SQL that reads the address points of several municipalities as one table
+#'
+#' Builds one `SELECT ... FROM read_csv_auto(...)` per file and joins them with
+#' `UNION ALL`. Each file is read, and its types inferred, on its own exactly as
+#' a single-municipality call does, and DuckDB streams the union, so the memory
+#' of an aggregation over it does not depend on how many files there are.
+#'
+#' The columns are `code_muni`, `lon`, `lat` and `COD_ESPECIE`, plus
+#' `COD_UNICO_ENDERECO` and `COD_SETOR` when `ids = TRUE`.
+#'
+#' @param con A live DuckDB connection, used to load `zipfs` for a legacy ZIP.
+#' @param zip_infos List of `.cnefe_ensure_zip()` results.
+#' @param code_munis Integer vector of codes, the same length and order.
+#' @param ids Whether to carry the address id and the census tract code.
+#' @param verbose Forwarded to the extension loader.
+#'
+#' @return A single SQL string, to be used as a subquery.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_points_union_sql <- function(
+  con,
+  zip_infos,
+  code_munis,
+  ids = FALSE,
+  verbose = TRUE
+) {
+  parts <- character(length(zip_infos))
+  zipfs_ready <- FALSE
+
+  for (i in seq_along(zip_infos)) {
+    src <- .cnefe_csv_uri(zip_infos[[i]]$zip_path)
+    if (isTRUE(src$needs_zipfs) && !zipfs_ready) {
+      # A cache written by an older version is still a ZIP.
+      .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+      zipfs_ready <- TRUE
+    }
+    uri_sql <- gsub("'", "''", src$uri)
+
+    id_cols <- if (isTRUE(ids)) {
+      paste0(
+        "CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
+",
+        "      CAST(COD_SETOR AS VARCHAR) AS COD_SETOR,
+      "
+      )
+    } else {
+      ""
+    }
+
+    parts[[i]] <- sprintf(
+      paste0(
+        "SELECT
+",
+        "      %d AS code_muni,
+",
+        "      %sCAST(LONGITUDE AS DOUBLE) AS lon,
+",
+        "      CAST(LATITUDE AS DOUBLE) AS lat,
+",
+        "      try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE
+",
+        "    FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)"
+      ),
+      as.integer(code_munis[[i]]),
+      id_cols,
+      uri_sql
+    )
+  }
+
+  paste(parts, collapse = "
+    UNION ALL
+    ")
+}
+
+
+#' Combine the spatial-join results of several municipalities
+#'
+#' The R backend joins one municipality file at a time and keeps only the
+#' counts per polygon, so memory follows the largest municipality. The pieces
+#' are additive: counts per polygon (and species) are summed, and so are the
+#' coverage totals. A single result is returned untouched.
+#'
+#' @param results List of the lists built by `.cnefe_counts_user_poly_r()` or
+#'   `.compute_lumi_user_poly_r()`.
+#'
+#' @return One list of the same shape.
+#'
+#' @keywords internal
+#' @noRd
+.combine_poly_joins <- function(results) {
+  if (length(results) == 1L) {
+    return(results[[1L]])
+  }
+
+  counts <- dplyr::bind_rows(lapply(results, function(x) x$counts))
+  value_cols <- intersect(c("n", "n_res", "n_tot"), names(counts))
+  key_cols <- setdiff(names(counts), value_cols)
+
+  counts <- counts |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(key_cols))) |>
+    dplyr::summarise(
+      dplyr::across(dplyr::all_of(value_cols), ~ as.integer(sum(.x))),
+      .groups = "drop"
+    )
+
+  out <- list(counts = counts)
+  for (nm in c(
+    "total_points", "points_matched", "points_outside",
+    "total_n_res", "total_n_tot"
+  )) {
+    vals <- lapply(results, function(x) x[[nm]])
+    if (!all(vapply(vals, is.null, logical(1)))) {
+      out[[nm]] <- sum(unlist(vals))
+    }
+  }
+
+  out
+}
+
 
 #' Delete a temporary data file when the calling function exits
 #'
