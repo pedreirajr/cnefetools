@@ -76,7 +76,7 @@ tracts_to_h3 <- function(
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
 
   year <- .validate_year(year)
 
@@ -195,7 +195,7 @@ tracts_to_h3 <- function(
 
   # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
   # The ZIP must remain on disk until the views are materialised into a table.
-  zip_info_cnefe <- suppressMessages(
+  suppressMessages(
     .cnefe_create_points_view_in_duckdb(
       con,
       code_muni = code_muni,
@@ -248,17 +248,31 @@ tracts_to_h3 <- function(
   # Matched points only (spatial join without LEFT JOIN)
   # IMPORTANT: bring ONLY code_tract from tracts (fixes the `s.` parser bug
   # and avoids carrying unrequested columns).
+  # With several municipalities a point is only matched to the tracts of its own
+  # municipality, the same pairing a call per municipality would make. The
+  # extra predicate is left out for a single municipality, where it holds for
+  # every row.
+  same_muni_sql <- if (length(code_muni) > 1L) {
+    "AND substr(s.code_tract, 1, 7) = CAST(p.code_muni AS VARCHAR)"
+  } else {
+    ""
+  }
+
   .duckdb_quiet_execute(
     con,
-    "
+    sprintf(
+      "
     CREATE OR REPLACE TABLE cnefe_sc AS
     SELECT
       p.*,
       s.code_tract
     FROM cnefe_pts_tbl p,
          sc_muni_tbl s
-    WHERE ST_Within(p.geom, s.geom);
-  "
+    WHERE ST_Within(p.geom, s.geom)
+      %s;
+  ",
+      same_muni_sql
+    )
   )
 
   matched_pts <- suppressMessages(

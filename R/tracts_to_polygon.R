@@ -93,7 +93,7 @@ tracts_to_polygon <- function(
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
   year <- .validate_year(year)
 
   # Get the appropriate index for the requested year
@@ -298,7 +298,7 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
   # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
-  zip_info_cnefe <- .cnefe_create_points_view_in_duckdb(
+  .cnefe_create_points_view_in_duckdb(
     con,
     code_muni = code_muni,
     index = cnefe_index,
@@ -342,17 +342,31 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
   # Matched points only (spatial join without LEFT JOIN)
+  # With several municipalities a point is only matched to the tracts of its own
+  # municipality, the same pairing a call per municipality would make. The
+  # extra predicate is left out for a single municipality, where it holds for
+  # every row.
+  same_muni_sql <- if (length(code_muni) > 1L) {
+    "AND substr(s.code_tract, 1, 7) = CAST(p.code_muni AS VARCHAR)"
+  } else {
+    ""
+  }
+
   .duckdb_quiet_execute(
     con,
-    "
+    sprintf(
+      "
     CREATE OR REPLACE TABLE cnefe_sc AS
     SELECT
       p.*,
       s.code_tract
     FROM cnefe_pts_tbl p,
          sc_muni_tbl s
-    WHERE ST_Within(p.geom, s.geom);
-  "
+    WHERE ST_Within(p.geom, s.geom)
+      %s;
+  ",
+      same_muni_sql
+    )
   )
 
   matched_pts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]

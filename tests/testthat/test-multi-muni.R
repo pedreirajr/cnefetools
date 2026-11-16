@@ -296,3 +296,146 @@ testthat::test_that("one municipality in a vector gives the same result as the s
   again <- run_multi(cnefetools::cnefe_counts, c(multi_muni$code_a, multi_muni$code_a), "r")
   testthat::expect_equal(once, again)
 })
+
+# --- tracts_to_h3() and tracts_to_polygon() -----------------------------------
+#
+# Both municipalities sit in the same state, so one tract Parquet serves both.
+# A tract of each municipality covers its own rectangle. Population totals are
+# additive and spread over the private and collective dwellings of each tract,
+# so the border cell must receive the allocation of both sides, once.
+
+tract_multi <- local({
+  lon0 <- multi_muni$lon0
+  lat0 <- multi_muni$lat0
+  pt <- function(dx, dy, n, cod) {
+    data.frame(
+      COD_ESPECIE = rep(cod, n),
+      LONGITUDE = rep(lon0 + dx, n),
+      LATITUDE = rep(lat0 + dy, n)
+    )
+  }
+  list(
+    # A: 20 dwellings in the shared cell and 10 elsewhere. B: 5 in the shared
+    # cell and 4 elsewhere.
+    records_a = rbind(pt(-1e-5, 0, 20, 1L), pt(-0.005, 0.003, 10, 1L)),
+    records_b = rbind(pt(1e-5, 0, 5, 1L), pt(0.005, -0.003, 4, 2L)),
+    pop_a = 100L,
+    pop_b = 200L
+  )
+})
+
+tract_parquet_multi <- function() {
+  rect_wkb <- function(boundary) {
+    unclass(sf::st_as_binary(sf::st_geometry(boundary)))[[1]]
+  }
+  tab <- arrow::arrow_table(
+    code_tract = c("300000100000001", "300000200000001"),
+    pop_ph = c(tract_multi$pop_a, tract_multi$pop_b),
+    pop_ch = c(0L, 0L),
+    geom_wkb = arrow::Array$create(
+      list(rect_wkb(multi_muni$boundary_a), rect_wkb(multi_muni$boundary_b)),
+      type = arrow::binary()
+    )
+  )
+  p <- tempfile(fileext = ".parquet")
+  arrow::write_parquet(tab, p)
+  p
+}
+
+run_tracts <- function(fn, code_muni, ...) {
+  files <- list(
+    "3000001" = write_cnefe_gz(tract_multi$records_a),
+    "3000002" = write_cnefe_gz(tract_multi$records_b)
+  )
+  parquet <- tract_parquet_multi()
+  on.exit(unlink(c(unlist(files), parquet)), add = TRUE)
+  boundaries <- list(
+    "3000001" = multi_muni$boundary_a,
+    "3000002" = multi_muni$boundary_b
+  )
+
+  testthat::with_mocked_bindings(
+    suppressWarnings(suppressMessages(fn(code_muni, ..., verbose = FALSE))),
+    .cnefe_ensure_zip = function(code_muni, ...) {
+      list(
+        zip_path = files[[as.character(code_muni)]],
+        cleanup_zip = FALSE,
+        url = "synthetic"
+      )
+    },
+    .sc_ensure_parquet_uf = function(...) parquet,
+    .read_muni_boundary = function(code_muni, year = 2022L) {
+      boundaries[[as.character(code_muni)]]
+    },
+    .package = "cnefetools"
+  )
+}
+
+testthat::test_that("tracts_to_h3() over two municipalities adds both allocations to the border cell (#120)", {
+  skip_unless_multi_deps("duckdb")
+  testthat::skip_if_not_installed("duckspatial")
+  skip_unless_duckdb_extensions("h3")
+  both <- c(multi_muni$code_a, multi_muni$code_b)
+
+  a <- run_tracts(cnefetools::tracts_to_h3, multi_muni$code_a,
+                  vars = "pop_ph", h3_resolution = multi_muni$res)
+  b <- run_tracts(cnefetools::tracts_to_h3, multi_muni$code_b,
+                  vars = "pop_ph", h3_resolution = multi_muni$res)
+  ab <- run_tracts(cnefetools::tracts_to_h3, both,
+                   vars = "pop_ph", h3_resolution = multi_muni$res)
+
+  testthat::expect_equal(anyDuplicated(ab$id_hex), 0L)
+
+  # Each tract total is conserved, and the sum is the sum of the two parts.
+  testthat::expect_equal(sum(ab$pop_ph), tract_multi$pop_a + tract_multi$pop_b)
+
+  # The border cell: 20 of the 30 private dwellings of tract A, and all 5 of
+  # tract B (its other 4 dwellings are collective, which pop_ph does not use).
+  expected <- tract_multi$pop_a * 20 / 30 + tract_multi$pop_b
+  testthat::expect_equal(ab$pop_ph[ab$id_hex == multi_muni$shared], expected)
+
+  # Called one by one, each output holds only its own side of that cell.
+  testthat::expect_equal(
+    a$pop_ph[a$id_hex == multi_muni$shared], tract_multi$pop_a * 20 / 30
+  )
+  testthat::expect_equal(
+    b$pop_ph[b$id_hex == multi_muni$shared], tract_multi$pop_b
+  )
+
+  summed <- dplyr::bind_rows(sf::st_drop_geometry(a), sf::st_drop_geometry(b)) |>
+    dplyr::group_by(.data$id_hex) |>
+    dplyr::summarise(pop_ph = sum(.data$pop_ph), .groups = "drop") |>
+    dplyr::arrange(.data$id_hex)
+  together <- sf::st_drop_geometry(ab) |> dplyr::arrange(.data$id_hex)
+  testthat::expect_equal(together$id_hex, summed$id_hex)
+  testthat::expect_equal(together$pop_ph, summed$pop_ph)
+})
+
+testthat::test_that("tracts_to_polygon() over two municipalities adds both allocations (#120)", {
+  skip_unless_multi_deps("duckdb", polygon = TRUE)
+  both <- c(multi_muni$code_a, multi_muni$code_b)
+  poly <- sf::st_sf(
+    zone = "region",
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(matrix(
+        c(multi_muni$lon0 - 0.02, multi_muni$lat0 - 0.02,
+          multi_muni$lon0 + 0.02, multi_muni$lat0 - 0.02,
+          multi_muni$lon0 + 0.02, multi_muni$lat0 + 0.02,
+          multi_muni$lon0 - 0.02, multi_muni$lat0 + 0.02,
+          multi_muni$lon0 - 0.02, multi_muni$lat0 - 0.02),
+        ncol = 2, byrow = TRUE
+      ))),
+      crs = 4326
+    )
+  )
+
+  ab <- run_tracts(cnefetools::tracts_to_polygon, both,
+                   polygon = poly, vars = "pop_ph")
+  a <- run_tracts(cnefetools::tracts_to_polygon, multi_muni$code_a,
+                  polygon = poly, vars = "pop_ph")
+  b <- run_tracts(cnefetools::tracts_to_polygon, multi_muni$code_b,
+                  polygon = poly, vars = "pop_ph")
+
+  testthat::expect_equal(ab$pop_ph, tract_multi$pop_a + tract_multi$pop_b)
+  testthat::expect_equal(ab$pop_ph, a$pop_ph + b$pop_ph)
+})

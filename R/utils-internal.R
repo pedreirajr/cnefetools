@@ -1204,22 +1204,33 @@
   .envir = parent.frame()
 ) {
 
-  code_muni <- .normalize_code_muni(code_muni)
-  uf <- .uf_from_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
+  ufs <- unique(vapply(code_muni, .uf_from_code_muni, character(1)))
 
-  # Ensure UF parquet is available locally
-  parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose)
-  parquet_path <- normalizePath(parquet_path, winslash = "/", mustWork = TRUE)
-
-  # A temporary download is deleted when the caller exits, after its DuckDB
-  # connection closes. The views below read it lazily, so it cannot go any
-  # sooner (#121).
-  if (.sc_is_tmp_download(parquet_path)) {
-    .defer_unlink(parquet_path, envir = .envir)
+  # Ensure each UF parquet is available locally. A region that crosses a state
+  # border needs more than one. A temporary download is deleted when the caller
+  # exits, after its DuckDB connection closes. The views below read it lazily,
+  # so it cannot go any sooner (#121). It is registered as soon as the path is
+  # known, so a failure while fetching the next UF still removes it.
+  parquet_paths <- character(0)
+  for (uf in ufs) {
+    path <- .sc_ensure_parquet_uf(
+      uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose
+    )
+    path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+    if (.sc_is_tmp_download(path)) {
+      .defer_unlink(path, envir = .envir)
+    }
+    parquet_paths <- c(parquet_paths, path)
   }
 
-  # 7-digit municipality prefix inside 15-digit tract code
-  muni_prefix <- sprintf("%07d", code_muni)
+  # 7-digit municipality prefixes inside the 15-digit tract code
+  muni_prefixes <- sprintf("%07d", code_muni)
+  prefix_sql <- paste(sprintf("'%s'", muni_prefixes), collapse = ", ")
+  paths_sql <- paste(
+    sprintf("'%s'", gsub("'", "''", parquet_paths)),
+    collapse = ", "
+  )
 
   suppressMessages({
   # View with tract attributes + geometry as DuckDB GEOMETRY
@@ -1229,9 +1240,9 @@
         "
       CREATE OR REPLACE VIEW sc_uf_raw AS
       SELECT *
-      FROM read_parquet('%s');
+      FROM read_parquet([%s], union_by_name = true);
     ",
-        parquet_path
+        paths_sql
       )
     )
 
@@ -1244,9 +1255,9 @@
         *,
         ST_GeomFromWKB(geom_wkb) AS geom
       FROM sc_uf_raw
-      WHERE substr(code_tract, 1, 7) = '%s';
+      WHERE substr(code_tract, 1, 7) IN (%s);
     ",
-        muni_prefix
+        prefix_sql
       )
     )
   })
@@ -1266,36 +1277,33 @@
   verbose = TRUE,
   .envir = parent.frame()
 ) {
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
 
-  # Ensure the municipality ZIP exists locally (reuses your existing cache logic)
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  # Ensure each municipality file exists locally (reuses the existing cache
+  # logic). An uncached file is registered for removal on the caller's frame at
+  # once: the view built below reads from it lazily, so it has to outlive this
+  # function, and it has to go when the caller exits, on success or on error.
+  zip_infos <- .cnefe_ensure_zips(
+    code_muni,
     index = index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose
+    verbose = verbose,
+    envir = .envir
   )
 
-  # The views below read the file lazily, so it has to outlive this function.
-  # The deletion is attached to the caller's frame instead, and registered now
-  # so that an error anywhere later still removes it (#121).
-  .cnefe_defer_cleanup(zip_info, envir = .envir)
-
-  zip_path <- zip_info$zip_path
-  zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-
-
-  # The cache holds a gzipped CSV, which DuckDB reads from a plain path. Only a
-  # legacy ZIP still needs the community zipfs extension, so it is loaded on
-  # demand rather than on every connection (#80 R1.11).
-  src <- .cnefe_csv_uri(zip_norm)
-  if (isTRUE(src$needs_zipfs)) {
-    .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-  }
-  uri <- src$uri
-  uri_sql <- gsub("'", "''", uri)
+  # One SELECT per municipality file, joined by UNION ALL. The cache holds a
+  # gzipped CSV, which DuckDB reads from a plain path. Only a legacy ZIP still
+  # needs the community zipfs extension, so it is loaded on demand rather than
+  # on every connection (#80 R1.11).
+  src_sql <- .cnefe_points_union_sql(
+    con,
+    zip_infos,
+    code_muni,
+    ids = TRUE,
+    verbose = verbose
+  )
 
   suppressMessages({
     DBI::dbExecute(
@@ -1303,15 +1311,9 @@
       sprintf(
         "
       CREATE OR REPLACE VIEW cnefe_raw AS
-      SELECT
-        CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
-        CAST(COD_SETOR         AS VARCHAR) AS COD_SETOR,
-        try_cast(COD_ESPECIE   AS INTEGER) AS COD_ESPECIE,
-        CAST(LONGITUDE         AS DOUBLE)  AS lon,
-        CAST(LATITUDE          AS DOUBLE)  AS lat
-      FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false);
+      %s;
     ",
-        uri_sql
+        src_sql
       )
     )
 
@@ -1320,6 +1322,7 @@
       "
       CREATE OR REPLACE VIEW cnefe_pts AS
       SELECT
+        code_muni,
         COD_UNICO_ENDERECO,
         COD_SETOR,
         COD_ESPECIE,
@@ -1335,11 +1338,7 @@
     )
   })
 
-  # A temporary file is deleted when the caller exits, after its DuckDB
-  # connection closes, not when this function returns. cnefe_pts is a lazy
-  # VIEW, so deleting the file here would break the caller's
-  # CREATE TABLE ... AS SELECT * FROM cnefe_pts.
-  invisible(zip_info)
+  invisible(zip_infos)
 }
 
 
