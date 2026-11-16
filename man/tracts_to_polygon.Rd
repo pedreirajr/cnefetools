@@ -16,7 +16,9 @@ tracts_to_polygon(
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Integer. One or more seven-digit IBGE municipality codes.
+With several, they are interpolated in one pass. See the section "Several
+municipalities".}
 
 \item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries (POLYGON or
 MULTIPOLYGON). The function will automatically align CRS and issue a warning
@@ -91,6 +93,24 @@ aggregation those other functions perform. Running that overlay in R would
 take prohibitively long in medium and large municipalities, so a pure-R
 fallback would offer users a path that does not finish rather than a slower
 one.
+}
+\details{
+\subsection{Several municipalities}{
+
+Pass a vector of codes to interpolate a region that spans more than one
+municipality in a single call. The tracts and the CNEFE points of all of them
+go through one allocation, each point is matched only to the tracts of its own
+municipality, and the result has one row per polygon, whichever municipality
+the polygon crosses.
+
+Calling the function once per municipality and binding the results is not
+equivalent. A polygon that crosses a municipal border would receive only the
+part of the allocation that belongs to the municipality named in each call.
+Totals (every variable except \code{avg_inc_resp}) are additive, so separate
+outputs can be combined by summing them by polygon, but \code{avg_inc_resp} is an
+average over the allocated points, which cannot be rebuilt from two
+averages. Use a vector of codes to get it right.
+}
 }
 \examples{
 \donttest{

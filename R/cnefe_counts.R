@@ -1,12 +1,16 @@
 #' Count CNEFE address species on a spatial grid
 #'
 #' @description
-#' `cnefe_counts()` reads CNEFE records for a given municipality, assigns
+#' `cnefe_counts()` reads CNEFE records for one or more municipalities, assigns
 #' each address point to spatial units (either H3 hexagonal cells or user-provided
 #' polygons), and returns per-unit counts of `COD_ESPECIE` as `addr_type1` to
 #' `addr_type8`.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param code_muni Integer. One or more seven-digit IBGE municipality codes.
+#'   With several, the records of all of them are counted on a single grid, or
+#'   on the polygons supplied, so an H3 cell that straddles a municipal border
+#'   is returned once, with the addresses of both sides. See the section
+#'   "Several municipalities".
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param polygon_type `r lifecycle::badge("deprecated")` The aggregation mode is
@@ -72,12 +76,35 @@
 #' All eight types are reported. In particular, `addr_type7` is retained here,
 #' whereas [compute_lumi()] excludes it when computing land-use mix indices.
 #'
+#' ## Several municipalities
+#'
+#' Pass a vector of codes to cover a region that spans more than one
+#' municipality. The records of all of them are counted together on one grid
+#' built over the union of the boundaries, so every cell appears once.
+#'
+#' Calling the function once per municipality and binding the results is not
+#' equivalent. The grid of each municipality holds the cells whose centre falls
+#' inside it plus the neighbouring cells that intersect its boundary, so a cell
+#' on a shared border is returned by both calls, each holding only the addresses
+#' of its own municipality. The counts are additive, so such outputs can be
+#' combined by summing `addr_type1` to `addr_type8` by `id_hex`, but removing
+#' the repeated rows (for example with `dplyr::distinct()`) discards one
+#' municipality's contribution. An address whose cell falls outside the grid of
+#' its own municipality is not counted by a call for that municipality alone,
+#' which a regional call avoids. Shares and indices must not be averaged across
+#' municipalities: compute them from the summed counts, or use
+#' [compute_lumi()], which does so.
+#'
 #' @seealso [compute_lumi()] for land-use mix indices on the same spatial units.
 #'
 #' @examples
 #' \donttest{
 #' # Count addresses per H3 hexagon (resolution 9)
 #' hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
+#'
+#' # Several municipalities in one call: one grid over their union, with no cell
+#' # repeated along the shared border (Salvador and its neighbour Lauro de Freitas)
+#' region_counts <- cnefe_counts(code_muni = c(2927408, 2919207), cache = FALSE)
 #'
 #' # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries

@@ -18,7 +18,10 @@ compute_lumi(
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Integer. One or more seven-digit IBGE municipality codes.
+With several, the records of all of them are pooled: the H3 grid covers the
+union of the boundaries and the citywide share P is computed over the whole
+region. See the section "Several municipalities".}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -92,7 +95,7 @@ mix indicators
 }
 }
 \description{
-\code{compute_lumi()} reads CNEFE records for a given municipality,
+\code{compute_lumi()} reads CNEFE records for one or more municipalities,
 assigns each address point to spatial units (either H3 hexagonal cells or
 user-provided polygons), and computes the residential proportion (\code{p_res}) and land-use mix
 indices, such as the Entropy Index (\code{ei}), the Herfindahl-Hirschman Index (\code{hhi}),
@@ -130,19 +133,51 @@ First, P is computed from CNEFE address-type counts rather than from census
 population, so it describes the distribution of address types and not the
 distribution of residents.
 
-Second, P is always computed over the full municipality, including when
-\code{polygon} is supplied, so it does not adapt to the area the supplied
-polygons happen to cover. This is intended, as P describes the context the
-addresses sit in, which is the municipality, and a sub-area of a city is
-still part of that wider context. A baseline recomputed over the sub-area
-would measure something different, namely mix relative to the sub-area
-itself rather than relative to the city.
+Second, P is always computed over the full set of municipalities requested,
+including when \code{polygon} is supplied, so it does not adapt to the area the
+supplied polygons happen to cover. This is intended, as P describes the
+context the addresses sit in, which is the municipality (or the region, when
+several are requested), and a sub-area of a city is still part of that wider
+context. A baseline recomputed over the sub-area would measure something
+different, namely mix relative to the sub-area itself rather than relative
+to the city.
+}
+
+\subsection{Several municipalities}{
+
+Pass a vector of codes to cover a region that spans more than one
+municipality. The records of all of them are pooled before anything is
+computed, the H3 grid is built over the union of their boundaries, and P is
+the residential share of the whole region. Each cell appears once, and a
+cell on a shared border holds the addresses of both sides.
+
+Because P belongs to the region, \code{bal} and \code{bgbi} are measured against the
+regional share, not against each municipality's own. A call per municipality
+gives each of them a different P, so indices from such calls are not
+comparable with one another, nor with a regional call.
+
+Calling the function once per municipality and binding the results does not
+reproduce a regional call, for two reasons. The grid of each municipality
+holds the cells whose centre falls inside it plus the neighbouring cells that
+intersect its boundary, so a cell on a shared border is returned by both
+calls, each holding only its own side. Removing the repeated rows then
+discards one municipality's contribution. Averaging the two values of an
+index is no remedy either: a border cell with 20 private households from one
+municipality and 51 other-use addresses from the other has a residential
+share of 20 / 71 = 0.28, whereas the average of the two separate shares is
+0.5. Shares and indices have to be recomputed from pooled counts, which is
+what a call with a vector of codes does. \code{\link[=cnefe_counts]{cnefe_counts()}} returns counts,
+which are additive and can be summed by \code{id_hex}.
 }
 }
 \examples{
 \donttest{
 # Compute land-use mix indices on H3 hexagons
 lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
+
+# Several municipalities in one call: one grid over their union and one P for
+# the whole region (Salvador and its neighbour Lauro de Freitas)
+lumi_region <- compute_lumi(code_muni = c(2927408, 2919207), cache = FALSE)
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries

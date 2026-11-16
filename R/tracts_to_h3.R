@@ -16,7 +16,9 @@
 #' fallback would offer users a path that does not finish rather than a slower
 #' one.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param code_muni Integer. One or more seven-digit IBGE municipality codes.
+#'   With several, they are interpolated in one pass over a single grid. See the
+#'   section "Several municipalities".
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to 9.
@@ -54,6 +56,25 @@
 #' @param verbose Logical. Whether to print step messages and timing.
 #'
 #' @return An `sf` object (CRS 4326) with an H3 grid and the requested interpolated variables.
+#'
+#' @details
+#' ## Several municipalities
+#'
+#' Pass a vector of codes to interpolate a region that spans more than one
+#' municipality in a single call. The tracts and the CNEFE points of all of them
+#' go through one allocation, each point is matched only to the tracts of its own
+#' municipality, and the grid is built over the union of the boundaries, so every
+#' cell appears once.
+#'
+#' Calling the function once per municipality and binding the results is not
+#' equivalent. The grid of each municipality holds the cells whose centre falls
+#' inside it plus the neighbouring cells that intersect its boundary, so a cell
+#' on a shared border is returned by both calls, each holding only its own side,
+#' and removing the repeated rows discards one municipality's contribution.
+#' Totals (every variable except `avg_inc_resp`) are additive, so separate
+#' outputs can be combined by summing them by `id_hex`, but `avg_inc_resp` is an
+#' average over the allocated points, which cannot be rebuilt from two
+#' averages. Use a vector of codes to get it right.
 #'
 #' @examples
 #' \donttest{

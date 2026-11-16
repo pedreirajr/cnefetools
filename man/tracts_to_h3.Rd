@@ -15,7 +15,9 @@ tracts_to_h3(
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Integer. One or more seven-digit IBGE municipality codes.
+With several, they are interpolated in one pass over a single grid. See the
+section "Several municipalities".}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -81,6 +83,26 @@ aggregation those other functions perform. Running that overlay in R would
 take prohibitively long in medium and large municipalities, so a pure-R
 fallback would offer users a path that does not finish rather than a slower
 one.
+}
+\details{
+\subsection{Several municipalities}{
+
+Pass a vector of codes to interpolate a region that spans more than one
+municipality in a single call. The tracts and the CNEFE points of all of them
+go through one allocation, each point is matched only to the tracts of its own
+municipality, and the grid is built over the union of the boundaries, so every
+cell appears once.
+
+Calling the function once per municipality and binding the results is not
+equivalent. The grid of each municipality holds the cells whose centre falls
+inside it plus the neighbouring cells that intersect its boundary, so a cell
+on a shared border is returned by both calls, each holding only its own side,
+and removing the repeated rows discards one municipality's contribution.
+Totals (every variable except \code{avg_inc_resp}) are additive, so separate
+outputs can be combined by summing them by \code{id_hex}, but \code{avg_inc_resp} is an
+average over the allocated points, which cannot be rebuilt from two
+averages. Use a vector of codes to get it right.
+}
 }
 \examples{
 \donttest{

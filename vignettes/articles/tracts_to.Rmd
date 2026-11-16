@@ -434,12 +434,23 @@ distribution models.
 ### Hint to scaling to multiple municipalities
 
 The `odbr` traffic zones cover the entire São Paulo metropolitan region
-(39 municipalities). To interpolate census data for all municipalities,
-you can use `purrr::map()` to apply `tracts_to_polygon()` to each
-municipality and then combine the results with `dplyr::bind_rows()`.
+(39 municipalities). To interpolate census data for all of them, pass the
+vector of municipality codes to `code_muni` and the zones of the whole
+region to `polygon`, as in
+`tracts_to_polygon(code_muni = codes, polygon = zones)`. The tracts and
+the CNEFE points of every municipality go through one allocation, so a
+zone that crosses a municipal border receives the allocation from both
+sides, and each zone appears once in the result.
 
-A worked example of this iterative workflow, applied to the whole São
-Paulo metropolitan region, is available
+Applying the function once per municipality and combining the results
+with `dplyr::bind_rows()` gives the same answer only when every polygon
+lies entirely inside one municipality. For `tracts_to_h3()` it is not
+equivalent at all, because the H3 grid of each municipality includes the
+cells along its borders, so a border cell would come back from both calls,
+each holding only its own side. Pass the vector of codes instead.
+
+A worked example of the earlier, iterative workflow applied to the whole
+São Paulo metropolitan region is available
 [here](https://pedreirajr.github.io/website/posts/2026-02-18-census-tracts-rmsp/).
 
 ### Future versions

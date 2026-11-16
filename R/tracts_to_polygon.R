@@ -17,7 +17,9 @@
 #' fallback would offer users a path that does not finish rather than a slower
 #' one.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param code_muni Integer. One or more seven-digit IBGE municipality codes.
+#'   With several, they are interpolated in one pass. See the section "Several
+#'   municipalities".
 #' @param polygon An [`sf::sf`] object with polygon geometries (POLYGON or
 #'   MULTIPOLYGON). The function will automatically align CRS and issue a warning
 #'   reporting the percentage of the polygon area that falls outside the municipality.
@@ -62,6 +64,23 @@
 #' @return An `sf` object with the user-provided polygons and the requested
 #'   interpolated variables. The output CRS matches the original `polygon` CRS
 #'   (or `crs_output` if specified).
+#'
+#' @details
+#' ## Several municipalities
+#'
+#' Pass a vector of codes to interpolate a region that spans more than one
+#' municipality in a single call. The tracts and the CNEFE points of all of them
+#' go through one allocation, each point is matched only to the tracts of its own
+#' municipality, and the result has one row per polygon, whichever municipality
+#' the polygon crosses.
+#'
+#' Calling the function once per municipality and binding the results is not
+#' equivalent. A polygon that crosses a municipal border would receive only the
+#' part of the allocation that belongs to the municipality named in each call.
+#' Totals (every variable except `avg_inc_resp`) are additive, so separate
+#' outputs can be combined by summing them by polygon, but `avg_inc_resp` is an
+#' average over the allocated points, which cannot be rebuilt from two
+#' averages. Use a vector of codes to get it right.
 #'
 #' @examples
 #' \donttest{
