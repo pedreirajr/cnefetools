@@ -269,32 +269,34 @@ tracts_to_h3 <- function(
   # Matched points only (spatial join without LEFT JOIN)
   # IMPORTANT: bring ONLY code_tract from tracts (fixes the `s.` parser bug
   # and avoids carrying unrequested columns).
-  # With several municipalities a point is only matched to the tracts of its own
-  # municipality, the same pairing a call per municipality would make. The
-  # extra predicate is left out for a single municipality, where it holds for
-  # every row.
-  same_muni_sql <- if (length(code_muni) > 1L) {
-    "AND substr(s.code_tract, 1, 7) = CAST(p.code_muni AS VARCHAR)"
-  } else {
-    ""
-  }
-
   .duckdb_quiet_execute(
     con,
-    sprintf(
-      "
+    "
     CREATE OR REPLACE TABLE cnefe_sc AS
     SELECT
       p.*,
       s.code_tract
     FROM cnefe_pts_tbl p,
          sc_muni_tbl s
-    WHERE ST_Within(p.geom, s.geom)
-      %s;
-  ",
-      same_muni_sql
-    )
+    WHERE ST_Within(p.geom, s.geom);
+  "
   )
+
+  # With several municipalities a point is only matched to the tracts of its own
+  # municipality, the same pairing a call per municipality would make. The
+  # filter runs after the join, not inside it: an equality predicate on two
+  # columns of the joined tables takes the spatial join out of its optimised
+  # operator and turns it into a nested loop, which does not finish on a
+  # metropolitan region.
+  if (length(code_muni) > 1L) {
+    .duckdb_quiet_execute(
+      con,
+      "
+      DELETE FROM cnefe_sc
+      WHERE substr(code_tract, 1, 7) <> CAST(code_muni AS VARCHAR);
+    "
+    )
+  }
 
   matched_pts <- suppressMessages(
     DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
