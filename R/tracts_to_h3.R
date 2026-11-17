@@ -121,6 +121,20 @@ tracts_to_h3 <- function(
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
+  # code_muni stays required here: an H3 grid needs municipal boundaries, and
+  # the polygon counterpart is the function where it is optional (#120)
+  if (missing(code_muni) || is.null(code_muni)) {
+    cli::cli_abort(c(
+      "{.arg code_muni} is required for the H3 grid.",
+      "i" = "Pass one or more 7-digit IBGE codes. To interpolate onto your own polygons without listing the municipalities, use {.fn tracts_to_polygon}, where {.arg code_muni} is optional."
+    ))
+  }
+  if (inherits(code_muni, "sf") || inherits(code_muni, "sfc")) {
+    cli::cli_abort(c(
+      "{.arg code_muni} received an {.cls sf} object.",
+      "i" = "To interpolate onto your own polygons, use {.code tracts_to_polygon(polygon = <your sf object>)}."
+    ))
+  }
   code_muni <- .normalize_code_munis(code_muni)
 
   year <- .validate_year(year)
@@ -497,7 +511,7 @@ tracts_to_h3 <- function(
   if (pts_outside > 0) {
     out_pct <- if (pts_with_hex > 0) 100 * pts_outside / pts_with_hex else 0
     stage2_warn_lines <- cli::format_inline(
-      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_with_hex}} ({.strong {sprintf('%.3f%%', out_pct)}}), not included in the output"
+      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_with_hex}} ({.strong {.fmt_small_pct(out_pct)}}), not included in the output"
     )
     for (v in setdiff(vars, "avg_inc_resp")) {
       lost_v <- sum(outside_df[[v]], na.rm = TRUE)
@@ -506,7 +520,7 @@ tracts_to_h3 <- function(
       stage2_warn_lines <- c(
         stage2_warn_lines,
         cli::format_inline(
-          "{.field {v}} allocated to cells outside the grid: {.strong {sprintf('%.0f', lost_v)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.3f%%', lost_pct)}})"
+          "{.field {v}} allocated to cells outside the grid: {.strong {sprintf('%.0f', lost_v)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {.fmt_small_pct(lost_pct)}})"
         )
       )
     }

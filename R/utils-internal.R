@@ -2586,6 +2586,33 @@
 
 ## Theme: Addresses outside the H3 grid
 
+#' Format a share that is often tiny
+#'
+#' The addresses outside the grid are usually a handful among millions, and a
+#' fixed three decimals printed them as "0.000%", which reads as none.
+#' Values below 0.001% print as "<0.001%", values below 1% keep two
+#' significant digits, and larger ones one decimal.
+#'
+#' @param pct A percentage, between 0 and 100.
+#'
+#' @return A string such as "<0.001%", "0.0013%", "0.42%" or "12.3%".
+#'
+#' @keywords internal
+#' @noRd
+.fmt_small_pct <- function(pct) {
+  if (is.na(pct) || pct <= 0) {
+    return("0%")
+  }
+  if (pct < 0.001) {
+    return("<0.001%")
+  }
+  if (pct < 1) {
+    return(paste0(format(signif(pct, 2), scientific = FALSE, trim = TRUE), "%"))
+  }
+  sprintf("%.1f%%", pct)
+}
+
+
 #' Warn about addresses whose H3 cell is not in the grid
 #'
 #' The grid is built from the geobr boundary of the municipalities, while the
@@ -2606,7 +2633,7 @@
   }
   pct <- if (n_total > 0) 100 * n_outside / n_total else 0
   cli::cli_warn(c(
-    "{.val {n_outside}} of {.val {n_total}} addresses ({sprintf('%.3f%%', pct)}) of the municipalities in {.arg code_muni} fall in H3 cells outside the grid and were not counted.",
+    "{.val {n_outside}} of {.val {n_total}} addresses ({.fmt_small_pct(pct)}) of the municipalities in {.arg code_muni} fall in H3 cells outside the grid and were not counted.",
     "i" = "The grid covers the municipal boundaries from {.pkg geobr} plus the cells along them, and these addresses were geocoded beyond it.",
     extra
   ))
