@@ -8,7 +8,8 @@
 #'
 #' @param h3_resolution Integer. H3 resolution.
 #' @param id_hex Character/integer vector of H3 cell ids (optional).
-#' @param code_muni Integer. Seven-digit IBGE municipality code (optional).
+#' @param code_muni Integer. One or more seven-digit IBGE municipality codes
+#'   (optional). With several, the grid covers the union of their boundaries.
 #' @param boundary An sf polygon for the area of interest (optional).
 #' @param year Integer. Territorial base year for the municipality boundary.
 #'   Defaults to 2022, matching the CNEFE edition. Only used when the boundary
@@ -44,7 +45,22 @@ build_h3_grid <- function(
       if (is.null(code_muni)) {
         rlang::abort("Provide either `id_hex` or `code_muni`/`boundary`.")
       }
-      boundary <- .read_muni_boundary(code_muni, year = year)
+      # One boundary per municipality, stacked. The union below turns them into
+      # a single area, so a cell on a shared border is selected once and the
+      # grid has no repeated id_hex (#120, R2 comment 1).
+      boundary <- sf::st_sf(
+        geometry = do.call(
+          c,
+          lapply(
+            code_muni,
+            function(cm) {
+              sf::st_geometry(
+                sf::st_transform(.read_muni_boundary(cm, year = year), 4326)
+              )
+            }
+          )
+        )
+      )
     }
 
     boundary <- boundary |>

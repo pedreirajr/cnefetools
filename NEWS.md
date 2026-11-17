@@ -1,10 +1,39 @@
 # cnefetools (development version)
 
+## New features
+
+* `cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()` and `tracts_to_polygon()`
+  now accept a vector of municipality codes in `code_muni`. The CNEFE files of
+  all of them are read as one table, the H3 grid is built over the union of the
+  boundaries, and for `compute_lumi()` the citywide share P is computed over the
+  whole region. This replaces the pattern of calling a function once per
+  municipality and binding the results, which does not give a correct regional
+  result: the grid of each municipality includes the H3 cells that intersect its
+  boundary, so a cell on a shared border is returned by both calls, each holding
+  only its own side. Removing the repeated rows then discards one municipality's
+  contribution, and averaging the two values of an index is wrong (20 private
+  households on one side and 51 other-use addresses on the other give a
+  residential share of 20 / 71 in the pooled cell, not the 0.5 that the average
+  of the two separate shares gives). With a vector every cell appears once. A
+  call with a single code behaves as before. The codes can be given as numbers
+  or as strings, alone or in a vector, and repeated codes are dropped (#120).
+
+* Only the addresses of the municipalities in `code_muni` are read, so a cell on
+  the outer edge of the requested area describes only the part of it inside the
+  area. To complete the border cells of a municipality, include the
+  municipalities around it in the vector. This is documented in each function's
+  "Border cells at the edge of the region" section (#120).
+
 ## Bug fixes
 
 * With `cache = FALSE`, `cnefe_counts()` and `compute_lumi()` on the R backend
   no longer download the municipality twice. They now read the file they
   already retrieved (#121).
+
+* An address whose H3 cell falls outside the grid of its own municipality is no
+  longer dropped when the neighbouring municipality is requested in the same
+  call. On Salvador and Lauro de Freitas this recovers 4 of 1,502,282 addresses
+  that two separate calls leave out (#120).
 
 * With `cache = FALSE`, temporary files are now deleted when the function
   exits, whether it succeeds or fails. Before, `cnefe_counts()` and

@@ -15,7 +15,12 @@ tracts_to_h3(
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Numeric or character. One or more seven-digit IBGE municipality
+codes, as a single value or a vector, for example \code{2927408} or
+\code{c("2927408", "2919207")}. Numbers and strings are both accepted, and
+repeated codes are dropped.
+With several, they are interpolated in one pass over a single grid. See the
+section "Several municipalities".}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -81,6 +86,49 @@ aggregation those other functions perform. Running that overlay in R would
 take prohibitively long in medium and large municipalities, so a pure-R
 fallback would offer users a path that does not finish rather than a slower
 one.
+}
+\details{
+\subsection{Several municipalities}{
+
+Pass a vector of codes to interpolate a region that spans more than one
+municipality in a single call. The tracts and the CNEFE points of all of them
+go through one allocation, each point is matched only to the tracts of its own
+municipality, and the grid is built over the union of the boundaries, so every
+cell appears once.
+
+Calling the function once per municipality and binding the results is not
+equivalent. The grid of each municipality holds the cells whose centre falls
+inside it plus the neighbouring cells that intersect its boundary, so a cell
+on a shared border is returned by both calls, each holding only its own side,
+and removing the repeated rows discards one municipality's contribution.
+Totals (every variable except \code{avg_inc_resp}) are additive, so separate
+outputs can be combined by summing them by \code{id_hex}, but \code{avg_inc_resp} is an
+average over the allocated points, which cannot be rebuilt from two
+averages. Use a vector of codes to get it right.
+}
+
+\subsection{Border cells at the edge of the region}{
+
+Only the addresses of the municipalities in \code{code_muni} are read. A cell on
+the outer edge of the requested area, one that also overlaps a municipality
+you did not request, therefore describes only the part of it that lies
+inside the area: its values (totals and \code{avg_inc_resp}) leave out the addresses of the neighbour.
+Adding municipalities moves the edge outwards but does not remove it. For
+the cells along the border of a municipality of interest to be complete,
+include the municipalities that border it in \code{code_muni}.
+}
+
+\subsection{Addresses outside the H3 grid}{
+
+The grid is built from the municipal boundaries of
+\href{https://ipeagit.github.io/geobr/}{geobr}, plus the cells along them, while
+the cell of a dwelling point comes from its own coordinates. A point
+geocoded beyond that ring, for example on the coast or on a small island the
+boundary does not follow, falls in a cell that is not in the grid, and what
+was allocated to it is not in the output. The diagnostics report how many
+allocated points this affects and how much of each total they carried, so
+the output can be reconciled with the tract totals.
+}
 }
 \examples{
 \donttest{

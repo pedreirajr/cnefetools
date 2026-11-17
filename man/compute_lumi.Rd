@@ -5,12 +5,14 @@
 \title{Compute land-use mix indicators on a spatial grid}
 \usage{
 compute_lumi(
-  code_muni,
+  code_muni = NULL,
   year = 2022,
   polygon_type = lifecycle::deprecated(),
   polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
+  p_target = NULL,
+  p_scope = c("muni", "poly"),
   verbose = TRUE,
   cache = TRUE,
   cache_dir = NULL,
@@ -18,7 +20,18 @@ compute_lumi(
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Numeric or character. One or more seven-digit IBGE municipality
+codes, as a single value or a vector, for example \code{2927408} or
+\code{c("2927408", "2919207")}. Numbers and strings are both accepted, and
+repeated codes are dropped.
+With several, the records of all of them are pooled: the H3 grid covers the
+union of the boundaries and the citywide share P is computed over the whole
+region. See the section "Several municipalities".
+
+Required for the H3 grid. When \code{polygon} is supplied it is optional: if it
+is \code{NULL} (the default), the municipalities that the polygons intersect are
+found with \href{https://ipeagit.github.io/geobr/}{geobr} and read. See the
+section "Municipalities detected from the polygons".}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -29,9 +42,11 @@ now inferred from \code{polygon}: leave it \code{NULL} for an H3 grid, or pass a
 warns.}
 
 \item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Supplying it
-switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
-CNEFE points covered by the polygon area. If no CNEFE points fall within
-the polygon, an error is raised.}
+switches the output from an H3 grid to these polygons. When \code{code_muni} is
+supplied, a warning reports how many CNEFE points of those municipalities
+fall outside the polygons. When it is detected, a warning is issued only if
+those points enter P (see \code{p_scope}). If no CNEFE points fall within the
+polygons, an error is raised.}
 
 \item{crs_output}{The CRS for the output object. Only used when \code{polygon} is
 supplied. Default is \code{NULL}, which uses the original CRS of
@@ -40,6 +55,26 @@ object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
 \item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used for
 the H3 grid, so it is ignored when \code{polygon} is supplied.}
+
+\item{p_target}{Numeric or \code{NULL}. An analyst-defined target composition
+(\verb{P*} in Pedreira Junior et al., 2026), used in place of the observed
+citywide reference share P. A single number strictly between 0 and 1, for
+example a residential share set by a land-use plan. It affects only \code{bal}
+and \code{bgbi}, the two indices that use P. \code{NULL} (the default) computes P
+from the data, as set by \code{p_scope}. It cannot be combined with \code{p_scope}.
+See the section "The citywide baseline P".}
+
+\item{p_scope}{Character. Which addresses P is computed from, when
+\code{p_target} is \code{NULL}:
+\itemize{
+\item \code{"muni"} (default): every address of the municipalities read, whether
+they were passed in \code{code_muni} or detected from the polygons.
+\item \code{"poly"}: only the addresses inside the output polygons, which are the
+user's polygons, or the cells of the H3 grid. An address inside two
+overlapping polygons is counted once.
+}
+
+See the section "The citywide baseline P".}
 
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
@@ -92,7 +127,7 @@ mix indicators
 }
 }
 \description{
-\code{compute_lumi()} reads CNEFE records for a given municipality,
+\code{compute_lumi()} reads CNEFE records for one or more municipalities,
 assigns each address point to spatial units (either H3 hexagonal cells or
 user-provided polygons), and computes the residential proportion (\code{p_res}) and land-use mix
 indices, such as the Entropy Index (\code{ei}), the Herfindahl-Hirschman Index (\code{hhi}),
@@ -130,19 +165,105 @@ First, P is computed from CNEFE address-type counts rather than from census
 population, so it describes the distribution of address types and not the
 distribution of residents.
 
-Second, P is always computed over the full municipality, including when
-\code{polygon} is supplied, so it does not adapt to the area the supplied
-polygons happen to cover. This is intended, as P describes the context the
-addresses sit in, which is the municipality, and a sub-area of a city is
-still part of that wider context. A baseline recomputed over the sub-area
-would measure something different, namely mix relative to the sub-area
-itself rather than relative to the city.
+Second, by default (\code{p_scope = "muni"}) P is computed from every CNEFE
+address of the municipalities read, including when \code{polygon} is supplied,
+so it does not adapt to the area the supplied polygons happen to cover. This
+is intended, as P describes the context the addresses sit in, which is the
+municipality (or the region, when several are read), and a sub-area of a
+city is still part of that wider context. P therefore depends on the set of
+municipalities: adding a municipality to \code{code_muni} changes \code{bal} and
+\code{bgbi} in every unit, not only near it.
+
+\code{p_scope = "poly"} computes P from the addresses inside the output units
+instead, which measures mix relative to the area covered rather than
+relative to the city. On an H3 grid the two choices differ only by the few
+addresses that fall outside the grid (see "Addresses outside the H3 grid").
+
+\code{p_target} replaces P with a composition chosen by the analyst, such as a
+goal set by a land-use plan, a zoning reform or a transit-oriented
+development strategy. This is the extension proposed in the conclusions of
+Pedreira Junior et al. (2026). With it, \code{bgbi} measures the distance to that
+goal rather than to the observed city, and the same target can be used
+across municipalities so that their values become comparable. \code{bal} with a
+target is no longer the original Balance Index of Song et al. (2013), which
+is defined against the observed citywide ratio.
+}
+
+\subsection{Several municipalities}{
+
+Pass a vector of codes to cover a region that spans more than one
+municipality. The records of all of them are pooled before anything is
+computed, the H3 grid is built over the union of their boundaries, and P is
+the residential share of the whole region. Each cell appears once, and a
+cell on a shared border holds the addresses of both sides.
+
+Because P belongs to the region, \code{bal} and \code{bgbi} are measured against the
+regional share, not against each municipality's own. A call per municipality
+gives each of them a different P, so indices from such calls are not
+comparable with one another, nor with a regional call.
+
+Calling the function once per municipality and binding the results does not
+reproduce a regional call, for two reasons. The grid of each municipality
+holds the cells whose centre falls inside it plus the neighbouring cells that
+intersect its boundary, so a cell on a shared border is returned by both
+calls, each holding only its own side. Removing the repeated rows then
+discards one municipality's contribution. Averaging the two values of an
+index is no remedy either: a border cell with 20 private households from one
+municipality and 51 other-use addresses from the other has a residential
+share of 20 / 71 = 0.28, whereas the average of the two separate shares is
+0.5. Shares and indices have to be recomputed from pooled counts, which is
+what a call with a vector of codes does. \code{\link[=cnefe_counts]{cnefe_counts()}} returns counts,
+which are additive and can be summed by \code{id_hex}.
+}
+
+\subsection{Border cells at the edge of the region}{
+
+Only the addresses of the municipalities in \code{code_muni} are read. A cell on
+the outer edge of the requested area, one that also overlaps a municipality
+you did not request, therefore describes only the part of it that lies
+inside the area: its values (counts, \code{p_res} and indices) leave out the addresses of the neighbour.
+Adding municipalities moves the edge outwards but does not remove it. For
+the cells along the border of a municipality of interest to be complete,
+include the municipalities that border it in \code{code_muni}. With the default
+\code{p_scope = "muni"}, this also changes P, and with it \code{bal} and \code{bgbi} in
+every cell.
+}
+
+\subsection{Addresses outside the H3 grid}{
+
+The grid is built from the municipal boundaries of
+\href{https://ipeagit.github.io/geobr/}{geobr}, plus the cells along them, while
+the cell of an address comes from its own coordinates. An address geocoded
+beyond that ring, for example on the coast or on a small island the boundary
+does not follow, falls in a cell that is not in the grid and is not
+counted. A warning reports how many addresses this affects. With
+\code{p_scope = "muni"} they are still part of P, and with \code{p_scope = "poly"}
+they are not.
+}
+
+\subsection{Municipalities detected from the polygons}{
+
+When \code{polygon} is supplied without \code{code_muni}, the function finds the
+municipalities that the polygons intersect, using the state and municipal
+boundaries of \href{https://ipeagit.github.io/geobr/}{geobr} for \code{year}, and
+reads all of their addresses. A message lists them.
+
+Polygons from another source rarely follow the geobr boundaries exactly, so
+a polygon along a municipal border can touch a neighbouring municipality by
+a few metres. That neighbour is then read too, which costs a download and,
+with \code{p_scope = "muni"}, makes it part of P. Pass \code{code_muni} explicitly
+whenever you know which municipalities the polygons belong to, or use
+\code{p_scope = "poly"}, which makes P independent of the set read.
 }
 }
 \examples{
 \donttest{
 # Compute land-use mix indices on H3 hexagons
 lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
+
+# Several municipalities in one call: one grid over their union and one P for
+# the whole region (Salvador and its neighbour Lauro de Freitas)
+lumi_region <- compute_lumi(code_muni = c(2927408, 2919207), cache = FALSE)
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries
@@ -156,6 +277,13 @@ lumi_poly <- compute_lumi(
   polygon = nei_ldf,
   cache = FALSE
 )
+
+# Without code_muni, the municipalities the polygons intersect are read, and
+# p_scope = "poly" computes P from the addresses inside the neighborhoods
+lumi_poly_auto <- compute_lumi(polygon = nei_ldf, p_scope = "poly", cache = FALSE)
+
+# BGBI against a target residential share of 70\% instead of the observed one
+lumi_target <- compute_lumi(code_muni = 2919207, p_target = 0.7, cache = FALSE)
 }
 
 }

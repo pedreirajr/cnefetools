@@ -16,7 +16,12 @@
 #' fallback would offer users a path that does not finish rather than a slower
 #' one.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param code_muni Numeric or character. One or more seven-digit IBGE municipality
+#'   codes, as a single value or a vector, for example `2927408` or
+#'   `c("2927408", "2919207")`. Numbers and strings are both accepted, and
+#'   repeated codes are dropped.
+#'   With several, they are interpolated in one pass over a single grid. See the
+#'   section "Several municipalities".
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to 9.
@@ -55,6 +60,46 @@
 #'
 #' @return An `sf` object (CRS 4326) with an H3 grid and the requested interpolated variables.
 #'
+#' @details
+#' ## Several municipalities
+#'
+#' Pass a vector of codes to interpolate a region that spans more than one
+#' municipality in a single call. The tracts and the CNEFE points of all of them
+#' go through one allocation, each point is matched only to the tracts of its own
+#' municipality, and the grid is built over the union of the boundaries, so every
+#' cell appears once.
+#'
+#' Calling the function once per municipality and binding the results is not
+#' equivalent. The grid of each municipality holds the cells whose centre falls
+#' inside it plus the neighbouring cells that intersect its boundary, so a cell
+#' on a shared border is returned by both calls, each holding only its own side,
+#' and removing the repeated rows discards one municipality's contribution.
+#' Totals (every variable except `avg_inc_resp`) are additive, so separate
+#' outputs can be combined by summing them by `id_hex`, but `avg_inc_resp` is an
+#' average over the allocated points, which cannot be rebuilt from two
+#' averages. Use a vector of codes to get it right.
+#'
+#' ## Border cells at the edge of the region
+#'
+#' Only the addresses of the municipalities in `code_muni` are read. A cell on
+#' the outer edge of the requested area, one that also overlaps a municipality
+#' you did not request, therefore describes only the part of it that lies
+#' inside the area: its values (totals and `avg_inc_resp`) leave out the addresses of the neighbour.
+#' Adding municipalities moves the edge outwards but does not remove it. For
+#' the cells along the border of a municipality of interest to be complete,
+#' include the municipalities that border it in `code_muni`.
+#'
+#' ## Addresses outside the H3 grid
+#'
+#' The grid is built from the municipal boundaries of
+#' [geobr](https://ipeagit.github.io/geobr/), plus the cells along them, while
+#' the cell of a dwelling point comes from its own coordinates. A point
+#' geocoded beyond that ring, for example on the coast or on a small island the
+#' boundary does not follow, falls in a cell that is not in the grid, and what
+#' was allocated to it is not in the output. The diagnostics report how many
+#' allocated points this affects and how much of each total they carried, so
+#' the output can be reconciled with the tract totals.
+#'
 #' @examples
 #' \donttest{
 #' # Interpolate population to H3 hexagons
@@ -76,7 +121,21 @@ tracts_to_h3 <- function(
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  code_muni <- .normalize_code_muni(code_muni)
+  # code_muni stays required here: an H3 grid needs municipal boundaries, and
+  # the polygon counterpart is the function where it is optional (#120)
+  if (missing(code_muni) || is.null(code_muni)) {
+    cli::cli_abort(c(
+      "{.arg code_muni} is required for the H3 grid.",
+      "i" = "Pass one or more 7-digit IBGE codes. To interpolate onto your own polygons without listing the municipalities, use {.fn tracts_to_polygon}, where {.arg code_muni} is optional."
+    ))
+  }
+  if (inherits(code_muni, "sf") || inherits(code_muni, "sfc")) {
+    cli::cli_abort(c(
+      "{.arg code_muni} received an {.cls sf} object.",
+      "i" = "To interpolate onto your own polygons, use {.code tracts_to_polygon(polygon = <your sf object>)}."
+    ))
+  }
+  code_muni <- .normalize_code_munis(code_muni)
 
   year <- .validate_year(year)
 
@@ -195,7 +254,7 @@ tracts_to_h3 <- function(
 
   # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
   # The ZIP must remain on disk until the views are materialised into a table.
-  zip_info_cnefe <- suppressMessages(
+  suppressMessages(
     .cnefe_create_points_view_in_duckdb(
       con,
       code_muni = code_muni,
@@ -260,6 +319,22 @@ tracts_to_h3 <- function(
     WHERE ST_Within(p.geom, s.geom);
   "
   )
+
+  # With several municipalities a point is only matched to the tracts of its own
+  # municipality, the same pairing a call per municipality would make. The
+  # filter runs after the join, not inside it: an equality predicate on two
+  # columns of the joined tables takes the spatial join out of its optimised
+  # operator and turns it into a nested loop, which does not finish on a
+  # metropolitan region.
+  if (length(code_muni) > 1L) {
+    .duckdb_quiet_execute(
+      con,
+      "
+      DELETE FROM cnefe_sc
+      WHERE substr(code_tract, 1, 7) <> CAST(code_muni AS VARCHAR);
+    "
+    )
+  }
 
   matched_pts <- suppressMessages(
     DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
@@ -348,6 +423,7 @@ tracts_to_h3 <- function(
     CREATE OR REPLACE VIEW hex_vals AS
     SELECT
       id_hex,
+      COUNT(*) AS n_pts_hex,
       %s
     FROM cnefe_alloc
     WHERE id_hex IS NOT NULL
@@ -381,6 +457,10 @@ tracts_to_h3 <- function(
   .duckdb_quiet({
     {
       hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
+
+      # Points whose cell is not in the grid are dropped by the join below,
+      # together with what was allocated to them (#120)
+      outside_df <- hex_df[!hex_df$id_hex %in% hex_grid$id_hex, , drop = FALSE]
 
       out <- hex_grid |>
         dplyr::left_join(hex_df, by = "id_hex") |>
@@ -425,7 +505,34 @@ tracts_to_h3 <- function(
     )
   )
 
-  .report_interp_diagnostics(warn_lines, stage2_lines, "H3 hexagons")
+  # Allocated points whose cell falls outside the grid, and what they carried
+  stage2_warn_lines <- character(0)
+  pts_outside <- sum(outside_df$n_pts_hex)
+  if (pts_outside > 0) {
+    out_pct <- if (pts_with_hex > 0) 100 * pts_outside / pts_with_hex else 0
+    # Formatted first: cli reads "{.name" as a style, not as a function call
+    out_pct_txt <- .fmt_small_pct(out_pct)
+    stage2_warn_lines <- cli::format_inline(
+      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_with_hex}} ({.strong {out_pct_txt}}), not included in the output"
+    )
+    for (v in setdiff(vars, "avg_inc_resp")) {
+      lost_v <- sum(outside_df[[v]], na.rm = TRUE)
+      total_v <- sum(hex_df[[v]], na.rm = TRUE)
+      lost_pct <- if (total_v > 0) 100 * lost_v / total_v else 0
+      lost_pct_txt <- .fmt_small_pct(lost_pct)
+      stage2_warn_lines <- c(
+        stage2_warn_lines,
+        cli::format_inline(
+          "{.field {v}} allocated to cells outside the grid: {.strong {sprintf('%.0f', lost_v)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {lost_pct_txt}})"
+        )
+      )
+    }
+  }
+
+  .report_interp_diagnostics(
+    warn_lines, stage2_lines, "H3 hexagons",
+    stage2_warn_lines = stage2_warn_lines
+  )
 
   return(out)
 

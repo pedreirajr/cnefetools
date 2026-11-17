@@ -17,10 +17,21 @@
 #' fallback would offer users a path that does not finish rather than a slower
 #' one.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param code_muni Numeric or character. One or more seven-digit IBGE municipality
+#'   codes, as a single value or a vector, for example `2927408` or
+#'   `c("2927408", "2919207")`. Numbers and strings are both accepted, and
+#'   repeated codes are dropped.
+#'   With several, they are interpolated in one pass. See the section "Several
+#'   municipalities".
+#'
+#'   Optional. If it is `NULL` (the default), the municipalities that the
+#'   polygons intersect are found with
+#'   [geobr](https://ipeagit.github.io/geobr/), and their tracts and addresses
+#'   are used. See the section "Municipalities detected from the polygons".
 #' @param polygon An [`sf::sf`] object with polygon geometries (POLYGON or
-#'   MULTIPOLYGON). The function will automatically align CRS and issue a warning
-#'   reporting the percentage of the polygon area that falls outside the municipality.
+#'   MULTIPOLYGON). The function aligns the CRS automatically. When `code_muni`
+#'   is supplied, the diagnostics report the share of the allocated points of
+#'   those municipalities that falls inside the polygons.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
@@ -63,6 +74,47 @@
 #'   interpolated variables. The output CRS matches the original `polygon` CRS
 #'   (or `crs_output` if specified).
 #'
+#' @details
+#' ## Several municipalities
+#'
+#' Pass a vector of codes to interpolate a region that spans more than one
+#' municipality in a single call. The tracts and the CNEFE points of all of them
+#' go through one allocation, each point is matched only to the tracts of its own
+#' municipality, and the result has one row per polygon, whichever municipality
+#' the polygon crosses.
+#'
+#' Calling the function once per municipality and binding the results is not
+#' equivalent. A polygon that crosses a municipal border would receive only the
+#' part of the allocation that belongs to the municipality named in each call.
+#' Totals (every variable except `avg_inc_resp`) are additive, so separate
+#' outputs can be combined by summing them by polygon, but `avg_inc_resp` is an
+#' average over the allocated points, which cannot be rebuilt from two
+#' averages. Use a vector of codes to get it right.
+#'
+#' ## Polygons at the edge of the region
+#'
+#' Only the addresses and tracts of the municipalities in `code_muni` are used.
+#' A polygon that extends beyond them receives only the part of the allocation
+#' that comes from the municipalities requested, so its totals and
+#' `avg_inc_resp` describe a fraction of it. Include the municipalities the
+#' polygon reaches into in `code_muni` for a complete result, or leave
+#' `code_muni` out so that they are detected.
+#'
+#' ## Municipalities detected from the polygons
+#'
+#' When `code_muni` is omitted, the function finds the municipalities that the
+#' polygons intersect, using the state and municipal boundaries of
+#' [geobr](https://ipeagit.github.io/geobr/) for `year`, and uses all of their
+#' tracts and addresses, including tracts of different states. A message lists
+#' them.
+#'
+#' Polygons from another source rarely follow the geobr boundaries exactly, so
+#' a polygon along a municipal border can touch a neighbouring municipality by
+#' a few metres. That neighbour is then downloaded and read too. The values are
+#' not affected, since only the points inside the polygons are aggregated, but
+#' pass `code_muni` explicitly whenever you know which municipalities the
+#' polygons belong to.
+#'
 #' @examples
 #' \donttest{
 #' # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -78,11 +130,14 @@
 #'   vars = c("pop_ph", "pop_ch"),
 #'   cache = FALSE
 #' )
+#'
+#' # Without code_muni, the municipalities the polygons intersect are used
+#' poly_pop_auto <- tracts_to_polygon(polygon = nei_ldf, cache = FALSE)
 #' }
 #'
 #' @export
 tracts_to_polygon <- function(
-  code_muni,
+  code_muni = NULL,
   polygon,
   year = 2022,
 
@@ -93,7 +148,7 @@ tracts_to_polygon <- function(
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni_given <- .check_code_muni_arg(code_muni, "user")
   year <- .validate_year(year)
 
   # Get the appropriate index for the requested year
@@ -141,6 +196,15 @@ cnefe_index <- .get_cnefe_index(year)
 
   # validate polygon ----------------------------------------------------------
   .validate_polygon_arg(polygon, crs_output = crs_output)
+
+  # Without code_muni, use the municipalities the polygons intersect (#120)
+  detected <- NULL
+  if (!code_muni_given) {
+    detected <- .detect_code_munis(polygon, year = year)
+    .inform_detected_munis(detected)
+    code_muni <- detected$code_muni
+  }
+  code_muni <- .normalize_code_munis(code_muni)
 
   # helpers -------------------------------------------------------------------
 
@@ -298,7 +362,7 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
   # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
-  zip_info_cnefe <- .cnefe_create_points_view_in_duckdb(
+  .cnefe_create_points_view_in_duckdb(
     con,
     code_muni = code_muni,
     index = cnefe_index,
@@ -354,6 +418,22 @@ cnefe_index <- .get_cnefe_index(year)
     WHERE ST_Within(p.geom, s.geom);
   "
   )
+
+  # With several municipalities a point is only matched to the tracts of its own
+  # municipality, the same pairing a call per municipality would make. The
+  # filter runs after the join, not inside it: an equality predicate on two
+  # columns of the joined tables takes the spatial join out of its optimised
+  # operator and turns it into a nested loop, which does not finish on a
+  # metropolitan region.
+  if (length(code_muni) > 1L) {
+    .duckdb_quiet_execute(
+      con,
+      "
+      DELETE FROM cnefe_sc
+      WHERE substr(code_tract, 1, 7) <> CAST(code_muni AS VARCHAR);
+    "
+    )
+  }
 
   matched_pts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
   unmatched_pts <- max(total_cnefe_pts - matched_pts, 0)
@@ -485,12 +565,7 @@ cnefe_index <- .get_cnefe_index(year)
   points_outside <- coverage_stats$total[1] - points_inside
 
   if (points_inside == 0) {
-    cli::cli_abort(c(
-      "No CNEFE coordinates were captured within the provided polygon.",
-      "i" = "This may indicate that:",
-      "*" = "The municipality code {.val {code_muni}} does not correspond to the polygon's municipality, or",
-      "*" = "The polygon is not located within municipality {.val {code_muni}}."
-    ))
+    .abort_no_points_in_polygons(code_muni, detected)
   }
 
   # Coverage stats saved for Stage 2 diagnostics
@@ -562,13 +637,24 @@ cnefe_index <- .get_cnefe_index(year)
   polygons_with_values <- nrow(poly_vals)
   polygons_empty <- total_polygons - polygons_with_values
 
+  # With detected municipalities their points are read whole, so the share
+  # left outside the polygons says nothing about the call (#120).
   stage2_lines <- character(0)
-  stage2_lines <- c(
-    stage2_lines,
-    cli::format_inline(
-      "Polygon coverage: {.strong {points_inside}} of {.strong {total_alloc_pts}} allocated points captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+  if (is.null(detected)) {
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Polygon coverage: {.strong {points_inside}} of {.strong {total_alloc_pts}} allocated points of the municipalities in {.arg code_muni} captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+      )
     )
-  )
+  } else {
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Allocated points inside the polygons: {.strong {points_inside}}, from the {.strong {nrow(detected)}} municipalities the polygons intersect"
+      )
+    )
+  }
   if (polygons_empty > 0) {
     polygons_empty_pct <- 100 * polygons_empty / total_polygons
     stage2_lines <- c(
