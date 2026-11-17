@@ -103,6 +103,17 @@ outputs can be combined by summing them by \code{id_hex}, but \code{avg_inc_resp
 average over the allocated points, which cannot be rebuilt from two
 averages. Use a vector of codes to get it right.
 }
+
+\subsection{Border cells at the edge of the region}{
+
+Only the addresses of the municipalities in \code{code_muni} are read. A cell on
+the outer edge of the requested area, one that also overlaps a municipality
+you did not request, therefore describes only the part of it that lies
+inside the area: its values (totals and \code{avg_inc_resp}) leave out the addresses of the neighbour.
+Adding municipalities moves the edge outwards but does not remove it. For
+the cells along the border of a municipality of interest to be complete,
+include the municipalities that border it in \code{code_muni}.
+}
 }
 \examples{
 \donttest{

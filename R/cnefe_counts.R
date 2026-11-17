@@ -95,6 +95,16 @@
 #' municipalities: compute them from the summed counts, or use
 #' [compute_lumi()], which does so.
 #'
+#' ## Border cells at the edge of the region
+#'
+#' Only the addresses of the municipalities in `code_muni` are read. A cell on
+#' the outer edge of the requested area, one that also overlaps a municipality
+#' you did not request, therefore describes only the part of it that lies
+#' inside the area: its values (counts) leave out the addresses of the neighbour.
+#' Adding municipalities moves the edge outwards but does not remove it. For
+#' the cells along the border of a municipality of interest to be complete,
+#' include the municipalities that border it in `code_muni`.
+#'
 #' @seealso [compute_lumi()] for land-use mix indices on the same spatial units.
 #'
 #' @examples

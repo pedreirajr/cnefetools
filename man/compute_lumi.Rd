@@ -169,6 +169,17 @@ share of 20 / 71 = 0.28, whereas the average of the two separate shares is
 what a call with a vector of codes does. \code{\link[=cnefe_counts]{cnefe_counts()}} returns counts,
 which are additive and can be summed by \code{id_hex}.
 }
+
+\subsection{Border cells at the edge of the region}{
+
+Only the addresses of the municipalities in \code{code_muni} are read. A cell on
+the outer edge of the requested area, one that also overlaps a municipality
+you did not request, therefore describes only the part of it that lies
+inside the area: its values (counts, \code{p_res} and indices) leave out the addresses of the neighbour.
+Adding municipalities moves the edge outwards but does not remove it. For
+the cells along the border of a municipality of interest to be complete,
+include the municipalities that border it in \code{code_muni}.
+}
 }
 \examples{
 \donttest{

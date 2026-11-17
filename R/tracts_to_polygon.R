@@ -82,6 +82,14 @@
 #' average over the allocated points, which cannot be rebuilt from two
 #' averages. Use a vector of codes to get it right.
 #'
+#' ## Polygons at the edge of the region
+#'
+#' Only the addresses and tracts of the municipalities in `code_muni` are used.
+#' A polygon that extends beyond them receives only the part of the allocation
+#' that comes from the municipalities requested, so its totals and
+#' `avg_inc_resp` describe a fraction of it. Include the municipalities the
+#' polygon reaches into in `code_muni` for a complete result.
+#'
 #' @examples
 #' \donttest{
 #' # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)

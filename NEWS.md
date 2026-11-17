@@ -17,6 +17,12 @@
   of the two separate shares gives). With a vector every cell appears once. A
   call with a single code behaves as before (#120).
 
+* Only the addresses of the municipalities in `code_muni` are read, so a cell on
+  the outer edge of the requested area describes only the part of it inside the
+  area. To complete the border cells of a municipality, include the
+  municipalities around it in the vector. This is documented in each function's
+  "Border cells at the edge of the region" section (#120).
+
 ## Bug fixes
 
 * With `cache = FALSE`, `cnefe_counts()` and `compute_lumi()` on the R backend

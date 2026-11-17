@@ -111,6 +111,15 @@ outputs can be combined by summing them by polygon, but \code{avg_inc_resp} is a
 average over the allocated points, which cannot be rebuilt from two
 averages. Use a vector of codes to get it right.
 }
+
+\subsection{Polygons at the edge of the region}{
+
+Only the addresses and tracts of the municipalities in \code{code_muni} are used.
+A polygon that extends beyond them receives only the part of the allocation
+that comes from the municipalities requested, so its totals and
+\code{avg_inc_resp} describe a fraction of it. Include the municipalities the
+polygon reaches into in \code{code_muni} for a complete result.
+}
 }
 \examples{
 \donttest{
