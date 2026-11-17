@@ -14,6 +14,11 @@
 #'   on the polygons supplied, so an H3 cell that straddles a municipal border
 #'   is returned once, with the addresses of both sides. See the section
 #'   "Several municipalities".
+#'
+#'   Required for the H3 grid. When `polygon` is supplied it is optional: if it
+#'   is `NULL` (the default), the municipalities that the polygons intersect are
+#'   found with [geobr](https://ipeagit.github.io/geobr/) and read. See the
+#'   section "Municipalities detected from the polygons".
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param polygon_type `r lifecycle::badge("deprecated")` The aggregation mode is
@@ -21,9 +26,11 @@
 #'   [`sf::sf`] object for user polygons. Passing `polygon_type` still works and
 #'   warns.
 #' @param polygon An [`sf::sf`] object with polygon geometries. Supplying it
-#'   switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
-#'   CNEFE points covered by the polygon area. If no CNEFE points fall within
-#'   the polygon, an error is raised.
+#'   switches the output from an H3 grid to these polygons. When `code_muni` is
+#'   supplied, a warning reports how many CNEFE points of those municipalities
+#'   fall outside the polygons. When it is detected, no such warning is issued,
+#'   since the municipalities are read whole by construction. If no CNEFE points
+#'   fall within the polygons, an error is raised.
 #' @param crs_output The CRS for the output object. Only used when `polygon` is
 #'   supplied. Default is `NULL`, which uses the original CRS of
 #'   the `polygon` argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
@@ -93,10 +100,10 @@
 #' combined by summing `addr_type1` to `addr_type8` by `id_hex`, but removing
 #' the repeated rows (for example with `dplyr::distinct()`) discards one
 #' municipality's contribution. An address whose cell falls outside the grid of
-#' its own municipality is not counted by a call for that municipality alone,
-#' which a regional call avoids. Shares and indices must not be averaged across
-#' municipalities: compute them from the summed counts, or use
-#' [compute_lumi()], which does so.
+#' its own municipality but inside the grid of a neighbour is counted by a call
+#' that includes both, and not by a call for its own municipality alone. Shares
+#' and indices must not be averaged across municipalities: compute them from
+#' the summed counts, or use [compute_lumi()], which does so.
 #'
 #' ## Border cells at the edge of the region
 #'
@@ -107,6 +114,30 @@
 #' Adding municipalities moves the edge outwards but does not remove it. For
 #' the cells along the border of a municipality of interest to be complete,
 #' include the municipalities that border it in `code_muni`.
+#'
+#' ## Addresses outside the H3 grid
+#'
+#' The grid is built from the municipal boundaries of
+#' [geobr](https://ipeagit.github.io/geobr/), plus the cells along them, while
+#' the cell of an address comes from its own coordinates. An address geocoded
+#' beyond that ring, for example on the coast or on a small island the boundary
+#' does not follow, falls in a cell that is not in the grid and is not
+#' counted. A warning reports how many addresses this affects, so the counts
+#' can be reconciled with the CNEFE totals of the municipalities.
+#'
+#' ## Municipalities detected from the polygons
+#'
+#' When `polygon` is supplied without `code_muni`, the function finds the
+#' municipalities that the polygons intersect, using the state and municipal
+#' boundaries of [geobr](https://ipeagit.github.io/geobr/) for `year`, and
+#' reads all of their addresses. A message lists them.
+#'
+#' Polygons from another source rarely follow the geobr boundaries exactly, so
+#' a polygon along a municipal border can touch a neighbouring municipality by
+#' a few metres. That neighbour is then downloaded and read too. The counts are
+#' not affected, since only the points inside the polygons are counted, but
+#' pass `code_muni` explicitly whenever you know which municipalities the
+#' polygons belong to.
 #'
 #' @seealso [compute_lumi()] for land-use mix indices on the same spatial units.
 #'
@@ -131,11 +162,14 @@
 #'   polygon = nei_ldf,
 #'   cache = FALSE
 #' )
+#'
+#' # Without code_muni, the municipalities the polygons intersect are read
+#' nei_counts_auto <- cnefe_counts(polygon = nei_ldf, cache = FALSE)
 #' }
 #'
 #' @export
 cnefe_counts <- function(
-  code_muni,
+  code_muni = NULL,
   year = 2022,
   polygon_type = lifecycle::deprecated(),
   polygon = NULL,
@@ -149,13 +183,22 @@ cnefe_counts <- function(
 ) {
   polygon_type <- .resolve_polygon_mode(polygon, polygon_type, fn = "cnefe_counts")
   backend <- match.arg(backend)
-  code_muni <- .normalize_code_munis(code_muni)
+  code_muni_given <- .check_code_muni_arg(code_muni, polygon_type)
   year <- .validate_year(year)
 
   # Validate polygon argument
   if (polygon_type == "user") {
     .validate_polygon_arg(polygon, crs_output = crs_output)
   }
+
+  # Without code_muni, read the municipalities the polygons intersect (#120)
+  detected <- NULL
+  if (!code_muni_given) {
+    detected <- .detect_code_munis(polygon, year = year)
+    .inform_detected_munis(detected)
+    code_muni <- detected$code_muni
+  }
+  code_muni <- .normalize_code_munis(code_muni)
 
   # Get the appropriate index for the requested year
   cnefe_index <- .get_cnefe_index(year)
@@ -184,7 +227,8 @@ cnefe_counts <- function(
       cnefe_index = cnefe_index,
       verbose = verbose,
       cache = cache,
-      cache_dir = cache_dir
+      cache_dir = cache_dir,
+      detected = detected
     )
   }
 
@@ -232,7 +276,7 @@ cnefe_counts <- function(
   # ---------------------------------------------------------------------------
   if (verbose) {
 
-    cli::cli_progress_step("Step 2/3: Building full H3 grid over municipality boundary...",
+    cli::cli_progress_step("Step 2/3: Building full H3 grid over the municipal boundaries...",
                            msg_done = "Step 2/3 (H3 grid built)")
   }
 
@@ -245,7 +289,7 @@ cnefe_counts <- function(
   )
 
   if (verbose) {
-    cli::cli_progress_done("Step 2/3: Building full H3 grid over municipality boundary...")
+    cli::cli_progress_done("Step 2/3: Building full H3 grid over the municipal boundaries...")
   }
 
 
@@ -352,6 +396,15 @@ cnefe_counts <- function(
         dplyr::across(dplyr::starts_with("addr_type"), ~ as.integer(.x))
       )
 
+    # Addresses whose cell is not in the grid are dropped by the join below,
+    # so they are reported (#120)
+    addr_mat <- as.matrix(counts_wide[paste0("addr_type", 1:8)])
+    in_grid <- counts_wide$id_hex %in% hex_grid$id_hex
+    .warn_outside_grid(
+      n_outside = sum(addr_mat[!in_grid, , drop = FALSE]),
+      n_total = sum(addr_mat)
+    )
+
     out <- hex_grid |>
       dplyr::left_join(counts_wide, by = "id_hex") |>
       dplyr::mutate(
@@ -445,7 +498,8 @@ cnefe_counts <- function(
   cnefe_index,
   verbose,
   cache = TRUE,
-  cache_dir = NULL
+  cache_dir = NULL,
+  detected = NULL
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/2: Ensure the cached data file exists and prepare polygon
@@ -536,29 +590,16 @@ cnefe_counts <- function(
 
   # Check for zero coverage
   if (points_matched == 0L) {
-    cli::cli_abort(c(
-      "No CNEFE coordinates were captured within the provided polygon.",
-      "i" = "This may indicate that:",
-      "*" = "The municipality code {.val {code_muni}} does not correspond to the polygon's municipality, or",
-      "*" = "The polygon is not located within municipality {.val {code_muni}}."
-    ))
+    .abort_no_points_in_polygons(code_muni, detected)
   }
 
-  # Calculate coverage percentage
-  coverage_pct <- (points_matched / total_points) * 100
-
-  # Issue warning about coverage
-  if (points_outside > 0L) {
-    cli::cli_warn(c(
-      "Polygon coverage: {.val {sprintf('%.1f', coverage_pct)}%} of CNEFE points captured.",
-      "i" = "{.val {points_matched}} of {.val {total_points}} points are within the provided polygon.",
-      "i" = "{.val {points_outside}} points fell outside the polygon and were not counted."
-    ))
-  } else {
-    cli::cli_inform(c(
-      "v" = "All {.val {total_points}} CNEFE points were captured within the provided polygon."
-    ))
-  }
+  # Points of the municipalities left outside the polygons: a warning when the
+  # user chose the municipalities, nothing when they were detected (#120)
+  .report_polygon_coverage(
+    points_matched = points_matched,
+    total_points = total_points,
+    detected = detected
+  )
 
   # Pivot to wide format
   if (nrow(counts_long) == 0L || all(is.na(counts_long$.poly_row_id))) {

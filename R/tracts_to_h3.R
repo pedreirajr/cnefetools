@@ -89,6 +89,17 @@
 #' the cells along the border of a municipality of interest to be complete,
 #' include the municipalities that border it in `code_muni`.
 #'
+#' ## Addresses outside the H3 grid
+#'
+#' The grid is built from the municipal boundaries of
+#' [geobr](https://ipeagit.github.io/geobr/), plus the cells along them, while
+#' the cell of a dwelling point comes from its own coordinates. A point
+#' geocoded beyond that ring, for example on the coast or on a small island the
+#' boundary does not follow, falls in a cell that is not in the grid, and what
+#' was allocated to it is not in the output. The diagnostics report how many
+#' allocated points this affects and how much of each total they carried, so
+#' the output can be reconciled with the tract totals.
+#'
 #' @examples
 #' \donttest{
 #' # Interpolate population to H3 hexagons
@@ -398,6 +409,7 @@ tracts_to_h3 <- function(
     CREATE OR REPLACE VIEW hex_vals AS
     SELECT
       id_hex,
+      COUNT(*) AS n_pts_hex,
       %s
     FROM cnefe_alloc
     WHERE id_hex IS NOT NULL
@@ -431,6 +443,10 @@ tracts_to_h3 <- function(
   .duckdb_quiet({
     {
       hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
+
+      # Points whose cell is not in the grid are dropped by the join below,
+      # together with what was allocated to them (#120)
+      outside_df <- hex_df[!hex_df$id_hex %in% hex_grid$id_hex, , drop = FALSE]
 
       out <- hex_grid |>
         dplyr::left_join(hex_df, by = "id_hex") |>
@@ -475,7 +491,31 @@ tracts_to_h3 <- function(
     )
   )
 
-  .report_interp_diagnostics(warn_lines, stage2_lines, "H3 hexagons")
+  # Allocated points whose cell falls outside the grid, and what they carried
+  stage2_warn_lines <- character(0)
+  pts_outside <- sum(outside_df$n_pts_hex)
+  if (pts_outside > 0) {
+    out_pct <- if (pts_with_hex > 0) 100 * pts_outside / pts_with_hex else 0
+    stage2_warn_lines <- cli::format_inline(
+      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_with_hex}} ({.strong {sprintf('%.3f%%', out_pct)}}), not included in the output"
+    )
+    for (v in setdiff(vars, "avg_inc_resp")) {
+      lost_v <- sum(outside_df[[v]], na.rm = TRUE)
+      total_v <- sum(hex_df[[v]], na.rm = TRUE)
+      lost_pct <- if (total_v > 0) 100 * lost_v / total_v else 0
+      stage2_warn_lines <- c(
+        stage2_warn_lines,
+        cli::format_inline(
+          "{.field {v}} allocated to cells outside the grid: {.strong {sprintf('%.0f', lost_v)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {sprintf('%.3f%%', lost_pct)}})"
+        )
+      )
+    }
+  }
+
+  .report_interp_diagnostics(
+    warn_lines, stage2_lines, "H3 hexagons",
+    stage2_warn_lines = stage2_warn_lines
+  )
 
   return(out)
 

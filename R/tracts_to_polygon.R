@@ -23,9 +23,15 @@
 #'   repeated codes are dropped.
 #'   With several, they are interpolated in one pass. See the section "Several
 #'   municipalities".
+#'
+#'   Optional. If it is `NULL` (the default), the municipalities that the
+#'   polygons intersect are found with
+#'   [geobr](https://ipeagit.github.io/geobr/), and their tracts and addresses
+#'   are used. See the section "Municipalities detected from the polygons".
 #' @param polygon An [`sf::sf`] object with polygon geometries (POLYGON or
-#'   MULTIPOLYGON). The function will automatically align CRS and issue a warning
-#'   reporting the percentage of the polygon area that falls outside the municipality.
+#'   MULTIPOLYGON). The function aligns the CRS automatically. When `code_muni`
+#'   is supplied, the diagnostics report the share of the allocated points of
+#'   those municipalities that falls inside the polygons.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
@@ -91,7 +97,23 @@
 #' A polygon that extends beyond them receives only the part of the allocation
 #' that comes from the municipalities requested, so its totals and
 #' `avg_inc_resp` describe a fraction of it. Include the municipalities the
-#' polygon reaches into in `code_muni` for a complete result.
+#' polygon reaches into in `code_muni` for a complete result, or leave
+#' `code_muni` out so that they are detected.
+#'
+#' ## Municipalities detected from the polygons
+#'
+#' When `code_muni` is omitted, the function finds the municipalities that the
+#' polygons intersect, using the state and municipal boundaries of
+#' [geobr](https://ipeagit.github.io/geobr/) for `year`, and uses all of their
+#' tracts and addresses, including tracts of different states. A message lists
+#' them.
+#'
+#' Polygons from another source rarely follow the geobr boundaries exactly, so
+#' a polygon along a municipal border can touch a neighbouring municipality by
+#' a few metres. That neighbour is then downloaded and read too. The values are
+#' not affected, since only the points inside the polygons are aggregated, but
+#' pass `code_muni` explicitly whenever you know which municipalities the
+#' polygons belong to.
 #'
 #' @examples
 #' \donttest{
@@ -108,11 +130,14 @@
 #'   vars = c("pop_ph", "pop_ch"),
 #'   cache = FALSE
 #' )
+#'
+#' # Without code_muni, the municipalities the polygons intersect are used
+#' poly_pop_auto <- tracts_to_polygon(polygon = nei_ldf, cache = FALSE)
 #' }
 #'
 #' @export
 tracts_to_polygon <- function(
-  code_muni,
+  code_muni = NULL,
   polygon,
   year = 2022,
 
@@ -123,7 +148,7 @@ tracts_to_polygon <- function(
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  code_muni <- .normalize_code_munis(code_muni)
+  code_muni_given <- .check_code_muni_arg(code_muni, "user")
   year <- .validate_year(year)
 
   # Get the appropriate index for the requested year
@@ -171,6 +196,15 @@ cnefe_index <- .get_cnefe_index(year)
 
   # validate polygon ----------------------------------------------------------
   .validate_polygon_arg(polygon, crs_output = crs_output)
+
+  # Without code_muni, use the municipalities the polygons intersect (#120)
+  detected <- NULL
+  if (!code_muni_given) {
+    detected <- .detect_code_munis(polygon, year = year)
+    .inform_detected_munis(detected)
+    code_muni <- detected$code_muni
+  }
+  code_muni <- .normalize_code_munis(code_muni)
 
   # helpers -------------------------------------------------------------------
 
@@ -531,12 +565,7 @@ cnefe_index <- .get_cnefe_index(year)
   points_outside <- coverage_stats$total[1] - points_inside
 
   if (points_inside == 0) {
-    cli::cli_abort(c(
-      "No CNEFE coordinates were captured within the provided polygon.",
-      "i" = "This may indicate that:",
-      "*" = "The municipality code {.val {code_muni}} does not correspond to the polygon's municipality, or",
-      "*" = "The polygon is not located within municipality {.val {code_muni}}."
-    ))
+    .abort_no_points_in_polygons(code_muni, detected)
   }
 
   # Coverage stats saved for Stage 2 diagnostics
@@ -608,13 +637,24 @@ cnefe_index <- .get_cnefe_index(year)
   polygons_with_values <- nrow(poly_vals)
   polygons_empty <- total_polygons - polygons_with_values
 
+  # With detected municipalities their points are read whole, so the share
+  # left outside the polygons says nothing about the call (#120).
   stage2_lines <- character(0)
-  stage2_lines <- c(
-    stage2_lines,
-    cli::format_inline(
-      "Polygon coverage: {.strong {points_inside}} of {.strong {total_alloc_pts}} allocated points captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+  if (is.null(detected)) {
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Polygon coverage: {.strong {points_inside}} of {.strong {total_alloc_pts}} allocated points of the municipalities in {.arg code_muni} captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+      )
     )
-  )
+  } else {
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Allocated points inside the polygons: {.strong {points_inside}}, from the {.strong {nrow(detected)}} municipalities the polygons intersect"
+      )
+    )
+  }
   if (polygons_empty > 0) {
     polygons_empty_pct <- 100 * polygons_empty / total_polygons
     stage2_lines <- c(

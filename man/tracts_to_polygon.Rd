@@ -5,7 +5,7 @@
 \title{Convert census tract aggregates to user-provided polygons using CNEFE points}
 \usage{
 tracts_to_polygon(
-  code_muni,
+  code_muni = NULL,
   polygon,
   year = 2022,
   vars = c("pop_ph", "pop_ch"),
@@ -21,11 +21,17 @@ codes, as a single value or a vector, for example \code{2927408} or
 \code{c("2927408", "2919207")}. Numbers and strings are both accepted, and
 repeated codes are dropped.
 With several, they are interpolated in one pass. See the section "Several
-municipalities".}
+municipalities".
+
+Optional. If it is \code{NULL} (the default), the municipalities that the
+polygons intersect are found with
+\href{https://ipeagit.github.io/geobr/}{geobr}, and their tracts and addresses
+are used. See the section "Municipalities detected from the polygons".}
 
 \item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries (POLYGON or
-MULTIPOLYGON). The function will automatically align CRS and issue a warning
-reporting the percentage of the polygon area that falls outside the municipality.}
+MULTIPOLYGON). The function aligns the CRS automatically. When \code{code_muni}
+is supplied, the diagnostics report the share of the allocated points of
+those municipalities that falls inside the polygons.}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -121,7 +127,24 @@ Only the addresses and tracts of the municipalities in \code{code_muni} are used
 A polygon that extends beyond them receives only the part of the allocation
 that comes from the municipalities requested, so its totals and
 \code{avg_inc_resp} describe a fraction of it. Include the municipalities the
-polygon reaches into in \code{code_muni} for a complete result.
+polygon reaches into in \code{code_muni} for a complete result, or leave
+\code{code_muni} out so that they are detected.
+}
+
+\subsection{Municipalities detected from the polygons}{
+
+When \code{code_muni} is omitted, the function finds the municipalities that the
+polygons intersect, using the state and municipal boundaries of
+\href{https://ipeagit.github.io/geobr/}{geobr} for \code{year}, and uses all of their
+tracts and addresses, including tracts of different states. A message lists
+them.
+
+Polygons from another source rarely follow the geobr boundaries exactly, so
+a polygon along a municipal border can touch a neighbouring municipality by
+a few metres. That neighbour is then downloaded and read too. The values are
+not affected, since only the points inside the polygons are aggregated, but
+pass \code{code_muni} explicitly whenever you know which municipalities the
+polygons belong to.
 }
 }
 \examples{
@@ -139,6 +162,9 @@ poly_pop <- tracts_to_polygon(
   vars = c("pop_ph", "pop_ch"),
   cache = FALSE
 )
+
+# Without code_muni, the municipalities the polygons intersect are used
+poly_pop_auto <- tracts_to_polygon(polygon = nei_ldf, cache = FALSE)
 }
 
 }

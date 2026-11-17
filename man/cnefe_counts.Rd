@@ -5,7 +5,7 @@
 \title{Count CNEFE address species on a spatial grid}
 \usage{
 cnefe_counts(
-  code_muni,
+  code_muni = NULL,
   year = 2022,
   polygon_type = lifecycle::deprecated(),
   polygon = NULL,
@@ -25,7 +25,12 @@ repeated codes are dropped.
 With several, the records of all of them are counted on a single grid, or
 on the polygons supplied, so an H3 cell that straddles a municipal border
 is returned once, with the addresses of both sides. See the section
-"Several municipalities".}
+"Several municipalities".
+
+Required for the H3 grid. When \code{polygon} is supplied it is optional: if it
+is \code{NULL} (the default), the municipalities that the polygons intersect are
+found with \href{https://ipeagit.github.io/geobr/}{geobr} and read. See the
+section "Municipalities detected from the polygons".}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -36,9 +41,11 @@ now inferred from \code{polygon}: leave it \code{NULL} for an H3 grid, or pass a
 warns.}
 
 \item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Supplying it
-switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
-CNEFE points covered by the polygon area. If no CNEFE points fall within
-the polygon, an error is raised.}
+switches the output from an H3 grid to these polygons. When \code{code_muni} is
+supplied, a warning reports how many CNEFE points of those municipalities
+fall outside the polygons. When it is detected, no such warning is issued,
+since the municipalities are read whole by construction. If no CNEFE points
+fall within the polygons, an error is raised.}
 
 \item{crs_output}{The CRS for the output object. Only used when \code{polygon} is
 supplied. Default is \code{NULL}, which uses the original CRS of
@@ -124,10 +131,10 @@ of its own municipality. The counts are additive, so such outputs can be
 combined by summing \code{addr_type1} to \code{addr_type8} by \code{id_hex}, but removing
 the repeated rows (for example with \code{dplyr::distinct()}) discards one
 municipality's contribution. An address whose cell falls outside the grid of
-its own municipality is not counted by a call for that municipality alone,
-which a regional call avoids. Shares and indices must not be averaged across
-municipalities: compute them from the summed counts, or use
-\code{\link[=compute_lumi]{compute_lumi()}}, which does so.
+its own municipality but inside the grid of a neighbour is counted by a call
+that includes both, and not by a call for its own municipality alone. Shares
+and indices must not be averaged across municipalities: compute them from
+the summed counts, or use \code{\link[=compute_lumi]{compute_lumi()}}, which does so.
 }
 
 \subsection{Border cells at the edge of the region}{
@@ -139,6 +146,32 @@ inside the area: its values (counts) leave out the addresses of the neighbour.
 Adding municipalities moves the edge outwards but does not remove it. For
 the cells along the border of a municipality of interest to be complete,
 include the municipalities that border it in \code{code_muni}.
+}
+
+\subsection{Addresses outside the H3 grid}{
+
+The grid is built from the municipal boundaries of
+\href{https://ipeagit.github.io/geobr/}{geobr}, plus the cells along them, while
+the cell of an address comes from its own coordinates. An address geocoded
+beyond that ring, for example on the coast or on a small island the boundary
+does not follow, falls in a cell that is not in the grid and is not
+counted. A warning reports how many addresses this affects, so the counts
+can be reconciled with the CNEFE totals of the municipalities.
+}
+
+\subsection{Municipalities detected from the polygons}{
+
+When \code{polygon} is supplied without \code{code_muni}, the function finds the
+municipalities that the polygons intersect, using the state and municipal
+boundaries of \href{https://ipeagit.github.io/geobr/}{geobr} for \code{year}, and
+reads all of their addresses. A message lists them.
+
+Polygons from another source rarely follow the geobr boundaries exactly, so
+a polygon along a municipal border can touch a neighbouring municipality by
+a few metres. That neighbour is then downloaded and read too. The counts are
+not affected, since only the points inside the polygons are counted, but
+pass \code{code_muni} explicitly whenever you know which municipalities the
+polygons belong to.
 }
 }
 \examples{
@@ -162,6 +195,9 @@ nei_counts <- cnefe_counts(
   polygon = nei_ldf,
   cache = FALSE
 )
+
+# Without code_muni, the municipalities the polygons intersect are read
+nei_counts_auto <- cnefe_counts(polygon = nei_ldf, cache = FALSE)
 }
 
 }

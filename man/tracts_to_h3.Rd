@@ -117,6 +117,18 @@ Adding municipalities moves the edge outwards but does not remove it. For
 the cells along the border of a municipality of interest to be complete,
 include the municipalities that border it in \code{code_muni}.
 }
+
+\subsection{Addresses outside the H3 grid}{
+
+The grid is built from the municipal boundaries of
+\href{https://ipeagit.github.io/geobr/}{geobr}, plus the cells along them, while
+the cell of a dwelling point comes from its own coordinates. A point
+geocoded beyond that ring, for example on the coast or on a small island the
+boundary does not follow, falls in a cell that is not in the grid, and what
+was allocated to it is not in the output. The diagnostics report how many
+allocated points this affects and how much of each total they carried, so
+the output can be reconciled with the tract totals.
+}
 }
 \examples{
 \donttest{
