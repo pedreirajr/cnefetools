@@ -421,3 +421,31 @@ testthat::test_that("tracts_to_polygon() without code_muni matches the explicit 
   testthat::expect_match(all_msgs, "intersect 2 municipalities")
   testthat::expect_no_match(all_msgs, "Polygon coverage")
 })
+
+# --- Formatting and errors added after the real-data run ----------------------------
+
+testthat::test_that("tiny shares outside the grid do not print as 0.000% (#120)", {
+  f <- cnefetools:::.fmt_small_pct
+  testthat::expect_equal(f(4 / 1390897 * 100), "<0.001%")
+  testthat::expect_equal(f(0.0013), "0.0013%")
+  testthat::expect_equal(f(0.4234), "0.42%")
+  testthat::expect_equal(f(11.43), "11.4%")
+  testthat::expect_equal(f(0), "0%")
+  testthat::expect_equal(f(NA_real_), "0%")
+
+  testthat::expect_warning(
+    cnefetools:::.warn_outside_grid(4L, 1390897L),
+    "4.*of.*1390897.*<0.001%"
+  )
+  testthat::expect_no_warning(cnefetools:::.warn_outside_grid(0L, 100L))
+})
+
+testthat::test_that("tracts_to_h3() explains that code_muni is required (#120)", {
+  testthat::expect_error(cnefetools::tracts_to_h3(), "required for the H3 grid")
+  testthat::expect_error(cnefetools::tracts_to_h3(NULL), "tracts_to_polygon")
+  testthat::skip_if_not_installed("sf")
+  testthat::expect_error(
+    cnefetools::tracts_to_h3(poly_region),
+    "polygon = <your sf object>"
+  )
+})

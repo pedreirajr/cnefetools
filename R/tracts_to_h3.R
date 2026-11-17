@@ -510,17 +510,20 @@ tracts_to_h3 <- function(
   pts_outside <- sum(outside_df$n_pts_hex)
   if (pts_outside > 0) {
     out_pct <- if (pts_with_hex > 0) 100 * pts_outside / pts_with_hex else 0
+    # Formatted first: cli reads "{.name" as a style, not as a function call
+    out_pct_txt <- .fmt_small_pct(out_pct)
     stage2_warn_lines <- cli::format_inline(
-      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_with_hex}} ({.strong {.fmt_small_pct(out_pct)}}), not included in the output"
+      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_with_hex}} ({.strong {out_pct_txt}}), not included in the output"
     )
     for (v in setdiff(vars, "avg_inc_resp")) {
       lost_v <- sum(outside_df[[v]], na.rm = TRUE)
       total_v <- sum(hex_df[[v]], na.rm = TRUE)
       lost_pct <- if (total_v > 0) 100 * lost_v / total_v else 0
+      lost_pct_txt <- .fmt_small_pct(lost_pct)
       stage2_warn_lines <- c(
         stage2_warn_lines,
         cli::format_inline(
-          "{.field {v}} allocated to cells outside the grid: {.strong {sprintf('%.0f', lost_v)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {.fmt_small_pct(lost_pct)}})"
+          "{.field {v}} allocated to cells outside the grid: {.strong {sprintf('%.0f', lost_v)}} of {.strong {sprintf('%.0f', total_v)}} ({.strong {lost_pct_txt}})"
         )
       )
     }

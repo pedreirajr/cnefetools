@@ -2632,8 +2632,10 @@
     return(invisible(NULL))
   }
   pct <- if (n_total > 0) 100 * n_outside / n_total else 0
+  # Formatted first: cli reads "{.name" as a style, not as a function call
+  pct_txt <- .fmt_small_pct(pct)
   cli::cli_warn(c(
-    "{.val {n_outside}} of {.val {n_total}} addresses ({.fmt_small_pct(pct)}) of the municipalities in {.arg code_muni} fall in H3 cells outside the grid and were not counted.",
+    "{.val {n_outside}} of {.val {n_total}} addresses ({pct_txt}) of the municipalities in {.arg code_muni} fall in H3 cells outside the grid and were not counted.",
     "i" = "The grid covers the municipal boundaries from {.pkg geobr} plus the cells along them, and these addresses were geocoded beyond it.",
     extra
   ))
