@@ -109,6 +109,23 @@ testthat::test_that(".normalize_code_munis() accepts vectors and drops repeats (
   testthat::expect_error(cnefetools:::.normalize_code_munis(integer(0)))
 })
 
+testthat::test_that(".normalize_code_munis() takes numbers, strings and a mix (#120)", {
+  f <- cnefetools:::.normalize_code_munis
+  want <- c(2927408L, 2919207L)
+
+  testthat::expect_equal(f(c(2927408, 2919207)), want)
+  testthat::expect_equal(f(c("2927408", "2919207")), want)
+  testthat::expect_equal(f(c(2927408L, 2919207L)), want)
+  testthat::expect_equal(f(list(2927408, "2919207")), want)
+  testthat::expect_equal(f(c(" 2927408 ", "2919207")), want)
+  testthat::expect_equal(f("2927408"), 2927408L)
+
+  # one bad element rejects the whole call instead of being silently dropped
+  testthat::expect_error(f(c("2927408", "abc")), "7-digit")
+  testthat::expect_error(f(c(2927408, NA)), "7-digit")
+  testthat::expect_error(f(c("2927408", "292740")), "7-digit")
+})
+
 testthat::test_that(".combine_poly_joins() adds counts and coverage totals (#120)", {
   a <- list(
     counts = dplyr::tibble(.poly_row_id = c(1L, 2L), n_res = c(3L, 1L), n_tot = c(4L, 2L)),

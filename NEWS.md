@@ -15,7 +15,8 @@
   households on one side and 51 other-use addresses on the other give a
   residential share of 20 / 71 in the pooled cell, not the 0.5 that the average
   of the two separate shares gives). With a vector every cell appears once. A
-  call with a single code behaves as before (#120).
+  call with a single code behaves as before. The codes can be given as numbers
+  or as strings, alone or in a vector, and repeated codes are dropped (#120).
 
 * Only the addresses of the municipalities in `code_muni` are read, so a cell on
   the outer edge of the requested area describes only the part of it inside the

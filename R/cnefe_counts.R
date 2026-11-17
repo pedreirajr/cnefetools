@@ -6,7 +6,10 @@
 #' polygons), and returns per-unit counts of `COD_ESPECIE` as `addr_type1` to
 #' `addr_type8`.
 #'
-#' @param code_muni Integer. One or more seven-digit IBGE municipality codes.
+#' @param code_muni Numeric or character. One or more seven-digit IBGE municipality
+#'   codes, as a single value or a vector, for example `2927408` or
+#'   `c("2927408", "2919207")`. Numbers and strings are both accepted, and
+#'   repeated codes are dropped.
 #'   With several, the records of all of them are counted on a single grid, or
 #'   on the polygons supplied, so an H3 cell that straddles a municipal border
 #'   is returned once, with the addresses of both sides. See the section

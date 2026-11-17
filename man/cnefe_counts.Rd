@@ -18,7 +18,10 @@ cnefe_counts(
 )
 }
 \arguments{
-\item{code_muni}{Integer. One or more seven-digit IBGE municipality codes.
+\item{code_muni}{Numeric or character. One or more seven-digit IBGE municipality
+codes, as a single value or a vector, for example \code{2927408} or
+\code{c("2927408", "2919207")}. Numbers and strings are both accepted, and
+repeated codes are dropped.
 With several, the records of all of them are counted on a single grid, or
 on the polygons supplied, so an H3 cell that straddles a municipal border
 is returned once, with the addresses of both sides. See the section

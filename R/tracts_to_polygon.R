@@ -17,7 +17,10 @@
 #' fallback would offer users a path that does not finish rather than a slower
 #' one.
 #'
-#' @param code_muni Integer. One or more seven-digit IBGE municipality codes.
+#' @param code_muni Numeric or character. One or more seven-digit IBGE municipality
+#'   codes, as a single value or a vector, for example `2927408` or
+#'   `c("2927408", "2919207")`. Numbers and strings are both accepted, and
+#'   repeated codes are dropped.
 #'   With several, they are interpolated in one pass. See the section "Several
 #'   municipalities".
 #' @param polygon An [`sf::sf`] object with polygon geometries (POLYGON or

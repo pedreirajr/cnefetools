@@ -10,7 +10,10 @@
 #' proposed in Pedreira Junior et al. (2025, 2026). The 2026 article introduces the BGBI,
 #' and the adapted HHI is documented in the 2025 preprint.
 #'
-#' @param code_muni Integer. One or more seven-digit IBGE municipality codes.
+#' @param code_muni Numeric or character. One or more seven-digit IBGE municipality
+#'   codes, as a single value or a vector, for example `2927408` or
+#'   `c("2927408", "2919207")`. Numbers and strings are both accepted, and
+#'   repeated codes are dropped.
 #'   With several, the records of all of them are pooled: the H3 grid covers the
 #'   union of the boundaries and the citywide share P is computed over the whole
 #'   region. See the section "Several municipalities".
