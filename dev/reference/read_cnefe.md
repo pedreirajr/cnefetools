@@ -129,10 +129,10 @@ cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [46ms]
+#> ✔ Converting the archive to .csv.gz (done once) [48ms]
 #> 
-#> ℹ Reading file1eee1f7d2c39.csv.gz with arrow
-#> ✔ Reading file1eee1f7d2c39.csv.gz with arrow [19ms]
+#> ℹ Reading file1ed6fcbd9e4.csv.gz with arrow
+#> ✔ Reading file1ed6fcbd9e4.csv.gz with arrow [18ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
@@ -142,16 +142,16 @@ path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [48ms]
+#> ✔ Converting the archive to .csv.gz (done once) [50ms]
 #> 
-#> ℹ Reading file1eee115843da.csv.gz with arrow
-#> ✔ Reading file1eee115843da.csv.gz with arrow [18ms]
+#> ℹ Reading file1ed62e6ad8e4.csv.gz with arrow
+#> ✔ Reading file1ed62e6ad8e4.csv.gz with arrow [18ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Writing cnefe_2022_2929057.parquet
 #> ✔ Writing cnefe_2022_2929057.parquet [17ms]
 #> 
-#> ✔ Wrote 9354 records to /tmp/RtmplvScKC/cnefe_2022_2929057.parquet (0.3 MB).
+#> ✔ Wrote 9354 records to /tmp/RtmpHTNUyL/cnefe_2022_2929057.parquet (0.3 MB).
 cnefe_local <- read_cnefe(file = path)
 #> ℹ Reading cnefe_2022_2929057.parquet as Parquet
 #> ✔ Reading cnefe_2022_2929057.parquet as Parquet [10ms]
@@ -163,10 +163,10 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [44ms]
+#> ✔ Converting the archive to .csv.gz (done once) [47ms]
 #> 
-#> ℹ Reading file1eee2f3e87d.csv.gz with arrow
-#> ✔ Reading file1eee2f3e87d.csv.gz with arrow [19ms]
+#> ℹ Reading file1ed66ad24352.csv.gz with arrow
+#> ✔ Reading file1ed66ad24352.csv.gz with arrow [18ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object

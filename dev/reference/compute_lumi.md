@@ -201,17 +201,17 @@ lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [35ms]
+#> ✔ Converting the archive to .csv.gz (done once) [38ms]
 #> 
 #> ℹ Step 1/3: Ensuring the CNEFE data file...
 
-#> ✔ Step 1/3 (CNEFE data ready) [618ms]
+#> ✔ Step 1/3 (CNEFE data ready) [405ms]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [130ms]
+#> ✔ Step 2/3 (Addresses counted) [149ms]
 #> 
 #> ℹ Step 3/3: Building grid and computing LUMI...
-#> ✔ Step 3/3 (Land use mix indices computed) [2.4s]
+#> ✔ Step 3/3 (Land use mix indices computed) [2.6s]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -231,14 +231,14 @@ lumi_poly <- compute_lumi(
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [457ms]
+#> ✔ Converting the archive to .csv.gz (done once) [503ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 
-#> ✔ Step 1/3 (Data and polygon ready) [2.2s]
+#> ✔ Step 1/3 (Data and polygon ready) [1.6s]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
-#> ✔ Step 2/3 (Addresses counted) [822ms]
+#> ✔ Step 2/3 (Addresses counted) [900ms]
 #> 
 #> ℹ Step 3/3: Computing land use mix indices...
 #> Warning: Polygon coverage: "99.7%" of CNEFE points captured.

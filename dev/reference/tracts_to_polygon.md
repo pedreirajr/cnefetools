@@ -161,27 +161,27 @@ poly_pop <- tracts_to_polygon(
 #> ✔ Step 1/6 (CRS alignment) [29ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [295ms]
+#> ✔ Step 2/6 (DuckDB ready) [335ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 #> ℹ Downloading sc_29.parquet from GitHub release
-#> ✔ Downloading sc_29.parquet from GitHub release [537ms]
+#> ✔ Downloading sc_29.parquet from GitHub release [481ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 
-#> ✔ Step 3/6 (Tracts ready) [731ms]
+#> ✔ Step 3/6 (Tracts ready) [685ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [402ms]
+#> ✔ Converting the archive to .csv.gz (done once) [457ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-#> ✔ Step 4/6 (CNEFE points ready) [3.8s]
+#> ✔ Step 4/6 (CNEFE points ready) [2.7s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [643ms]
+#> ✔ Step 5/6 (Join and allocation) [693ms]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
 #> ✔ Step 6/6 (Polygon aggregation) [23ms]
