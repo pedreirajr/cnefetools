@@ -40,7 +40,7 @@ testthat::test_that("tracts are fetched by municipality, cached, and then read f
     again <- cnefetools:::.sc_ensure_parquet_munis("30", sc_codes, cache_dir = root,
                                                    year = 2022L, verbose = FALSE)
   )
-  testthat::expect_equal(again, paths)
+  testthat::expect_equal(normalizePath(again), normalizePath(paths))
 })
 
 testthat::test_that("a cached state file is used without any remote read (#120)", {
