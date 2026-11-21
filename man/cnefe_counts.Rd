@@ -11,6 +11,7 @@ cnefe_counts(
   polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
+  scope = c("muni", "geom"),
   verbose = TRUE,
   cache = TRUE,
   cache_dir = NULL,
@@ -18,19 +19,15 @@ cnefe_counts(
 )
 }
 \arguments{
-\item{code_muni}{Numeric or character. One or more seven-digit IBGE municipality
-codes, as a single value or a vector, for example \code{2927408} or
-\code{c("2927408", "2919207")}. Numbers and strings are both accepted, and
-repeated codes are dropped.
-With several, the records of all of them are counted on a single grid, or
-on the polygons supplied, so an H3 cell that straddles a municipal border
-is returned once, with the addresses of both sides. See the section
-"Several municipalities".
+\item{code_muni}{Numeric or character. One or more seven-digit IBGE
+municipality codes, for example \code{2927408} or \code{c(2927408, 2919207)}.
+Repeated codes are dropped. With several codes, their addresses are
+counted together (see "Several municipalities").
 
-Required for the H3 grid. When \code{polygon} is supplied it is optional: if it
-is \code{NULL} (the default), the municipalities that the polygons intersect are
-found with \href{https://ipeagit.github.io/geobr/}{geobr} and read. See the
-section "Municipalities detected from the polygons".}
+Required for the H3 grid, which is built from the boundaries of these
+municipalities. With \code{polygon}, it's required under \code{scope = "muni"} and
+ignored under \code{scope = "geom"}, which finds the municipalities that the
+polygons intersect (see "Municipalities detected from the polygons").}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -40,12 +37,15 @@ now inferred from \code{polygon}: leave it \code{NULL} for an H3 grid, or pass a
 \code{\link[sf:sf]{sf::sf}} object for user polygons. Passing \code{polygon_type} still works and
 warns.}
 
-\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. Supplying it
-switches the output from an H3 grid to these polygons. When \code{code_muni} is
-supplied, a warning reports how many CNEFE points of those municipalities
-fall outside the polygons. When it is detected, no such warning is issued,
-since the municipalities are read whole by construction. If no CNEFE points
-fall within the polygons, an error is raised.}
+\item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries. When it's
+supplied, the counts are returned for these polygons instead of an H3
+grid. Features with the same geometry as an earlier feature are dropped,
+with a message, and the first one is kept. Under \code{scope = "muni"}, a
+warning reports how many addresses of the municipalities in \code{code_muni}
+fall outside the polygons. When polygons overlap, a warning also reports
+how many addresses fall in more than one of them, since those are counted
+in each. If no address falls inside the polygons, the function stops with
+an error.}
 
 \item{crs_output}{The CRS for the output object. Only used when \code{polygon} is
 supplied. Default is \code{NULL}, which uses the original CRS of
@@ -55,11 +55,25 @@ object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 \item{h3_resolution}{Integer. H3 grid resolution (default: 9). Only used for
 the H3 grid, so it is ignored when \code{polygon} is supplied.}
 
+\item{scope}{Character. Which CNEFE addresses the function works with.
+\code{"muni"} (the default, and the faster option) uses every address of the
+municipalities in \code{code_muni}. \code{"geom"} uses the addresses that fall inside
+the output geometries (the H3 cells, or the polygons in \code{polygon}),
+whichever municipality they belong to, so the municipalities those
+geometries reach are read as well. The H3 grid holds the cells whose
+center falls inside the boundaries of \code{code_muni}, plus the neighboring
+cells that intersect those boundaries. See the section "Border cells at the
+edge of the region".}
+
 \item{verbose}{Logical; if \code{TRUE}, prints messages and timing information.}
 
-\item{cache}{Logical. If \code{TRUE} (default), the downloaded data is stored as
-a gzipped CSV in the user cache directory and reused in future calls. If
-\code{FALSE}, a temporary file is used and deleted after the call.}
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded files are kept in
+the user cache directory and reused in later calls. These are the CNEFE
+file of each municipality, stored as a gzipped CSV, and the municipal
+boundaries used to build the H3 grid or to find the municipalities that
+the polygons reach, one small file per municipality. If \code{FALSE}, temporary
+files are used and deleted after the call. See \code{\link[=clear_cache_muni]{clear_cache_muni()}} and
+\code{\link[=clear_cache_boundaries]{clear_cache_boundaries()}} to delete the cached files.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
@@ -72,7 +86,7 @@ extension, and the spatial extension as well when \code{polygon} is supplied.
 
 \code{"r"} exists for environments where DuckDB extensions cannot be installed,
 such as some restricted computing clusters. It is \strong{not} the lighter
-option: it materialises the filtered address table in R memory, so its
+option: it materializes the filtered address table in R memory, so its
 footprint grows with the municipality, while DuckDB aggregates in a
 streaming fashion and stays nearly flat. On São Paulo (5.7 million
 addresses) the measured peak is about 9 GB under \code{"r"} against 0.7 GB
@@ -123,55 +137,59 @@ Pass a vector of codes to cover a region that spans more than one
 municipality. The records of all of them are counted together on one grid
 built over the union of the boundaries, so every cell appears once.
 
-Calling the function once per municipality and binding the results is not
-equivalent. The grid of each municipality holds the cells whose centre falls
-inside it plus the neighbouring cells that intersect its boundary, so a cell
-on a shared border is returned by both calls, each holding only the addresses
-of its own municipality. The counts are additive, so such outputs can be
-combined by summing \code{addr_type1} to \code{addr_type8} by \code{id_hex}, but removing
-the repeated rows (for example with \code{dplyr::distinct()}) discards one
-municipality's contribution. An address whose cell falls outside the grid of
-its own municipality but inside the grid of a neighbour is counted by a call
-that includes both, and not by a call for its own municipality alone. Shares
-and indices must not be averaged across municipalities: compute them from
-the summed counts, or use \code{\link[=compute_lumi]{compute_lumi()}}, which does so.
+Calling the function once per municipality and binding the results isn't the
+same. A cell on a shared border belongs to the grid of both municipalities,
+so it comes back from both calls, each with only the addresses of its own
+municipality (under the default \code{scope = "muni"}). Counts add up, so those
+outputs can be combined by summing \code{addr_type1} to \code{addr_type8} by \code{id_hex},
+but dropping the repeated rows (for example with \code{dplyr::distinct()}) loses
+one side of the border. Shares and indices shouldn't be averaged across
+municipalities. Compute them from the summed counts, or use \code{\link[=compute_lumi]{compute_lumi()}}
+with a vector of codes.
 }
 
 \subsection{Border cells at the edge of the region}{
 
-Only the addresses of the municipalities in \code{code_muni} are read. A cell on
-the outer edge of the requested area, one that also overlaps a municipality
-you did not request, therefore describes only the part of it that lies
-inside the area: its values (counts) leave out the addresses of the neighbour.
-Adding municipalities moves the edge outwards but does not remove it. For
-the cells along the border of a municipality of interest to be complete,
-include the municipalities that border it in \code{code_muni}.
+Under the default \code{scope = "muni"}, only the addresses of the municipalities
+in \code{code_muni} are read. A cell or polygon on the outer edge of the
+requested area, one that also overlaps a municipality you did not request,
+therefore describes only the part of it that lies inside the area: its
+counts leave out the addresses of the neighbor. Adding municipalities moves
+the edge outward but does not remove it.
+
+Under \code{scope = "geom"}, the municipalities that the output geometries reach
+are read too, and every cell or polygon receives all the addresses inside
+it, so the edge is complete. On the H3 grid, \code{code_muni} still defines the
+grid, and a message lists the neighboring municipalities read to complete
+it. This costs a download and a read of each of them in full, which is why
+it is not the default.
 }
 
 \subsection{Addresses outside the H3 grid}{
 
-The grid is built from the municipal boundaries of
-\href{https://ipeagit.github.io/geobr/}{geobr}, plus the cells along them, while
-the cell of an address comes from its own coordinates. An address geocoded
-beyond that ring, for example on the coast or on a small island the boundary
-does not follow, falls in a cell that is not in the grid and is not
-counted. A warning reports how many addresses this affects, so the counts
-can be reconciled with the CNEFE totals of the municipalities.
+The grid is built from the 2022 IBGE municipal boundaries, at full
+resolution, plus the ring of cells along them, but each address goes to the
+cell of its own coordinates. An address geocoded beyond that ring, for
+example on the coast or on a small island the boundary doesn't follow, lands
+in a cell outside the grid and isn't counted. A warning reports how many addresses of the municipalities in
+\code{code_muni} this affects, so the counts can be reconciled with their CNEFE
+totals. Under \code{scope = "geom"}, the addresses of the neighboring
+municipalities that fall beyond the grid are expected and not reported.
 }
 
 \subsection{Municipalities detected from the polygons}{
 
-When \code{polygon} is supplied without \code{code_muni}, the function finds the
-municipalities that the polygons intersect, using the state and municipal
-boundaries of \href{https://ipeagit.github.io/geobr/}{geobr} for \code{year}, and
-reads all of their addresses. A message lists them.
+When \code{polygon} is supplied with \code{scope = "geom"}, the function finds the
+municipalities that the polygons intersect, using the 2022 IBGE municipal
+boundaries, and reads all of their addresses. A message lists them, and a
+\code{code_muni} passed in this case is ignored.
 
-Polygons from another source rarely follow the geobr boundaries exactly, so
-a polygon along a municipal border can touch a neighbouring municipality by
-a few metres. That neighbour is then downloaded and read too. The counts are
-not affected, since only the points inside the polygons are counted, but
-pass \code{code_muni} explicitly whenever you know which municipalities the
-polygons belong to.
+Polygons from another source rarely follow the IBGE boundaries exactly, so
+a polygon along a municipal border can touch a neighboring municipality by
+a few meters. That neighbor is then downloaded and read too. The counts are
+not affected, since only the points inside the polygons are counted, but use
+\code{scope = "muni"} with \code{code_muni} whenever you know which municipalities
+the polygons belong to, which is faster.
 }
 }
 \examples{
@@ -180,8 +198,12 @@ polygons belong to.
 hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
 
 # Several municipalities in one call: one grid over their union, with no cell
-# repeated along the shared border (Salvador and its neighbour Lauro de Freitas)
+# repeated along the shared border (Salvador and its neighbor Lauro de Freitas)
 region_counts <- cnefe_counts(code_muni = c(2927408, 2919207), cache = FALSE)
+
+# The grid of Lauro de Freitas, with the cells along its border completed by
+# the addresses of the neighboring municipalities
+ldf_full <- cnefe_counts(code_muni = 2919207, scope = "geom", cache = FALSE)
 
 # Count addresses per user-provided polygon (neighborhoods of Lauro de Freitas-BA)
 # Using geobr to download neighborhood boundaries
@@ -196,8 +218,8 @@ nei_counts <- cnefe_counts(
   cache = FALSE
 )
 
-# Without code_muni, the municipalities the polygons intersect are read
-nei_counts_auto <- cnefe_counts(polygon = nei_ldf, cache = FALSE)
+# With scope = "geom", the municipalities the polygons intersect are read
+nei_counts_auto <- cnefe_counts(polygon = nei_ldf, scope = "geom", cache = FALSE)
 }
 
 }

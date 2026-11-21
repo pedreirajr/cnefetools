@@ -10,7 +10,8 @@ clear_cache_tracts(uf = "all", verbose = TRUE, cache_dir = NULL, year = NULL)
 \item{uf}{\code{"all"}, a two-letter UF abbreviation (e.g. \code{"BA"}), a two-digit
 numeric state code (e.g. \code{29L}), or a seven-digit IBGE municipality code
 (e.g. \code{2919207}). If \code{"all"} (default), all cached Parquet files are
-deleted. Otherwise, only the file for the resolved state is deleted.}
+deleted. Otherwise, only the files of the resolved state are deleted (the
+state file and the files of each of its municipalities).}
 
 \item{verbose}{Logical; if \code{TRUE} (default), reports the number of files
 deleted and the space freed.}
@@ -21,7 +22,7 @@ is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code
 point large downloads at a secondary drive or a shared volume.}
 
 \item{year}{Integer. Restrict the deletion to one CNEFE edition. \code{NULL}
-(default) clears every edition, which is the previous behaviour.}
+(default) clears every edition, which is the previous behavior.}
 }
 \value{
 Invisibly, the character vector of deleted file paths.
@@ -29,6 +30,12 @@ Invisibly, the character vector of deleted file paths.
 \description{
 \code{clear_cache_tracts()} removes census tract Parquet files stored in the
 user cache directory by \code{\link[=tracts_to_h3]{tracts_to_h3()}} and \code{\link[=tracts_to_polygon]{tracts_to_polygon()}}.
+
+Those functions download only the census tracts of the municipalities they
+read, and keep one file per municipality in the cache. A whole-state file is
+kept instead when it was downloaded by an earlier version of the package, or
+when the tracts of a single municipality could not be read from the release.
+Both kinds of file are removed here.
 }
 \examples{
 \donttest{

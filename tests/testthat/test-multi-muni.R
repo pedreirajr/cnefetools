@@ -62,9 +62,7 @@ testthat::test_that("separate municipal grids both contain the shared border cel
   grid_of <- function(code) {
     testthat::with_mocked_bindings(
       cnefetools:::build_h3_grid(multi_muni$res, code_muni = code),
-      .read_muni_boundary = function(code_muni, year = 2022L) {
-        if (code_muni == multi_muni$code_a) multi_muni$boundary_a else multi_muni$boundary_b
-      },
+      .read_muni_boundaries = mock_read_muni_boundaries,
       .package = "cnefetools"
     )
   }

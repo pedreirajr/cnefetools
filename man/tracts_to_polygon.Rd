@@ -10,28 +10,29 @@ tracts_to_polygon(
   year = 2022,
   vars = c("pop_ph", "pop_ch"),
   crs_output = NULL,
+  scope = c("muni", "geom"),
   cache = TRUE,
   cache_dir = NULL,
   verbose = TRUE
 )
 }
 \arguments{
-\item{code_muni}{Numeric or character. One or more seven-digit IBGE municipality
-codes, as a single value or a vector, for example \code{2927408} or
-\code{c("2927408", "2919207")}. Numbers and strings are both accepted, and
-repeated codes are dropped.
-With several, they are interpolated in one pass. See the section "Several
-municipalities".
+\item{code_muni}{Numeric or character. One or more seven-digit IBGE
+municipality codes, for example \code{2927408} or \code{c(2927408, 2919207)}.
+Repeated codes are dropped. With several codes, they're interpolated
+together, in a single allocation (see "Several municipalities").
 
-Optional. If it is \code{NULL} (the default), the municipalities that the
-polygons intersect are found with
-\href{https://ipeagit.github.io/geobr/}{geobr}, and their tracts and addresses
-are used. See the section "Municipalities detected from the polygons".}
+Required under \code{scope = "muni"} (the default) and ignored under
+\code{scope = "geom"}, which finds the municipalities that the polygons
+intersect (see "Municipalities detected from the polygons").}
 
 \item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries (POLYGON or
-MULTIPOLYGON). The function aligns the CRS automatically. When \code{code_muni}
-is supplied, the diagnostics report the share of the allocated points of
-those municipalities that falls inside the polygons.}
+MULTIPOLYGON), in any CRS. Features with the same geometry as an earlier
+feature are dropped, with a message, and the first one is kept. Under
+\code{scope = "muni"}, the diagnostics report the share of the allocated points
+of the municipalities in \code{code_muni} that falls inside the polygons. When
+polygons overlap, the diagnostics open with how many dwellings fall in more
+than one of them, since their allocated values are added to each.}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -70,7 +71,20 @@ tracts with no private dwellings receive no allocation.
 the original CRS of the \code{polygon} argument. Can be an EPSG code (e.g., 4326,
 31983) or any CRS object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
-\item{cache}{Logical. Whether to use the package cache for the census tract assets and the CNEFE files.}
+\item{scope}{Character. Which CNEFE addresses (and census tracts) the
+function works with. \code{"muni"} (the default, and the faster option) uses
+every address and tract of the municipalities in \code{code_muni}. \code{"geom"} uses
+the addresses that fall inside the polygons in \code{polygon}, whichever
+municipality they belong to, so the municipalities those polygons reach are
+read as well. See the section "Polygons at the edge of the region".}
+
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded files are kept in
+the user cache directory and reused in later calls. These are the CNEFE
+file, the census tracts and the boundary of each municipality read. Only
+the tracts of those municipalities are downloaded, not the whole state. If
+\code{FALSE}, temporary files are used and deleted after the call. See
+\code{\link[=clear_cache_muni]{clear_cache_muni()}}, \code{\link[=clear_cache_tracts]{clear_cache_tracts()}} and \code{\link[=clear_cache_boundaries]{clear_cache_boundaries()}}
+to delete the cached files.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
@@ -112,39 +126,38 @@ go through one allocation, each point is matched only to the tracts of its own
 municipality, and the result has one row per polygon, whichever municipality
 the polygon crosses.
 
-Calling the function once per municipality and binding the results is not
-equivalent. A polygon that crosses a municipal border would receive only the
-part of the allocation that belongs to the municipality named in each call.
-Totals (every variable except \code{avg_inc_resp}) are additive, so separate
-outputs can be combined by summing them by polygon, but \code{avg_inc_resp} is an
-average over the allocated points, which cannot be rebuilt from two
-averages. Use a vector of codes to get it right.
+Calling the function once per municipality and binding the results isn't the
+same. A polygon that crosses a municipal border gets, in each call, only the
+part of the allocation that comes from the municipality of that call.
+Totals (every variable except \code{avg_inc_resp}) add up, so separate outputs
+can be combined by summing them by polygon. \code{avg_inc_resp} can't, because
+it's an average over the allocated points, and two averages don't give the
+average of the pooled points. Use a vector of codes instead.
 }
 
 \subsection{Polygons at the edge of the region}{
 
-Only the addresses and tracts of the municipalities in \code{code_muni} are used.
-A polygon that extends beyond them receives only the part of the allocation
-that comes from the municipalities requested, so its totals and
-\code{avg_inc_resp} describe a fraction of it. Include the municipalities the
-polygon reaches into in \code{code_muni} for a complete result, or leave
-\code{code_muni} out so that they are detected.
+Under the default \code{scope = "muni"}, only the addresses and tracts of the
+municipalities in \code{code_muni} are used. A polygon that extends beyond them
+receives only the part of the allocation that comes from the municipalities
+requested, so its totals and \code{avg_inc_resp} describe a fraction of it. Use
+\code{scope = "geom"} for a complete result, which reads every municipality the
+polygons reach.
 }
 
 \subsection{Municipalities detected from the polygons}{
 
-When \code{code_muni} is omitted, the function finds the municipalities that the
-polygons intersect, using the state and municipal boundaries of
-\href{https://ipeagit.github.io/geobr/}{geobr} for \code{year}, and uses all of their
-tracts and addresses, including tracts of different states. A message lists
-them.
+With \code{scope = "geom"}, the function finds the municipalities that the
+polygons intersect, using the 2022 IBGE municipal boundaries, and uses all
+of their tracts and addresses, even when they belong to different states. A
+message lists them, and a \code{code_muni} passed in this case is ignored.
 
-Polygons from another source rarely follow the geobr boundaries exactly, so
-a polygon along a municipal border can touch a neighbouring municipality by
-a few metres. That neighbour is then downloaded and read too. The values are
+Polygons from another source rarely follow the IBGE boundaries exactly, so
+a polygon along a municipal border can touch a neighboring municipality by
+a few meters. That neighbor is then downloaded and read too. The values are
 not affected, since only the points inside the polygons are aggregated, but
-pass \code{code_muni} explicitly whenever you know which municipalities the
-polygons belong to.
+use \code{scope = "muni"} with \code{code_muni} whenever you know which municipalities
+the polygons belong to, which is faster.
 }
 }
 \examples{
@@ -163,8 +176,8 @@ poly_pop <- tracts_to_polygon(
   cache = FALSE
 )
 
-# Without code_muni, the municipalities the polygons intersect are used
-poly_pop_auto <- tracts_to_polygon(polygon = nei_ldf, cache = FALSE)
+# With scope = "geom", the municipalities the polygons intersect are used
+poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FALSE)
 }
 
 }

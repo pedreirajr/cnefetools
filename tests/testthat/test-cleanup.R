@@ -70,6 +70,10 @@ new_data_files <- function(code) {
 # how many times CNEFE was fetched.
 with_fake_downloads <- function(input, code) {
   downloads <- 0L
+  # The tracts are read from the release through httpfs first (#120). A source
+  # that does not exist sends them to the whole-state download below, which is
+  # the path these tests exercise, without any network.
+  withr::local_options(cnefetools.sc_url = file.path(tempdir(), "no-such-sc_%s.parquet"))
   out <- testthat::with_mocked_bindings(
     testthat::with_mocked_bindings(
       new_data_files(code),

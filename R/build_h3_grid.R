@@ -3,8 +3,9 @@
 #' @description
 #' Internal helper to build an H3 grid either:
 #' - from a vector of H3 cell ids (`id_hex`), or
-#' - from the municipality boundary (`code_muni`) using geobr, for the
-#'   territorial base of `year`.
+#' - from the municipality boundaries (`code_muni`), read at full resolution
+#'   from the package release through the boundary cache, for the territorial
+#'   base of `year`.
 #'
 #' @param h3_resolution Integer. H3 resolution.
 #' @param id_hex Character/integer vector of H3 cell ids (optional).
@@ -14,6 +15,8 @@
 #' @param year Integer. Territorial base year for the municipality boundary.
 #'   Defaults to 2022, matching the CNEFE edition. Only used when the boundary
 #'   is read from `code_muni`.
+#' @param cache,cache_dir Passed to the boundary reader, so the boundaries
+#'   follow the same cache as the CNEFE files.
 #'
 #' @return An sf object (CRS 4326) with columns `id_hex` and `geometry`.
 #'
@@ -23,7 +26,9 @@ build_h3_grid <- function(
   id_hex = NULL,
   code_muni = NULL,
   boundary = NULL,
-  year = 2022L
+  year = 2022L,
+  cache = TRUE,
+  cache_dir = NULL
 ) {
   h3_resolution <- as.integer(h3_resolution)
   if (
@@ -48,18 +53,8 @@ build_h3_grid <- function(
       # One boundary per municipality, stacked. The union below turns them into
       # a single area, so a cell on a shared border is selected once and the
       # grid has no repeated id_hex (#120, R2 comment 1).
-      boundary <- sf::st_sf(
-        geometry = do.call(
-          c,
-          lapply(
-            code_muni,
-            function(cm) {
-              sf::st_geometry(
-                sf::st_transform(.read_muni_boundary(cm, year = year), 4326)
-              )
-            }
-          )
-        )
+      boundary <- .read_muni_boundaries(
+        code_muni, year = year, cache = cache, cache_dir = cache_dir
       )
     }
 

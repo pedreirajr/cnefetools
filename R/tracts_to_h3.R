@@ -16,12 +16,11 @@
 #' fallback would offer users a path that does not finish rather than a slower
 #' one.
 #'
-#' @param code_muni Numeric or character. One or more seven-digit IBGE municipality
-#'   codes, as a single value or a vector, for example `2927408` or
-#'   `c("2927408", "2919207")`. Numbers and strings are both accepted, and
-#'   repeated codes are dropped.
-#'   With several, they are interpolated in one pass over a single grid. See the
-#'   section "Several municipalities".
+#' @param code_muni Numeric or character. One or more seven-digit IBGE
+#'   municipality codes, for example `2927408` or `c(2927408, 2919207)`.
+#'   Repeated codes are dropped. With several codes, they're interpolated
+#'   together (see "Several municipalities"). Always required, since the grid is built from the
+#'   boundaries of these municipalities.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param h3_resolution Integer. H3 resolution (0 to 15). Defaults to 9.
@@ -51,7 +50,21 @@
 #'   - `avg_inc_resp` is assigned (not split) to each private dwelling point;
 #'     tracts with no private dwellings receive no allocation.
 #'
-#' @param cache Logical. Whether to use the package cache for the census tract assets and the CNEFE files.
+#' @param scope Character. Which CNEFE addresses (and census tracts) the
+#'   function works with. `"muni"` (the default, and the faster option) uses
+#'   every address and tract of the municipalities in `code_muni`. `"geom"` uses
+#'   the addresses that fall inside the H3 cells, whichever municipality they
+#'   belong to, so the municipalities the grid reaches are read as well. The H3
+#'   grid holds the cells whose center falls inside the boundaries of
+#'   `code_muni`, plus the neighboring cells that intersect those boundaries.
+#'   See the section "Border cells at the edge of the region".
+#' @param cache Logical. If `TRUE` (default), the downloaded files are kept in
+#'   the user cache directory and reused in later calls. These are the CNEFE
+#'   file, the census tracts and the boundary of each municipality read. Only
+#'   the tracts of those municipalities are downloaded, not the whole state. If
+#'   `FALSE`, temporary files are used and deleted after the call. See
+#'   [clear_cache_muni()], [clear_cache_tracts()] and [clear_cache_boundaries()]
+#'   to delete the cached files.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
@@ -69,36 +82,46 @@
 #' municipality, and the grid is built over the union of the boundaries, so every
 #' cell appears once.
 #'
-#' Calling the function once per municipality and binding the results is not
-#' equivalent. The grid of each municipality holds the cells whose centre falls
-#' inside it plus the neighbouring cells that intersect its boundary, so a cell
-#' on a shared border is returned by both calls, each holding only its own side,
-#' and removing the repeated rows discards one municipality's contribution.
-#' Totals (every variable except `avg_inc_resp`) are additive, so separate
-#' outputs can be combined by summing them by `id_hex`, but `avg_inc_resp` is an
-#' average over the allocated points, which cannot be rebuilt from two
-#' averages. Use a vector of codes to get it right.
+#' Calling the function once per municipality and binding the results isn't the
+#' same. A cell on a shared border belongs to the grid of both municipalities,
+#' so it comes back from both calls, each with only its own side (under the
+#' default `scope = "muni"`), and dropping the repeated rows loses one side.
+#' Totals (every variable except `avg_inc_resp`) add up, so separate outputs
+#' can be combined by summing them by `id_hex`. `avg_inc_resp` can't, because
+#' it's an average over the allocated points, and two averages don't give the
+#' average of the pooled points. Use a vector of codes instead.
 #'
 #' ## Border cells at the edge of the region
 #'
-#' Only the addresses of the municipalities in `code_muni` are read. A cell on
-#' the outer edge of the requested area, one that also overlaps a municipality
-#' you did not request, therefore describes only the part of it that lies
-#' inside the area: its values (totals and `avg_inc_resp`) leave out the addresses of the neighbour.
-#' Adding municipalities moves the edge outwards but does not remove it. For
-#' the cells along the border of a municipality of interest to be complete,
-#' include the municipalities that border it in `code_muni`.
+#' Under the default `scope = "muni"`, only the addresses and tracts of the
+#' municipalities in `code_muni` are read. A cell on the outer edge of the
+#' requested area, one that also overlaps a municipality you did not request,
+#' therefore describes only the part of it that lies inside the area: its
+#' values (totals and `avg_inc_resp`) leave out the addresses of the neighbor.
+#' Adding municipalities moves the edge outward but does not remove it.
+#'
+#' Under `scope = "geom"`, the municipalities that the grid reaches are read
+#' too, and every cell receives the allocation of all the dwellings inside it,
+#' so the edge is complete. A message lists the neighboring municipalities
+#' read. The CNEFE file of each neighbor is read whole, since the files come
+#' one per municipality, but only the neighbor's tracts with at least one
+#' dwelling inside the grid enter the allocation. Those tracts enter with all
+#' their dwellings, so the result matches a call that lists the neighbors in
+#' `code_muni`, restricted to the cells of this grid. It's still slower than
+#' `"muni"`, which is why it isn't the default.
 #'
 #' ## Addresses outside the H3 grid
 #'
-#' The grid is built from the municipal boundaries of
-#' [geobr](https://ipeagit.github.io/geobr/), plus the cells along them, while
-#' the cell of a dwelling point comes from its own coordinates. A point
-#' geocoded beyond that ring, for example on the coast or on a small island the
-#' boundary does not follow, falls in a cell that is not in the grid, and what
-#' was allocated to it is not in the output. The diagnostics report how many
-#' allocated points this affects and how much of each total they carried, so
-#' the output can be reconciled with the tract totals.
+#' The grid is built from the 2022 IBGE municipal boundaries, at full
+#' resolution, plus the ring of cells along them, but each dwelling point goes
+#' to the cell of its own coordinates. A point geocoded beyond that ring, for
+#' example on the coast or on a small island the boundary doesn't follow, lands
+#' in a cell outside the grid, and what was allocated to it isn't in the
+#' output. The diagnostics report how many
+#' allocated points of the municipalities in `code_muni` this affects and how
+#' much of each total they carried, so the output can be reconciled with the
+#' tract totals. Under `scope = "geom"`, the points of the neighboring
+#' municipalities that fall beyond the grid are expected and not reported.
 #'
 #' @examples
 #' \donttest{
@@ -116,6 +139,7 @@ tracts_to_h3 <- function(
   year = 2022,
   h3_resolution = 9,
   vars = c("pop_ph", "pop_ch"),
+  scope = c("muni", "geom"),
   cache = TRUE,
   cache_dir = NULL,
   verbose = TRUE
@@ -136,6 +160,7 @@ tracts_to_h3 <- function(
     ))
   }
   code_muni <- .normalize_code_munis(code_muni)
+  scope <- .resolve_scope(scope, TRUE, "hex")$scope
 
   year <- .validate_year(year)
 
@@ -214,6 +239,15 @@ tracts_to_h3 <- function(
     cli::cli_progress_done("Step 1/6: connecting to DuckDB and loading extensions...")
   }
 
+  # The grid is built before the tracts and points are read because, with
+  # scope = "geom", it decides which municipalities are read: those in
+  # code_muni plus the ones the grid reaches, so the cells along the border
+  # receive the allocation of both sides (#120).
+  grid_set <- .h3_grid_and_read_set(code_muni, scope, h3_resolution, year = year,
+                                    cache = cache, cache_dir = cache_dir)
+  hex_grid <- grid_set$hex_grid
+  read_munis <- grid_set$read_munis
+
   # Step 2/6 ------------------------------------------------------------------
 
   if (verbose) {
@@ -224,7 +258,7 @@ tracts_to_h3 <- function(
 
   .sc_create_views_in_duckdb(
     con,
-    code_muni = code_muni,
+    code_muni = read_munis,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
@@ -253,11 +287,11 @@ tracts_to_h3 <- function(
   }
 
   # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
-  # The ZIP must remain on disk until the views are materialised into a table.
+  # The ZIP must remain on disk until the views are materialized into a table.
   suppressMessages(
     .cnefe_create_points_view_in_duckdb(
       con,
-      code_muni = code_muni,
+      code_muni = read_munis,
       index = cnefe_index,
       cache = cache,
       cache_dir = cache_dir,
@@ -282,12 +316,28 @@ tracts_to_h3 <- function(
     "
       )
 
-      total_pts <- DBI::dbGetQuery(
-        con,
-        "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
-      )$n[1]
     }
   })
+
+  # scope = "geom": keep only the tracts of the neighboring municipalities that
+  # hold a dwelling inside a cell of the grid (#120). The CNEFE file of each
+  # neighbor is read whole, since the files come by municipality, but the
+  # spatial join then runs against these few tracts instead of all of theirs.
+  # A tract that is kept enters whole, with all its dwellings, so the share of
+  # each dwelling in the tract total is the same as in a call that lists the
+  # neighbors in code_muni.
+  own_list <- paste(as.integer(code_muni), collapse = ", ")
+  has_neighbors <- length(read_munis) > length(code_muni)
+  if (has_neighbors) {
+    .sc_keep_tracts_touching_grid(con, hex_grid$id_hex, h3_resolution, own_list)
+  }
+
+  # Points of code_muni only: the dwellings of a neighbor that lie outside the
+  # tracts kept are expected to find no tract and are not reported as unmatched
+  total_pts <- suppressMessages(DBI::dbGetQuery(
+    con,
+    sprintf("SELECT COUNT(*) AS n FROM cnefe_pts_tbl WHERE code_muni IN (%s);", own_list)
+  )$n[1])
 
   # A temporary CNEFE file was registered for deletion on exit by
   # .cnefe_create_points_view_in_duckdb(), before anything here could fail.
@@ -323,10 +373,10 @@ tracts_to_h3 <- function(
   # With several municipalities a point is only matched to the tracts of its own
   # municipality, the same pairing a call per municipality would make. The
   # filter runs after the join, not inside it: an equality predicate on two
-  # columns of the joined tables takes the spatial join out of its optimised
+  # columns of the joined tables takes the spatial join out of its optimized
   # operator and turns it into a nested loop, which does not finish on a
   # metropolitan region.
-  if (length(code_muni) > 1L) {
+  if (length(read_munis) > 1L) {
     .duckdb_quiet_execute(
       con,
       "
@@ -336,9 +386,10 @@ tracts_to_h3 <- function(
     )
   }
 
-  matched_pts <- suppressMessages(
-    DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
-  )
+  matched_pts <- suppressMessages(DBI::dbGetQuery(
+    con,
+    sprintf("SELECT COUNT(*) AS n FROM cnefe_sc WHERE code_muni IN (%s);", own_list)
+  )$n[1])
   unmatched_pts <- max(total_pts - matched_pts, 0)
 
   # Denominators by tract (counts of dwellings of each type)
@@ -440,27 +491,37 @@ tracts_to_h3 <- function(
   # Step 6/6 ------------------------------------------------------------------
 
   if (verbose) {
-    cli::cli_progress_step("Step 6/6: building H3 grid and joining results...",
+    cli::cli_progress_step("Step 6/6: joining results to the H3 grid...",
                            msg_done = "Step 6/6 (sf output)")
 
   }
 
-  # Build the full municipality grid first, then LEFT_JOIN allocated values.
-  # This ensures hexagons with no eligible dwelling points are retained (with
-  # count variables coalesced to 0 and avg_inc_resp left as NA).
-  hex_grid <- build_h3_grid(
-    h3_resolution = h3_resolution,
-    code_muni     = code_muni,
-    year          = year
-  )
-
+  # LEFT_JOIN the allocated values onto the full grid built earlier. This
+  # ensures hexagons with no eligible dwelling points are retained (with count
+  # variables coalesced to 0 and avg_inc_resp left as NA).
   .duckdb_quiet({
     {
       hex_df <- DBI::dbGetQuery(con, "SELECT * FROM hex_vals;")
 
-      # Points whose cell is not in the grid are dropped by the join below,
-      # together with what was allocated to them (#120)
-      outside_df <- hex_df[!hex_df$id_hex %in% hex_grid$id_hex, , drop = FALSE]
+      # Points of code_muni whose cell is not in the grid are dropped by the
+      # join below, together with what was allocated to them, so they are
+      # reported. The neighbors read under scope = "geom" fall outside the
+      # grid by construction and are left out of that report (#120).
+      total_vars <- setdiff(vars, "avg_inc_resp")
+      own_cols <- c(
+        "id_hex",
+        "COUNT(*) AS n_pts_hex",
+        sprintf("SUM(%s_pt) AS %s", total_vars, total_vars)
+      )
+      own_df <- DBI::dbGetQuery(
+        con,
+        sprintf(
+          "SELECT %s FROM cnefe_alloc WHERE id_hex IS NOT NULL AND code_muni IN (%s) GROUP BY 1;",
+          paste(own_cols, collapse = ", "),
+          paste(as.integer(code_muni), collapse = ", ")
+        )
+      )
+      outside_df <- own_df[!own_df$id_hex %in% hex_grid$id_hex, , drop = FALSE]
 
       out <- hex_grid |>
         dplyr::left_join(hex_df, by = "id_hex") |>
@@ -478,7 +539,7 @@ tracts_to_h3 <- function(
   sf::st_crs(out) <- 4326
 
   if (verbose) {
-    cli::cli_progress_done("Step 6/6: building H3 grid and joining results...")
+    cli::cli_progress_done("Step 6/6: joining results to the H3 grid...")
     cli::cli_progress_done()
   }
   # diagnostics and warning ----------------------------------------------------
@@ -505,19 +566,21 @@ tracts_to_h3 <- function(
     )
   )
 
-  # Allocated points whose cell falls outside the grid, and what they carried
+  # Allocated points of code_muni whose cell falls outside the grid, and what
+  # they carried
   stage2_warn_lines <- character(0)
   pts_outside <- sum(outside_df$n_pts_hex)
+  pts_own <- sum(own_df$n_pts_hex)
   if (pts_outside > 0) {
-    out_pct <- if (pts_with_hex > 0) 100 * pts_outside / pts_with_hex else 0
+    out_pct <- if (pts_own > 0) 100 * pts_outside / pts_own else 0
     # Formatted first: cli reads "{.name" as a style, not as a function call
     out_pct_txt <- .fmt_small_pct(out_pct)
     stage2_warn_lines <- cli::format_inline(
-      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_with_hex}} ({.strong {out_pct_txt}}), not included in the output"
+      "Allocated points in H3 cells outside the grid: {.strong {pts_outside}} of {.strong {pts_own}} ({.strong {out_pct_txt}}), not included in the output"
     )
     for (v in setdiff(vars, "avg_inc_resp")) {
       lost_v <- sum(outside_df[[v]], na.rm = TRUE)
-      total_v <- sum(hex_df[[v]], na.rm = TRUE)
+      total_v <- sum(own_df[[v]], na.rm = TRUE)
       lost_pct <- if (total_v > 0) 100 * lost_v / total_v else 0
       lost_pct_txt <- .fmt_small_pct(lost_pct)
       stage2_warn_lines <- c(

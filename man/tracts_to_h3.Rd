@@ -9,18 +9,18 @@ tracts_to_h3(
   year = 2022,
   h3_resolution = 9,
   vars = c("pop_ph", "pop_ch"),
+  scope = c("muni", "geom"),
   cache = TRUE,
   cache_dir = NULL,
   verbose = TRUE
 )
 }
 \arguments{
-\item{code_muni}{Numeric or character. One or more seven-digit IBGE municipality
-codes, as a single value or a vector, for example \code{2927408} or
-\code{c("2927408", "2919207")}. Numbers and strings are both accepted, and
-repeated codes are dropped.
-With several, they are interpolated in one pass over a single grid. See the
-section "Several municipalities".}
+\item{code_muni}{Numeric or character. One or more seven-digit IBGE
+municipality codes, for example \code{2927408} or \code{c(2927408, 2919207)}.
+Repeated codes are dropped. With several codes, they're interpolated
+together (see "Several municipalities"). Always required, since the grid is built from the
+boundaries of these municipalities.}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -57,7 +57,22 @@ dwellings but has collective dwellings, they are allocated to collective.
 tracts with no private dwellings receive no allocation.
 }}
 
-\item{cache}{Logical. Whether to use the package cache for the census tract assets and the CNEFE files.}
+\item{scope}{Character. Which CNEFE addresses (and census tracts) the
+function works with. \code{"muni"} (the default, and the faster option) uses
+every address and tract of the municipalities in \code{code_muni}. \code{"geom"} uses
+the addresses that fall inside the H3 cells, whichever municipality they
+belong to, so the municipalities the grid reaches are read as well. The H3
+grid holds the cells whose center falls inside the boundaries of
+\code{code_muni}, plus the neighboring cells that intersect those boundaries.
+See the section "Border cells at the edge of the region".}
+
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded files are kept in
+the user cache directory and reused in later calls. These are the CNEFE
+file, the census tracts and the boundary of each municipality read. Only
+the tracts of those municipalities are downloaded, not the whole state. If
+\code{FALSE}, temporary files are used and deleted after the call. See
+\code{\link[=clear_cache_muni]{clear_cache_muni()}}, \code{\link[=clear_cache_tracts]{clear_cache_tracts()}} and \code{\link[=clear_cache_boundaries]{clear_cache_boundaries()}}
+to delete the cached files.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
@@ -96,38 +111,48 @@ go through one allocation, each point is matched only to the tracts of its own
 municipality, and the grid is built over the union of the boundaries, so every
 cell appears once.
 
-Calling the function once per municipality and binding the results is not
-equivalent. The grid of each municipality holds the cells whose centre falls
-inside it plus the neighbouring cells that intersect its boundary, so a cell
-on a shared border is returned by both calls, each holding only its own side,
-and removing the repeated rows discards one municipality's contribution.
-Totals (every variable except \code{avg_inc_resp}) are additive, so separate
-outputs can be combined by summing them by \code{id_hex}, but \code{avg_inc_resp} is an
-average over the allocated points, which cannot be rebuilt from two
-averages. Use a vector of codes to get it right.
+Calling the function once per municipality and binding the results isn't the
+same. A cell on a shared border belongs to the grid of both municipalities,
+so it comes back from both calls, each with only its own side (under the
+default \code{scope = "muni"}), and dropping the repeated rows loses one side.
+Totals (every variable except \code{avg_inc_resp}) add up, so separate outputs
+can be combined by summing them by \code{id_hex}. \code{avg_inc_resp} can't, because
+it's an average over the allocated points, and two averages don't give the
+average of the pooled points. Use a vector of codes instead.
 }
 
 \subsection{Border cells at the edge of the region}{
 
-Only the addresses of the municipalities in \code{code_muni} are read. A cell on
-the outer edge of the requested area, one that also overlaps a municipality
-you did not request, therefore describes only the part of it that lies
-inside the area: its values (totals and \code{avg_inc_resp}) leave out the addresses of the neighbour.
-Adding municipalities moves the edge outwards but does not remove it. For
-the cells along the border of a municipality of interest to be complete,
-include the municipalities that border it in \code{code_muni}.
+Under the default \code{scope = "muni"}, only the addresses and tracts of the
+municipalities in \code{code_muni} are read. A cell on the outer edge of the
+requested area, one that also overlaps a municipality you did not request,
+therefore describes only the part of it that lies inside the area: its
+values (totals and \code{avg_inc_resp}) leave out the addresses of the neighbor.
+Adding municipalities moves the edge outward but does not remove it.
+
+Under \code{scope = "geom"}, the municipalities that the grid reaches are read
+too, and every cell receives the allocation of all the dwellings inside it,
+so the edge is complete. A message lists the neighboring municipalities
+read. The CNEFE file of each neighbor is read whole, since the files come
+one per municipality, but only the neighbor's tracts with at least one
+dwelling inside the grid enter the allocation. Those tracts enter with all
+their dwellings, so the result matches a call that lists the neighbors in
+\code{code_muni}, restricted to the cells of this grid. It's still slower than
+\code{"muni"}, which is why it isn't the default.
 }
 
 \subsection{Addresses outside the H3 grid}{
 
-The grid is built from the municipal boundaries of
-\href{https://ipeagit.github.io/geobr/}{geobr}, plus the cells along them, while
-the cell of a dwelling point comes from its own coordinates. A point
-geocoded beyond that ring, for example on the coast or on a small island the
-boundary does not follow, falls in a cell that is not in the grid, and what
-was allocated to it is not in the output. The diagnostics report how many
-allocated points this affects and how much of each total they carried, so
-the output can be reconciled with the tract totals.
+The grid is built from the 2022 IBGE municipal boundaries, at full
+resolution, plus the ring of cells along them, but each dwelling point goes
+to the cell of its own coordinates. A point geocoded beyond that ring, for
+example on the coast or on a small island the boundary doesn't follow, lands
+in a cell outside the grid, and what was allocated to it isn't in the
+output. The diagnostics report how many
+allocated points of the municipalities in \code{code_muni} this affects and how
+much of each total they carried, so the output can be reconciled with the
+tract totals. Under \code{scope = "geom"}, the points of the neighboring
+municipalities that fall beyond the grid are expected and not reported.
 }
 }
 \examples{

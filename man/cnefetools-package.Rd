@@ -25,7 +25,7 @@ right default on a dedicated machine and the wrong one on a shared node, a
 laptop running other work, or a CI runner.
 
 Names are passed to DuckDB's \code{SET} verbatim, so any setting DuckDB accepts
-works, not only these two. An unrecognised name raises an error naming it.
+works, not only these two. An unrecognized name raises an error naming it.
 
 Going over \code{memory_limit} makes DuckDB spill to its temporary directory
 rather than fail, so a low value costs time, not correctness.

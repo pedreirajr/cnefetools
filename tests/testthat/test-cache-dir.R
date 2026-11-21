@@ -42,7 +42,7 @@ testthat::test_that("every function that caches exposes cache_dir (#89)", {
   for (fn in c(
     "read_cnefe", "cnefe_counts", "compute_lumi",
     "tracts_to_h3", "tracts_to_polygon",
-    "clear_cache_muni", "clear_cache_tracts"
+    "clear_cache_muni", "clear_cache_tracts", "clear_cache_boundaries"
   )) {
     testthat::expect_true(
       "cache_dir" %in% names(formals(getExportedValue("cnefetools", fn))),

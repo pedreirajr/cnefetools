@@ -1,13 +1,13 @@
-# Fixtures shared by test-multi-muni.R and test-p-scope-detect.R (#120).
+# Fixtures shared by test-multi-muni.R and test-scope.R (#120).
 # Moved here from test-multi-muni.R so both files can use them.
 
 # Several municipalities in one call (#120, R2 comment 1).
 #
-# The H3 grid of a municipality holds every cell whose centre falls inside it
-# plus the neighbours that intersect its boundary, so a cell on a shared border
+# The H3 grid of a municipality holds every cell whose center falls inside it
+# plus the neighbors that intersect its boundary, so a cell on a shared border
 # belongs to the grid of BOTH municipalities. Two adjacent synthetic
 # municipalities reproduce it offline: A to the west and B to the east of a
-# meridian that runs through the centre of one H3 cell, the "shared" cell.
+# meridian that runs through the center of one H3 cell, the "shared" cell.
 # A puts 20 private households in it and B puts 51 other-use establishments, the
 # numbers of the referee's example (20 / 71 = 0.282; averaging the two separate
 # shares gives 0.5).
@@ -68,23 +68,40 @@ skip_unless_multi_deps <- function(backend, polygon = FALSE) {
   }
 }
 
-# Stand-ins for the geobr layers read when `code_muni` is omitted (#120): one
-# synthetic state that holds both municipalities, and the two municipalities.
-mock_state_boundaries <- function(year = 2022L) {
-  st <- suppressMessages(sf::st_union(rbind(multi_muni$boundary_a, multi_muni$boundary_b)))
-  sf::st_sf(code_state = 30L, geometry = sf::st_sfc(st, crs = 4326))
-}
-
-mock_muni_boundaries_of_states <- function(code_states, year = 2022L) {
-  sf::st_sf(
+# Stand-ins for the boundary index and reader (#120, R/boundaries.R): the two
+# synthetic municipalities, in one synthetic immediate region, with their
+# bounding boxes. `.detect_code_munis()` runs for real on top of them.
+mock_boundary_index <- function(year = 2022L) {
+  bb <- rbind(
+    as.numeric(sf::st_bbox(multi_muni$boundary_a)),
+    as.numeric(sf::st_bbox(multi_muni$boundary_b))
+  )
+  data.frame(
     code_muni = c(multi_muni$code_a, multi_muni$code_b),
     name_muni = c("Municipality A", "Municipality B"),
-    geometry = c(
-      sf::st_geometry(multi_muni$boundary_a),
-      sf::st_geometry(multi_muni$boundary_b)
-    )
+    code_immediate = 300001L,
+    xmin = bb[, 1], ymin = bb[, 2], xmax = bb[, 3], ymax = bb[, 4]
   )
 }
+
+# A `.read_muni_boundaries()` that serves the boundaries in `boundaries`, a
+# list of sf objects named by code
+mock_read_boundaries_from <- function(boundaries) {
+  function(code_muni, year = 2022L, cache = TRUE, cache_dir = NULL) {
+    codes <- unique(as.integer(code_muni))
+    sf::st_sf(
+      code_muni = codes,
+      geometry = do.call(c, lapply(codes, function(cm) {
+        sf::st_geometry(sf::st_transform(boundaries[[as.character(cm)]], 4326))
+      }))
+    )
+  }
+}
+
+mock_read_muni_boundaries <- mock_read_boundaries_from(list(
+  "3000001" = multi_muni$boundary_a,
+  "3000002" = multi_muni$boundary_b
+))
 
 # Runs `fn` against the two synthetic municipalities, with the retrieval and the
 # boundary read replaced so nothing touches the network. `records_a` and
@@ -112,11 +129,8 @@ run_multi <- function(fn, code_muni, backend, ...,
         url = "synthetic"
       )
     },
-    .read_muni_boundary = function(code_muni, year = 2022L) {
-      boundaries[[as.character(code_muni)]]
-    },
-    .read_state_boundaries = mock_state_boundaries,
-    .read_muni_boundaries_of_states = mock_muni_boundaries_of_states,
+    .read_muni_boundaries = mock_read_boundaries_from(boundaries),
+    .boundary_index = mock_boundary_index,
     .package = "cnefetools"
   )
 }
@@ -193,12 +207,9 @@ run_tracts <- function(fn, code_muni, ..., quiet = TRUE) {
         url = "synthetic"
       )
     },
-    .sc_ensure_parquet_uf = function(...) parquet,
-    .read_muni_boundary = function(code_muni, year = 2022L) {
-      boundaries[[as.character(code_muni)]]
-    },
-    .read_state_boundaries = mock_state_boundaries,
-    .read_muni_boundaries_of_states = mock_muni_boundaries_of_states,
+    .sc_ensure_parquet_munis = function(...) parquet,
+    .read_muni_boundaries = mock_read_boundaries_from(boundaries),
+    .boundary_index = mock_boundary_index,
     .package = "cnefetools"
   )
 }

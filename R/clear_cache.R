@@ -12,7 +12,7 @@
 #'   file is deleted. If a seven-digit IBGE municipality code is provided, only
 #'   the file for that municipality is deleted.
 #' @param year Integer. Restrict the deletion to one CNEFE edition. `NULL`
-#'   (default) clears every edition, which is the previous behaviour.
+#'   (default) clears every edition, which is the previous behavior.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
@@ -109,12 +109,19 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
 #' `clear_cache_tracts()` removes census tract Parquet files stored in the
 #' user cache directory by [tracts_to_h3()] and [tracts_to_polygon()].
 #'
+#' Those functions download only the census tracts of the municipalities they
+#' read, and keep one file per municipality in the cache. A whole-state file is
+#' kept instead when it was downloaded by an earlier version of the package, or
+#' when the tracts of a single municipality could not be read from the release.
+#' Both kinds of file are removed here.
+#'
 #' @param uf `"all"`, a two-letter UF abbreviation (e.g. `"BA"`), a two-digit
 #'   numeric state code (e.g. `29L`), or a seven-digit IBGE municipality code
 #'   (e.g. `2919207`). If `"all"` (default), all cached Parquet files are
-#'   deleted. Otherwise, only the file for the resolved state is deleted.
+#'   deleted. Otherwise, only the files of the resolved state are deleted (the
+#'   state file and the files of each of its municipalities).
 #' @param year Integer. Restrict the deletion to one CNEFE edition. `NULL`
-#'   (default) clears every edition, which is the previous behaviour.
+#'   (default) clears every edition, which is the previous behavior.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
@@ -162,10 +169,15 @@ clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL,
     path = sc_dir,
     pattern = "\\.parquet$",
     full.names = TRUE,
-    # Cache entries live under a directory per CNEFE edition, so clearing
-    # every edition (year = NULL) has to recurse to still mean everything.
-    recursive = is.null(year)
+    # Cache entries live under a directory per CNEFE edition, and the tracts
+    # cached by municipality under sc_assets/muni, so the listing recurses.
+    recursive = TRUE
   )
+  # The municipality boundaries are Parquet files too, kept under
+  # <cache>/<year>/boundaries. They are clear_cache_boundaries()'s business.
+  all_parquets <- all_parquets[
+    basename(dirname(all_parquets)) != "boundaries"
+  ]
 
   if (length(all_parquets) == 0L) {
     if (verbose) {
@@ -178,7 +190,10 @@ clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL,
   if (!identical(uf, "all")) {
     uf_code <- .resolve_uf(uf)
     filename <- .sc_asset_filename(uf_code)
-    all_parquets <- all_parquets[basename(all_parquets) == filename]
+    # The state file, and the files of its municipalities, named by code
+    by_muni <- basename(dirname(all_parquets)) == "muni" &
+      startsWith(basename(all_parquets), sprintf("%02d", as.integer(uf_code)))
+    all_parquets <- all_parquets[basename(all_parquets) == filename | by_muni]
 
     if (length(all_parquets) == 0L) {
       if (verbose) {
@@ -205,4 +220,77 @@ clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL,
   }
 
   invisible(all_parquets)
+}
+
+
+#' Delete cached municipality boundaries
+#'
+#' @description
+#' `clear_cache_boundaries()` removes the municipality boundaries stored in the
+#' user cache directory. The functions that build an H3 grid from `code_muni`,
+#' or that find the municipalities a layer reaches with `scope = "geom"`, read
+#' the boundaries at full resolution from a file published with the package and
+#' keep each municipality they read in the cache, so later calls work offline.
+#' Each file is small (Salvador takes about 0.06 MB, and the 39 municipalities
+#' of the São Paulo metropolitan region about 1.6 MB), and the whole country
+#' would take about 250 MB.
+#'
+#' @param code_muni Integer or `"all"`. If `"all"` (default), every cached
+#'   boundary is deleted. Otherwise, one or more seven-digit IBGE municipality
+#'   codes whose boundaries are deleted.
+#' @inheritParams clear_cache_muni
+#'
+#' @return Invisibly, the character vector of deleted file paths.
+#'
+#' @examples
+#' \donttest{
+#' # Delete every cached boundary
+#' clear_cache_boundaries()
+#'
+#' # Delete only the boundary of Lauro de Freitas-BA
+#' clear_cache_boundaries(2919207)
+#' }
+#'
+#' @export
+clear_cache_boundaries <- function(code_muni = "all", verbose = TRUE,
+                                   cache_dir = NULL, year = NULL) {
+  year <- .cnefe_cache_year(year)
+  root <- .cnefe_cache_dir(cache_dir, year)
+
+  if (!dir.exists(root)) {
+    if (verbose) {
+      cli::cli_inform(c("i" = "Cache directory does not exist: {.path {root}}"))
+    }
+    return(invisible(character(0)))
+  }
+
+  # Boundaries live at <cache>/<year>/boundaries, so clearing every edition
+  # starts from the cache root and keeps only the files of those folders.
+  files <- list.files(root, pattern = "[.]parquet([.]tmp)?$",
+                      full.names = TRUE, recursive = TRUE)
+  files <- files[basename(dirname(files)) == "boundaries"]
+
+  if (!identical(code_muni, "all")) {
+    codes <- vapply(code_muni, .normalize_code_muni, integer(1))
+    files <- files[sub("[.]parquet([.]tmp)?$", "", basename(files)) %in% as.character(codes)]
+  }
+
+  if (length(files) == 0L) {
+    if (verbose) {
+      cli::cli_inform(c("i" = "No cached municipality boundaries found."))
+    }
+    return(invisible(character(0)))
+  }
+
+  total_mb <- sum(file.size(files), na.rm = TRUE) / 1024^2
+  unlink(files)
+
+  if (verbose) {
+    n <- length(files)
+    cli::cli_inform(c(
+      "v" = "Deleted {n} cached boundar{?y/ies} ({round(total_mb, 2)} MB freed)."
+    ))
+  }
+
+  invisible(files)
 }
