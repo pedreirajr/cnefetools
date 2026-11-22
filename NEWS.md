@@ -18,11 +18,49 @@
   call with a single code behaves as before. The codes can be given as numbers
   or as strings, alone or in a vector, and repeated codes are dropped (#120).
 
-* Only the addresses of the municipalities in `code_muni` are read, so a cell on
-  the outer edge of the requested area describes only the part of it inside the
-  area. To complete the border cells of a municipality, include the
-  municipalities around it in the vector. This is documented in each function's
-  "Border cells at the edge of the region" section (#120).
+* New `scope = c("muni", "geom")` argument in `cnefe_counts()`,
+  `compute_lumi()`, `tracts_to_h3()` and `tracts_to_polygon()`. The default,
+  `"muni"`, reads only the addresses of the municipalities in `code_muni`, so a
+  cell or polygon on the outer edge of the requested area describes only the
+  part of it inside the area. `"geom"` also reads every municipality that the
+  output geometries reach, so the cells and polygons on the edge receive all
+  the addresses inside them. This is documented in each function's "Border
+  cells at the edge of the region" section (#120).
+
+* With `polygon` and `scope = "geom"`, `code_muni` can be left out in
+  `cnefe_counts()`, `compute_lumi()` and `tracts_to_polygon()`. The
+  municipalities that the polygons intersect are found from the 2022 IBGE
+  boundaries, even across states, and a message lists them (#120).
+
+* `compute_lumi()` gains `p_target`, a residential share chosen by the analyst
+  (`P*` in Pedreira Junior et al., 2026) that replaces the observed P in `bal`
+  and `bgbi`. With `scope = "geom"`, P comes from the addresses inside the
+  output geometries rather than from the whole municipality (#120).
+
+* New `clear_cache_boundaries()` deletes the cached municipality boundaries.
+  `clear_cache_tracts()` also removes the census tracts cached by municipality,
+  and leaves the boundaries alone (#120).
+
+## Minor improvements
+
+* Municipal boundaries are now read at full resolution from a file published
+  with the package and cached one file per municipality, instead of the
+  simplified `geobr` boundaries, which remain the fallback. H3 grids built from
+  `code_muni` may therefore differ slightly along the border from those of
+  0.3.0 (#120).
+
+* `tracts_to_h3()` and `tracts_to_polygon()` download only the census tracts of
+  the municipalities they read, and cache them one file per municipality,
+  instead of the whole state. A state file already in the cache is still used
+  (#120).
+
+* Features of `polygon` that repeat an earlier geometry are dropped with a
+  message, and overlapping polygons are reported, since the addresses in the
+  overlap enter each of them (#120).
+
+* `cnefe_counts()`, `compute_lumi()` and `tracts_to_h3()` warn about addresses
+  whose H3 cell falls outside the grid, for example on the coast or on small
+  islands the boundary doesn't follow (#120).
 
 ## Bug fixes
 

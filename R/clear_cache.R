@@ -32,8 +32,12 @@
 #' }
 #'
 #' @export
-clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL,
-                             year = NULL) {
+clear_cache_muni <- function(
+  code_muni = "all",
+  verbose = TRUE,
+  cache_dir = NULL,
+  year = NULL
+) {
   # Deliberately not .validate_year(): this deletes directories, so it must be
   # able to clear an edition this version no longer reads, or one left behind by
   # a newer version the user downgraded from.
@@ -42,7 +46,9 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
 
   if (!dir.exists(cache_dir)) {
     if (verbose) {
-      cli::cli_inform(c("i" = "Cache directory does not exist: {.path {cache_dir}}"))
+      cli::cli_inform(c(
+        "i" = "Cache directory does not exist: {.path {cache_dir}}"
+      ))
     }
     return(invisible(character(0)))
   }
@@ -143,8 +149,12 @@ clear_cache_muni <- function(code_muni = "all", verbose = TRUE, cache_dir = NULL
 #' }
 #'
 #' @export
-clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL,
-                               year = NULL) {
+clear_cache_tracts <- function(
+  uf = "all",
+  verbose = TRUE,
+  cache_dir = NULL,
+  year = NULL
+) {
   # Deliberately not .validate_year(): this deletes directories, so it must be
   # able to clear an edition this version no longer reads, or one left behind by
   # a newer version the user downgraded from.
@@ -159,7 +169,9 @@ clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL,
 
   if (!dir.exists(sc_dir)) {
     if (verbose) {
-      cli::cli_inform(c("i" = "Cache directory does not exist: {.path {sc_dir}}"))
+      cli::cli_inform(c(
+        "i" = "Cache directory does not exist: {.path {sc_dir}}"
+      ))
     }
     return(invisible(character(0)))
   }
@@ -252,8 +264,12 @@ clear_cache_tracts <- function(uf = "all", verbose = TRUE, cache_dir = NULL,
 #' }
 #'
 #' @export
-clear_cache_boundaries <- function(code_muni = "all", verbose = TRUE,
-                                   cache_dir = NULL, year = NULL) {
+clear_cache_boundaries <- function(
+  code_muni = "all",
+  verbose = TRUE,
+  cache_dir = NULL,
+  year = NULL
+) {
   year <- .cnefe_cache_year(year)
   root <- .cnefe_cache_dir(cache_dir, year)
 
@@ -266,13 +282,19 @@ clear_cache_boundaries <- function(code_muni = "all", verbose = TRUE,
 
   # Boundaries live at <cache>/<year>/boundaries, so clearing every edition
   # starts from the cache root and keeps only the files of those folders.
-  files <- list.files(root, pattern = "[.]parquet([.]tmp)?$",
-                      full.names = TRUE, recursive = TRUE)
+  files <- list.files(
+    root,
+    pattern = "[.]parquet([.]tmp)?$",
+    full.names = TRUE,
+    recursive = TRUE
+  )
   files <- files[basename(dirname(files)) == "boundaries"]
 
   if (!identical(code_muni, "all")) {
     codes <- vapply(code_muni, .normalize_code_muni, integer(1))
-    files <- files[sub("[.]parquet([.]tmp)?$", "", basename(files)) %in% as.character(codes)]
+    files <- files[
+      sub("[.]parquet([.]tmp)?$", "", basename(files)) %in% as.character(codes)
+    ]
   }
 
   if (length(files) == 0L) {

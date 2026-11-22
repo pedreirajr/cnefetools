@@ -217,7 +217,7 @@ method to bridge this spatial mismatch, transferring census data to
 custom spatial units and supporting more accurate trip generation and
 distribution models.
 
-### Hint to scaling to multiple municipalities
+### Scaling to multiple municipalities
 
 The `odbr` traffic zones cover the entire São Paulo metropolitan region
 (39 municipalities). To interpolate census data for all of them, pass the
@@ -228,7 +228,34 @@ the CNEFE points of every municipality go through one allocation, so a
 zone that crosses a municipal border receives the allocation from both
 sides, and each zone appears once in the result.
 
-Applying the function once per municipality and combining the results
+You can also leave `code_muni` out and set `scope = "geom"`. The function
+then finds the municipalities that the zones intersect, using the 2022
+IBGE municipal boundaries, lists them in a message, and reads all of
+them, even when they belong to different states:
+
+```{r, eval = FALSE}
+sp_zones_census_rmsp <- tracts_to_polygon(
+  polygon = sf::st_make_valid(sp_zones),
+  vars = c("pop_ph", "age_70m"),
+  scope = "geom"
+)
+```
+
+Zones from another source rarely follow the IBGE boundaries exactly, so a
+zone along the edge of the region may touch a neighboring municipality by
+a few meters, and that neighbor is downloaded and read too. The values
+don't change, since only the points inside the zones are aggregated, but
+passing `code_muni` is faster when you know which municipalities the
+zones belong to.
+
+The same applies to `tracts_to_h3()`, which also accepts a vector of
+codes and builds one grid over the union of their boundaries. There,
+`scope = "geom"` completes the cells on the outer edge of the region with
+the points of the neighboring municipalities, while the default
+`scope = "muni"` leaves those cells holding only the part that lies
+inside the municipalities requested.
+
+Applying a function once per municipality and combining the results
 with `dplyr::bind_rows()` gives the same answer only when every polygon
 lies entirely inside one municipality. For `tracts_to_h3()` it is not
 equivalent at all, because the H3 grid of each municipality includes the
@@ -238,13 +265,6 @@ each holding only its own side. Pass the vector of codes instead.
 A worked example of the earlier, iterative workflow applied to the whole
 São Paulo metropolitan region is available
 [here](https://pedreirajr.github.io/website/posts/2026-02-18-census-tracts-rmsp/).
-
-### Future versions
-
-In future versions of the package, `tracts_to_polygon()` will support
-municipality-independent operation, allowing users to pass polygons that
-span multiple municipalities without the need for per-municipality
-iteration.
 
 ### Interpolation diagnostics
 

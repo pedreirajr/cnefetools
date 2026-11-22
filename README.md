@@ -41,14 +41,14 @@ remotes::install_github("pedreirajr/cnefetools")
 | Function | Description |
 |----|----|
 | `read_cnefe()` | Downloads and reads CNEFE data for a municipality, or reads a local file with `file = ...`, and returns an Arrow table or `sf` object |
-| `cnefe_counts()` | Aggregates address counts to H3 hexagons or user-provided polygons |
-| `compute_lumi()` | Computes land-use mix indices on H3 hexagons or user-provided polygons |
-| `tracts_to_h3()` | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points |
-| `tracts_to_polygon()` | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points |
+| `cnefe_counts()` | Aggregates address counts to H3 hexagons or user-provided polygons, for one or more municipalities |
+| `compute_lumi()` | Computes land-use mix indices on H3 hexagons or user-provided polygons, for one or more municipalities |
+| `tracts_to_h3()` | Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points, for one or more municipalities |
+| `tracts_to_polygon()` | Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points, for one or more municipalities |
 | `cnefe_doc()` | Opens the official CNEFE methodological note (PDF) |
 | `cnefe_dictionary()` | Opens the official CNEFE variable dictionary (Excel) |
 | `cnefe_export()` | Writes a municipality to a persistent file of your choice (Parquet, CSV or gzipped CSV) |
-| `clear_cache_muni()`, `clear_cache_tracts()` | Delete cached CNEFE files or census tract Parquet files from the cache directory |
+| `clear_cache_muni()`, `clear_cache_tracts()`, `clear_cache_boundaries()` | Delete cached CNEFE files, census tract Parquet files or municipality boundaries from the cache directory |
 
 ## Reading CNEFE data
 
@@ -427,6 +427,54 @@ See the [tracts_to
 article](https://pedreirajr.github.io/cnefetools/articles/tracts_to.html)
 for details.
 
+## Working with several municipalities
+
+`cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()` and
+`tracts_to_polygon()` accept a vector of IBGE codes in `code_muni`. The
+addresses (and census tracts) of all of them are read as one table, the
+H3 grid is built over the union of their boundaries, and each cell or
+polygon appears once in the result, so a cell on a shared border holds
+the addresses of both sides. Calling a function once per municipality
+and binding the results doesn’t give the same answer, because such a
+cell would come back from both calls, each holding only its own side.
+
+``` r
+# Salvador and Lauro de Freitas in a single grid
+hex_region <- cnefe_counts(code_muni = c(2927408, 2919207))
+```
+
+The `scope` argument decides which addresses are used. With the
+default, `scope = "muni"`, only the addresses of the municipalities in
+`code_muni` are read, so a cell or polygon on the outer edge of the area
+leaves out the part of it that lies in a municipality you didn’t
+request. With `scope = "geom"`, the municipalities that the output
+geometries reach are read as well, and every cell or polygon receives
+all the addresses inside it. This is slower, since each neighbor is
+downloaded and read in full. With polygons, `scope = "geom"` also finds
+those municipalities on its own, so `code_muni` can be left out:
+
+``` r
+library(geobr)
+
+nei_ldf <- subset(read_neighborhood(year = 2022), code_muni == 2919207)
+
+counts_nei <- cnefe_counts(polygon = nei_ldf, scope = "geom")
+```
+
+In `compute_lumi()`, the scope also sets where the citywide residential
+share P comes from: every address of the municipalities read (`"muni"`)
+or only those inside the output geometries (`"geom"`). With several
+municipalities, P belongs to the whole region. `p_target` replaces P
+with a share you choose, for example a target set by a land-use plan, so
+that `bgbi` measures the distance to that goal:
+
+``` r
+lumi_target <- compute_lumi(code_muni = 2919207, p_target = 0.7)
+```
+
+Each function’s help page explains these choices in its “Several
+municipalities” and “Border cells at the edge of the region” sections.
+
 ## DuckDB-powered spatial operations
 
 Under the hood, **{cnefetools}** uses [DuckDB](https://duckdb.org/) as
@@ -470,7 +518,7 @@ for the measurements.
 
 While caching speeds up repeated analyses by avoiding redundant
 downloads, users may want to free up disk space or force a fresh
-download. **{cnefetools}** provides two dedicated functions for
+download. **{cnefetools}** provides three dedicated functions for
 fine-grained control over the local cache, allowing you to remove cached
 files selectively or all at once.
 
@@ -483,16 +531,29 @@ clear_cache_muni()          # delete all cached CNEFE files
 clear_cache_muni(2919207)   # delete only the file for Lauro de Freitas-BA
 ```
 
-`clear_cache_tracts()` removes cached census tract Parquet files. You
-can filter by state using a two-letter UF abbreviation, a two-digit
-numeric state code, or a seven-digit municipality code (resolved to its
-state automatically):
+`clear_cache_tracts()` removes cached census tract Parquet files.
+`tracts_to_h3()` and `tracts_to_polygon()` download only the tracts of
+the municipalities they read and keep one file per municipality (earlier
+versions kept one file per state, and those are removed too). You can
+filter by state using a two-letter UF abbreviation, a two-digit numeric
+state code, or a seven-digit municipality code (resolved to its state
+automatically):
 
 ``` r
 clear_cache_tracts()        # delete all cached census tract Parquets
-clear_cache_tracts("BA")    # delete only the Parquet for Bahia
+clear_cache_tracts("BA")    # delete only the Parquets for Bahia
 clear_cache_tracts(29)      # same, using the numeric state code
 clear_cache_tracts(2919207) # same, using a municipality code
+```
+
+`clear_cache_boundaries()` removes the municipality boundaries, which
+are used to build the H3 grids and to find the municipalities that a
+layer reaches. They are kept at full resolution, one small file per
+municipality:
+
+``` r
+clear_cache_boundaries()          # delete every cached boundary
+clear_cache_boundaries(2919207)   # delete only the boundary of Lauro de Freitas-BA
 ```
 
 If you moved the cache with `cache_dir`, pass the same `cache_dir` to
