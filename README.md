@@ -473,7 +473,8 @@ lumi_target <- compute_lumi(code_muni = 2919207, p_target = 0.7)
 ```
 
 Each function’s help page explains these choices in its “Several
-municipalities” and “Border cells at the edge of the region” sections.
+municipalities” and “Border cells at the edge of the region” sections
+(“Polygons at the edge of the region” in `tracts_to_polygon()`).
 
 ## DuckDB-powered spatial operations
 

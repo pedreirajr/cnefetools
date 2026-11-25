@@ -24,18 +24,20 @@
   cell or polygon on the outer edge of the requested area describes only the
   part of it inside the area. `"geom"` also reads every municipality that the
   output geometries reach, so the cells and polygons on the edge receive all
-  the addresses inside them. This is documented in each function's "Border
-  cells at the edge of the region" section (#120).
+  the addresses inside them. In `compute_lumi()`, `"geom"` also computes P from
+  the addresses inside the output geometries rather than from every address of
+  the municipalities read. This is documented in the "Border cells at the edge
+  of the region" section of each function ("Polygons at the edge of the region"
+  in `tracts_to_polygon()`) (#120).
 
 * With `polygon` and `scope = "geom"`, `code_muni` can be left out in
   `cnefe_counts()`, `compute_lumi()` and `tracts_to_polygon()`. The
   municipalities that the polygons intersect are found from the 2022 IBGE
   boundaries, even across states, and a message lists them (#120).
 
-* `compute_lumi()` gains `p_target`, a residential share chosen by the analyst
-  (`P*` in Pedreira Junior et al., 2026) that replaces the observed P in `bal`
-  and `bgbi`. With `scope = "geom"`, P comes from the addresses inside the
-  output geometries rather than from the whole municipality (#120).
+* `compute_lumi()` gains `p_target`, a residential share strictly between 0 and
+  1 chosen by the analyst (`P*` in Pedreira Junior et al., 2026), which replaces
+  the observed P in `bal` and `bgbi` (#120).
 
 * New `clear_cache_boundaries()` deletes the cached municipality boundaries.
   `clear_cache_tracts()` also removes the census tracts cached by municipality,
@@ -47,7 +49,8 @@
   with the package and cached one file per municipality, instead of the
   simplified `geobr` boundaries, which remain the fallback. H3 grids built from
   `code_muni` may therefore differ slightly along the border from those of
-  0.3.0 (#120).
+  0.3.0. The cached boundaries can be removed with `clear_cache_boundaries()`
+  (#120).
 
 * `tracts_to_h3()` and `tracts_to_polygon()` download only the census tracts of
   the municipalities they read, and cache them one file per municipality,
@@ -69,7 +72,7 @@
   already retrieved (#121).
 
 * An address whose H3 cell falls outside the grid of its own municipality is no
-  longer dropped when the neighbouring municipality is requested in the same
+  longer dropped when the neighboring municipality is requested in the same
   call. On Salvador and Lauro de Freitas this recovers 4 of 1,502,282 addresses
   that two separate calls leave out (#120).
 
