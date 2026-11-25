@@ -916,7 +916,10 @@
   # Includes v2 variables (pop_ph, pop_ch, race_*) to invalidate old v1 cache
   tryCatch(
     {
-      reader <- arrow::ParquetFileReader$create(path)
+      # Without mmap: on Windows a mapped file stays locked until the reader
+      # is garbage collected, so the temporary copy could not be deleted on
+      # exit, nor overwritten by the next call with cache = FALSE
+      reader <- arrow::ParquetFileReader$create(path, mmap = FALSE)
       schema <- reader$GetSchema()
       fields <- schema$names
       required_fields <- required_fields %||% c(
@@ -1041,6 +1044,20 @@
 }
 
 
+#' Release tag stored in a census tract file cached by municipality
+#'
+#' @return The tag, or `NULL` when the file has none or cannot be opened.
+#'
+#' @keywords internal
+#' @noRd
+.sc_file_tag <- function(path) {
+  tryCatch(
+    arrow::ParquetFileReader$create(path, mmap = FALSE)$GetSchema()$metadata$cnefetools_tag,
+    error = function(e) NULL
+  )
+}
+
+
 #' Read the tracts of some municipalities from the release, one file each
 #'
 #' The asset is sorted by `code_tract`, whose first seven digits are the
@@ -1058,11 +1075,15 @@
   dir <- normalizePath(dir, winslash = "/", mustWork = FALSE)
   files <- file.path(dir, paste0(code_muni, ".parquet"))
 
+  tag <- .sc_assets_tag(year)
   have <- if (isTRUE(cache)) {
-    # Only v4 writes these files, so the check is that the file opens with the
-    # key and the geometry, not the variables that told old state files apart
+    # A cached file is reused only when it opens with the key and the
+    # geometry and was written from the release in use, whose tag is stored
+    # in the file. A file from another release, which may lack a variable of
+    # the current one, is fetched again (#120).
     vapply(files, function(f) {
-      file.exists(f) && .validate_sc_parquet(f, c("code_tract", "geom_wkb"))
+      file.exists(f) && .validate_sc_parquet(f, c("code_tract", "geom_wkb")) &&
+        identical(.sc_file_tag(f), tag)
     }, logical(1), USE.NAMES = FALSE)
   } else {
     rep(FALSE, length(files))
@@ -1093,8 +1114,9 @@
     written <- c(written, f)
     .duckdb_quiet(DBI::dbExecute(con, sprintf(
       "COPY (SELECT * FROM sc_fetched WHERE substr(code_tract, 1, 7) = '%07d'
-             ORDER BY code_tract) TO '%s' (FORMAT parquet);",
-      cm, gsub("'", "''", tmp)
+             ORDER BY code_tract) TO '%s'
+             (FORMAT parquet, KV_METADATA {cnefetools_tag: '%s'});",
+      cm, gsub("'", "''", tmp), gsub("'", "''", tag)
     )))
     if (!file.rename(tmp, f)) {
       cli::cli_abort("Could not write {.path {f}}.")
@@ -2167,7 +2189,7 @@
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
+        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}})"
       )
     )
 
@@ -2181,7 +2203,7 @@
       warn_lines <- c(
         warn_lines,
         cli::format_inline(
-          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
+          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of the tracts read)"
         )
       )
     }
@@ -2192,7 +2214,7 @@
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
+        "Unmatched CNEFE points of the municipalities in {.arg code_muni} (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}})"
       )
     )
   }
@@ -2207,7 +2229,7 @@
       na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
       na_totals <- c(
         na_totals,
-        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
+        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of the tracts read)")
       )
     }
   }
@@ -2250,7 +2272,7 @@
       n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
       no_elig <- c(
         no_elig,
-        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
+        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of the tracts read)")
       )
     }
   }
@@ -2974,7 +2996,7 @@
 
 #' Warn about addresses whose H3 cell is not in the grid
 #'
-#' The grid is built from the geobr boundary of the municipalities, while the
+#' The grid is built from the 2022 IBGE boundary of the municipalities, while the
 #' cell of an address comes from its own coordinates. An address geocoded just
 #' outside the boundary, beyond the ring of border cells, falls in a cell that
 #' the grid does not hold, and the join from the grid drops it (#120). The
@@ -2995,7 +3017,7 @@
   pct_txt <- .fmt_small_pct(pct)
   cli::cli_warn(c(
     "{.val {n_outside}} of {.val {n_total}} addresses ({pct_txt}) of the municipalities in {.arg code_muni} fall in H3 cells outside the grid and were not counted.",
-    "i" = "The grid covers the municipal boundaries from {.pkg geobr} plus the cells along them, and these addresses were geocoded beyond it.",
+    "i" = "The grid covers the 2022 IBGE municipal boundaries plus the cells along them, and these addresses were geocoded beyond it.",
     extra
   ))
 }

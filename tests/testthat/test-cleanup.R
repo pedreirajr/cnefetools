@@ -215,6 +215,43 @@ capture_config_con <- function(env = parent.frame()) {
   held
 }
 
+testthat::test_that("tracts_to_polygon(cache = FALSE) leaves no tract file on the per-municipality path (#120)", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("zip")
+  skip_unless_duckdb_extensions("spatial")
+  input <- cleanup_input()
+
+  # A local state file stands in for the release asset, so the tracts of the
+  # municipality are read through httpfs into the temporary download folder,
+  # the default path since #120. The whole-state download must not run.
+  src_dir <- withr::local_tempdir("cnefetools-sc-src-")
+  arrow::write_parquet(input$tract, file.path(src_dir, "sc_29.parquet"))
+  withr::local_options(cnefetools.sc_url = file.path(src_dir, "sc_%s.parquet"))
+
+  downloads <- 0L
+  out <- testthat::with_mocked_bindings(
+    testthat::with_mocked_bindings(
+      new_data_files(suppressMessages(cnefetools::tracts_to_polygon(
+        cleanup_code_muni, polygon = input$box, vars = "pop_ph",
+        cache = FALSE, verbose = FALSE
+      ))),
+      pb_download = function(...) stop("the whole-state download should not run"),
+      .package = "piggyback"
+    ),
+    .cnefe_download_zip_with_retry = function(url, destfile, ...) {
+      downloads <<- downloads + 1L
+      stopifnot(file.copy(input$zip, destfile, overwrite = TRUE))
+      invisible(destfile)
+    },
+    .package = "cnefetools"
+  )
+
+  testthat::expect_s3_class(out$result, "sf")
+  testthat::expect_equal(sum(out$result$pop_ph), 100)
+  testthat::expect_equal(downloads, 1L)
+  testthat::expect_length(out$left, 0L)
+})
+
 testthat::test_that("a configuration error does not leave the connection open", {
   testthat::skip_if_not_installed("duckdb")
 

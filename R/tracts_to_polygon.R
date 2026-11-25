@@ -151,7 +151,6 @@ tracts_to_polygon <- function(
   code_muni = NULL,
   polygon,
   year = 2022,
-
   vars = c("pop_ph", "pop_ch"),
   crs_output = NULL,
   scope = c("muni", "geom"),
@@ -325,45 +324,6 @@ cnefe_index <- .get_cnefe_index(year)
     con,
     "CREATE INDEX IF NOT EXISTS sc_muni_geom_idx ON sc_muni_tbl USING RTREE (geom);"
   )
-
-  # Check polygon coverage against census tracts union
-  tracts_union_wkt <- DBI::dbGetQuery(
-    con,
-    "SELECT ST_AsText(ST_Union_Agg(geom)) AS wkt FROM sc_muni_tbl;"
-  )$wkt[1]
-
-  if (!is.null(tracts_union_wkt) && !is.na(tracts_union_wkt)) {
-    tracts_union <- sf::st_as_sfc(tracts_union_wkt, crs = 4326)
-    tracts_union <- sf::st_make_valid(tracts_union)
-
-    polygon_union <- sf::st_union(polygon_4326)
-    polygon_union <- sf::st_make_valid(polygon_union)
-
-    polygon_inside <- tryCatch(
-      sf::st_intersection(polygon_union, tracts_union),
-      error = function(e) polygon_union
-    )
-    polygon_inside <- sf::st_make_valid(polygon_inside)
-
-    # Use a projected CRS for accurate area calculation (UTM based on centroid)
-    centroid <- sf::st_centroid(polygon_union)
-    centroid_coords <- sf::st_coordinates(centroid)
-    utm_zone <- floor((centroid_coords[1] + 180) / 6) + 1
-    utm_crs <- if (centroid_coords[2] >= 0) {
-      sf::st_crs(paste0("+proj=utm +zone=", utm_zone, " +datum=WGS84 +units=m +no_defs"))
-    } else {
-      sf::st_crs(paste0("+proj=utm +zone=", utm_zone, " +south +datum=WGS84 +units=m +no_defs"))
-    }
-
-    polygon_union_proj <- sf::st_transform(polygon_union, utm_crs)
-    polygon_inside_proj <- sf::st_transform(polygon_inside, utm_crs)
-
-    total_area <- as.numeric(sf::st_area(polygon_union_proj))
-    inside_area <- as.numeric(sf::st_area(polygon_inside_proj))
-    outside_area <- total_area - inside_area
-    outside_pct <- (outside_area / total_area) * 100
-
-  }
 
   if (verbose) {
     cli::cli_progress_done("Step 3/6: preparing census tracts in DuckDB...")
@@ -606,8 +566,11 @@ cnefe_index <- .get_cnefe_index(year)
     what = "CNEFE dwellings"
   )
 
-  # Coverage stats saved for Stage 2 diagnostics
-  coverage_pct <- (points_inside / total_alloc_pts) * 100
+  # Coverage stats saved for Stage 2 diagnostics. Numerator and denominator
+  # both count distinct dwellings, so a dwelling that repeats in the join is
+  # not counted twice in one of them only (#120).
+  points_total <- coverage_stats$total[1]
+  coverage_pct <- if (points_total > 0) (points_inside / points_total) * 100 else 0
 
   if (verbose) {
     cli::cli_progress_done("Step 5/6: spatial join (points to tracts) and allocation...")
@@ -681,7 +644,7 @@ cnefe_index <- .get_cnefe_index(year)
     stage2_lines <- c(
       stage2_lines,
       cli::format_inline(
-        "Polygon coverage: {.strong {points_inside}} of {.strong {total_alloc_pts}} allocated points of the municipalities in {.arg code_muni} captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+        "Polygon coverage: {.strong {points_inside}} of {.strong {points_total}} allocated points of the municipalities in {.arg code_muni} captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
       )
     )
   } else {

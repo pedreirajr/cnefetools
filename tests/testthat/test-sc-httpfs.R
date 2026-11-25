@@ -61,6 +61,49 @@ testthat::test_that("tracts are fetched by municipality, cached, and then read f
   testthat::expect_equal(normalizePath(again), normalizePath(paths))
 })
 
+testthat::test_that("a cached municipality file from another release is fetched again (#120)", {
+  skip_unless_sc_deps()
+  root <- withr::local_tempdir()
+  withr::local_options(cnefetools.sc_url = local_sc_source())
+
+  paths <- cnefetools:::.sc_ensure_parquet_munis(
+    "30",
+    sc_codes,
+    cache_dir = root,
+    year = 2022L,
+    verbose = FALSE
+  )
+  tag <- cnefetools:::.sc_assets_tag(2022L)
+  testthat::expect_equal(cnefetools:::.sc_file_tag(paths[1]), tag)
+
+  # The same file without the tag stands for a file written from an earlier
+  # release, and with the source gone it can no longer be reused
+  # Read into memory and written elsewhere first: on Windows a memory-mapped
+  # file cannot be overwritten while it is open
+  untagged <- tempfile(fileext = ".parquet")
+  arrow::write_parquet(arrow::read_parquet(paths[1], mmap = FALSE), untagged)
+  gc()
+  file.copy(untagged, paths[1], overwrite = TRUE)
+  testthat::expect_null(cnefetools:::.sc_file_tag(paths[1]))
+  withr::local_options(
+    cnefetools.sc_url = file.path(root, "missing_%s.parquet")
+  )
+  testthat::expect_message(
+    testthat::with_mocked_bindings(
+      cnefetools:::.sc_ensure_parquet_munis(
+        "30",
+        sc_codes,
+        cache_dir = root,
+        year = 2022L,
+        verbose = FALSE
+      ),
+      .sc_ensure_parquet_uf = function(...) "state-file-fallback",
+      .package = "cnefetools"
+    ),
+    "whole file of state"
+  )
+})
+
 testthat::test_that("a cached state file is used without any remote read (#120)", {
   skip_unless_sc_deps()
   root <- withr::local_tempdir()

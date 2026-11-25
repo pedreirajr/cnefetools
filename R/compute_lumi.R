@@ -67,7 +67,10 @@
 #'   point large downloads at a secondary drive or a shared volume.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB with the H3
 #'   extension, reading the cached gzipped CSV directly. `"r"` computes H3 in R
-#'   using h3jsr instead, and needs no DuckDB extension.
+#'   using h3jsr instead, and needs no DuckDB extension for the indices. The
+#'   municipal boundaries of the H3 grid are still downloaded through DuckDB's
+#'   httpfs extension the first time, on either backend, and if that fails the
+#'   simplified geobr boundaries are used instead.
 #'
 #'   `"r"` exists for environments where DuckDB extensions cannot be installed,
 #'   such as some restricted computing clusters. It is **not** the lighter

@@ -58,6 +58,29 @@ testthat::test_that("boundaries are fetched once, cached, and then read from dis
   testthat::expect_equal(again$code_muni, both_codes)
 })
 
+testthat::test_that("a corrupt cached boundary is fetched again, not sent to the fallback (#120)", {
+  skip_unless_boundary_deps()
+  root <- withr::local_tempdir()
+  src <- write_boundary_fixture(file.path(withr::local_tempdir(), "muni.parquet"))
+  withr::local_options(cnefetools.boundary_url = src)
+
+  dir <- cnefetools:::.boundary_cache_dir(root)
+  dir.create(dir, recursive = TRUE)
+  bad <- file.path(dir, paste0(multi_muni$code_a, ".parquet"))
+  writeLines("not a parquet file", bad)
+
+  testthat::expect_no_message(b <- with_boundary_fixture(both_codes, cache_dir = root))
+  testthat::expect_equal(b$code_muni, both_codes)
+  testthat::expect_true(all(sf::st_equals(
+    b[b$code_muni == multi_muni$code_a, ], multi_muni$boundary_a, sparse = FALSE
+  )))
+  # The bad file was replaced by a readable one
+  testthat::expect_equal(
+    as.integer(arrow::read_parquet(bad)$code_muni),
+    as.integer(multi_muni$code_a)
+  )
+})
+
 testthat::test_that("cache = FALSE fetches without writing anything (#120)", {
   skip_unless_boundary_deps()
   root <- withr::local_tempdir()

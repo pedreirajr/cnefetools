@@ -1,6 +1,7 @@
 # Municipality boundaries, 2022 edition (#120)
 #
-# Builds the two pieces behind .read_muni_boundaries() and .detect_code_munis():
+# Builds the two pieces behind .read_muni_boundaries() and .detect_code_munis(),
+# and records the checksum of the first in data-raw/boundaries_checksums.csv:
 #
 # 1. muni_2022.parquet, published as an asset of the GitHub release
 #    `boundaries-v1`. It holds the 5570 municipalities of the 2022 IBGE mesh at
@@ -74,6 +75,24 @@ tab$metadata$geo <- as.character(jsonlite::toJSON(list(
 ), auto_unbox = TRUE))
 arrow::write_parquet(tab, out, chunk_size = 32L, compression = "zstd")
 cat("Wrote", out, "-", round(file.size(out) / 2^20, 1), "MB\n")
+
+# SHA-256 and size of the published asset, as for the census tract assets
+# (data-raw/sc_assets_checksums.csv), so a user can confirm that the file
+# served by the release is the one built here. A new build is published under
+# a new tag, and its row is added without removing the earlier ones.
+sums_out <- "data-raw/boundaries_checksums.csv"
+sums <- data.frame(
+  asset = basename(out),
+  size_bytes = file.size(out),
+  sha256 = digest::digest(out, algo = "sha256", file = TRUE),
+  release_tag = "boundaries-v1",
+  edition = 2022L
+)
+if (file.exists(sums_out)) {
+  old <- utils::read.csv(sums_out, stringsAsFactors = FALSE)
+  sums <- rbind(old[old$release_tag != sums$release_tag, names(sums)], sums)
+}
+utils::write.csv(sums, sums_out, row.names = FALSE)
 
 # Internal index, saved with the objects already in sysdata.rda
 boundary_index_2022 <- df

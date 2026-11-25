@@ -545,32 +545,38 @@ tracts_to_h3 <- function(
   # diagnostics and warning ----------------------------------------------------
   warn_lines <- .build_interp_diagnostics(con, vars, unmatched_pts, total_pts)
 
-  pts_with_hex <- suppressMessages(
-    DBI::dbGetQuery(
-      con,
-      "SELECT COUNT(*) AS n FROM cnefe_alloc WHERE id_hex IS NOT NULL;"
-    )$n[1]
-  )
-  total_alloc_pts <- suppressMessages(
-    DBI::dbGetQuery(
-      con,
-      "SELECT COUNT(*) AS n FROM cnefe_alloc;"
-    )$n[1]
-  )
-
-  pts_pct <- if (total_alloc_pts > 0) 100 * pts_with_hex / total_alloc_pts else 0
-
-  stage2_lines <- c(
-    cli::format_inline(
-      "CNEFE points mapped to H3 cells: {.strong {pts_with_hex}} of {.strong {total_alloc_pts}} allocated points ({.strong {sprintf('%.2f%%', pts_pct)}})"
-    )
-  )
-
-  # Allocated points of code_muni whose cell falls outside the grid, and what
-  # they carried
-  stage2_warn_lines <- character(0)
+  # Allocated points of code_muni inside the grid, measured against all of
+  # them, so the share matches the outside-grid line below. Every point has an
+  # H3 cell, so counting the points that merely have one would always give
+  # 100% (#120). The neighbors read under scope = "geom" are reported apart.
   pts_outside <- sum(outside_df$n_pts_hex)
   pts_own <- sum(own_df$n_pts_hex)
+  pts_own_in <- pts_own - pts_outside
+  pts_all_in <- suppressMessages(
+    DBI::dbGetQuery(
+      con,
+      "SELECT id_hex, COUNT(*) AS n FROM cnefe_alloc WHERE id_hex IS NOT NULL GROUP BY 1;"
+    )
+  )
+  pts_all_in <- sum(pts_all_in$n[pts_all_in$id_hex %in% hex_grid$id_hex])
+  pts_neighbors_in <- max(pts_all_in - pts_own_in, 0)
+
+  pts_pct <- if (pts_own > 0) 100 * pts_own_in / pts_own else 0
+
+  stage2_lines <- cli::format_inline(
+    "Allocated points of the municipalities in {.arg code_muni} inside the grid: {.strong {pts_own_in}} of {.strong {pts_own}} ({.strong {sprintf('%.2f%%', pts_pct)}})"
+  )
+  if (pts_neighbors_in > 0) {
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Allocated points of neighboring municipalities inside the grid: {.strong {pts_neighbors_in}}"
+      )
+    )
+  }
+
+  # What the allocated points of code_muni outside the grid carried
+  stage2_warn_lines <- character(0)
   if (pts_outside > 0) {
     out_pct <- if (pts_own > 0) 100 * pts_outside / pts_own else 0
     # Formatted first: cli reads "{.name" as a style, not as a function call

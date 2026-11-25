@@ -102,7 +102,29 @@
   idx <- .boundary_index(year)
   dir <- .boundary_cache_dir(cache_dir, year)
   files <- file.path(dir, paste0(codes, ".parquet"))
-  missing <- if (isTRUE(cache)) codes[!file.exists(files)] else codes
+  cached <- if (isTRUE(cache)) codes[file.exists(files)] else integer(0)
+
+  # A cached file that cannot be read, or that holds another municipality, is
+  # deleted and fetched again. Otherwise the error would send every later call
+  # to the simplified geobr fallback, and the grid would differ from one
+  # machine to another without the cause ever being fixed (#120).
+  from_disk <- list()
+  for (cm in cached) {
+    f <- file.path(dir, paste0(cm, ".parquet"))
+    one <- tryCatch({
+      # Without mmap, so the file is not locked on Windows afterwards
+      tab <- arrow::read_parquet(f, as_data_frame = FALSE, mmap = FALSE)
+      out <- list(code_muni = as.integer(tab$code_muni$as_vector()),
+                  wkb = tab$geometry$as_vector())
+      if (!identical(out$code_muni, as.integer(cm)) || length(out$wkb) != 1L) NULL else out
+    }, error = function(e) NULL)
+    if (is.null(one)) {
+      unlink(f)
+    } else {
+      from_disk[[length(from_disk) + 1L]] <- one
+    }
+  }
+  missing <- setdiff(codes, unlist(lapply(from_disk, `[[`, "code_muni")))
 
   fetched <- NULL
   if (length(missing) > 0L) {
@@ -111,15 +133,6 @@
       .write_boundary_cache(fetched, dir)
     }
   }
-
-  cached <- if (isTRUE(cache)) setdiff(codes, missing) else integer(0)
-  # paste0() on an empty vector still returns ".parquet", hence the guard
-  cached_files <- if (length(cached)) file.path(dir, paste0(cached, ".parquet")) else character(0)
-  from_disk <- lapply(cached_files, function(f) {
-    tab <- arrow::read_parquet(f, as_data_frame = FALSE)
-    list(code_muni = as.integer(tab$code_muni$as_vector()),
-         wkb = tab$geometry$as_vector())
-  })
 
   all_codes <- c(fetched$code_muni, unlist(lapply(from_disk, `[[`, "code_muni")))
   all_wkb <- c(fetched$wkb, unlist(lapply(from_disk, `[[`, "wkb"), recursive = FALSE))

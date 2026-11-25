@@ -82,7 +82,10 @@ point large downloads at a secondary drive or a shared volume.}
 
 \item{backend}{Character. \code{"duckdb"} (default) uses DuckDB with the H3
 extension, and the spatial extension as well when \code{polygon} is supplied.
-\code{"r"} uses h3jsr and sf in R instead, and needs no DuckDB extension.
+\code{"r"} uses h3jsr and sf in R instead, and needs no DuckDB extension for
+the counts. The municipal boundaries of the H3 grid are still downloaded
+through DuckDB's httpfs extension the first time, on either backend, and if
+that fails the simplified geobr boundaries are used instead.
 
 \code{"r"} exists for environments where DuckDB extensions cannot be installed,
 such as some restricted computing clusters. It is \strong{not} the lighter

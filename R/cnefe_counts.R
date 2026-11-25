@@ -59,7 +59,10 @@
 #'   point large downloads at a secondary drive or a shared volume.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB with the H3
 #'   extension, and the spatial extension as well when `polygon` is supplied.
-#'   `"r"` uses h3jsr and sf in R instead, and needs no DuckDB extension.
+#'   `"r"` uses h3jsr and sf in R instead, and needs no DuckDB extension for
+#'   the counts. The municipal boundaries of the H3 grid are still downloaded
+#'   through DuckDB's httpfs extension the first time, on either backend, and if
+#'   that fails the simplified geobr boundaries are used instead.
 #'
 #'   `"r"` exists for environments where DuckDB extensions cannot be installed,
 #'   such as some restricted computing clusters. It is **not** the lighter
@@ -193,7 +196,6 @@ cnefe_counts <- function(
   year = 2022,
   polygon_type = lifecycle::deprecated(),
   polygon = NULL,
-
   crs_output = NULL,
   h3_resolution = 9,
   scope = c("muni", "geom"),
