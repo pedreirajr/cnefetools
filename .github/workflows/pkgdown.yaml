@@ -31,9 +31,12 @@ jobs:
         with:
           use-public-rspm: true
 
+      # duckdb is pinned to 2.0.0 because the h3 community extension is not
+      # published for DuckDB 2.0.1 (isaacbrodsky/h3-duckdb#200). Remove the pin
+      # once h3 is available for the current DuckDB release.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, local::.
+          extra-packages: any::pkgdown, local::., duckdb@2.0.0
           needs: website
 
       - name: Install DuckDB spatial extension
