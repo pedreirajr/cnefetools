@@ -32,6 +32,7 @@ tracts_to_h3(
   year = 2022,
   h3_resolution = 9,
   vars = c("pop_ph", "pop_ch"),
+  scope = c("muni", "geom"),
   cache = TRUE,
   cache_dir = NULL,
   verbose = TRUE
@@ -42,7 +43,11 @@ tracts_to_h3(
 
 - code_muni:
 
-  Integer. Seven-digit IBGE municipality code.
+  Numeric or character. One or more seven-digit IBGE municipality codes,
+  for example `2927408` or `c(2927408, 2919207)`. Repeated codes are
+  dropped. With several codes, they're interpolated together (see
+  "Several municipalities"). Always required, since the grid is built
+  from the boundaries of these municipalities.
 
 - year:
 
@@ -101,10 +106,31 @@ tracts_to_h3(
   - `avg_inc_resp` is assigned (not split) to each private dwelling
     point; tracts with no private dwellings receive no allocation.
 
+- scope:
+
+  Character. Which CNEFE addresses (and census tracts) the function
+  works with. `"muni"` (the default, and the faster option) uses every
+  address and tract of the municipalities in `code_muni`. `"geom"` uses
+  the addresses that fall inside the H3 cells, whichever municipality
+  they belong to, so the municipalities the grid reaches are read as
+  well. The H3 grid holds the cells whose center falls inside the
+  boundaries of `code_muni`, plus the neighboring cells that intersect
+  those boundaries. See the section "Border cells at the edge of the
+  region".
+
 - cache:
 
-  Logical. Whether to use the package cache for the census tract assets
-  and the CNEFE files.
+  Logical. If `TRUE` (default), the downloaded files are kept in the
+  user cache directory and reused in later calls. These are the CNEFE
+  file, the census tracts and the boundary of each municipality read.
+  Only the tracts of those municipalities are downloaded, not the whole
+  state. If `FALSE`, temporary files are used and deleted after the
+  call. See
+  [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md),
+  [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
+  and
+  [`clear_cache_boundaries()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_boundaries.md)
+  to delete the cached files.
 
 - cache_dir:
 
@@ -124,6 +150,60 @@ tracts_to_h3(
 An `sf` object (CRS 4326) with an H3 grid and the requested interpolated
 variables.
 
+## Details
+
+### Several municipalities
+
+Pass a vector of codes to interpolate a region that spans more than one
+municipality in a single call. The tracts and the CNEFE points of all of
+them go through one allocation, each point is matched only to the tracts
+of its own municipality, and the grid is built over the union of the
+boundaries, so every cell appears once.
+
+Calling the function once per municipality and binding the results isn't
+the same. A cell on a shared border belongs to the grid of both
+municipalities, so it comes back from both calls, each with only its own
+side (under the default `scope = "muni"`), and dropping the repeated
+rows loses one side. Totals (every variable except `avg_inc_resp`) add
+up, so separate outputs can be combined by summing them by `id_hex`.
+`avg_inc_resp` can't, because it's an average over the allocated points,
+and two averages don't give the average of the pooled points. Use a
+vector of codes instead.
+
+### Border cells at the edge of the region
+
+Under the default `scope = "muni"`, only the addresses and tracts of the
+municipalities in `code_muni` are read. A cell on the outer edge of the
+requested area, one that also overlaps a municipality you did not
+request, therefore describes only the part of it that lies inside the
+area: its values (totals and `avg_inc_resp`) leave out the addresses of
+the neighbor. Adding municipalities moves the edge outward but does not
+remove it.
+
+Under `scope = "geom"`, the municipalities that the grid reaches are
+read too, and every cell receives the allocation of all the dwellings
+inside it, so the edge is complete. A message lists the neighboring
+municipalities read. The CNEFE file of each neighbor is read whole,
+since the files come one per municipality, but only the neighbor's
+tracts with at least one dwelling inside the grid enter the allocation.
+Those tracts enter with all their dwellings, so the result matches a
+call that lists the neighbors in `code_muni`, restricted to the cells of
+this grid. It's still slower than `"muni"`, which is why it isn't the
+default.
+
+### Addresses outside the H3 grid
+
+The grid is built from the 2022 IBGE municipal boundaries, at full
+resolution, plus the ring of cells along them, but each dwelling point
+goes to the cell of its own coordinates. A point geocoded beyond that
+ring, for example on the coast or on a small island the boundary doesn't
+follow, lands in a cell outside the grid, and what was allocated to it
+isn't in the output. The diagnostics report how many allocated points of
+the municipalities in `code_muni` this affects and how much of each
+total they carried, so the output can be reconciled with the tract
+totals. Under `scope = "geom"`, the points of the neighboring
+municipalities that fall beyond the grid are expected and not reported.
+
 ## Examples
 
 ``` r
@@ -136,30 +216,22 @@ hex_pop <- tracts_to_h3(
 )
 #> ℹ Processing code 2929057
 #> ℹ Step 1/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 1/6 (DuckDB ready) [342ms]
+#> ✔ Step 1/6 (DuckDB ready) [4.1s]
 #> 
 #> ℹ Step 2/6: preparing census tracts in DuckDB...
-#> ℹ Downloading sc_29.parquet from GitHub release
-#> ⠙ 22 items, page 1 | 2ms
-#> ℹ Downloading sc_29.parquet from GitHub release
-
-#> ✔ Downloading sc_29.parquet from GitHub release [1.6s]
-#> 
-#> ℹ Step 2/6: preparing census tracts in DuckDB...
-
-#> ✔ Step 2/6 (Tracts ready) [1.6s]
+#> ✔ Step 2/6 (Tracts ready) [1.7s]
 #> 
 #> ℹ Step 3/6: preparing CNEFE points in DuckDB...
-#> ✔ Step 3/6 (CNEFE points ready) [972ms]
+#> ✔ Step 3/6 (CNEFE points ready) [1.7s]
 #> 
 #> ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
-#> ✔ Step 4/6 (Join and allocation) [78ms]
+#> ✔ Step 4/6 (Join and allocation) [67ms]
 #> 
 #> ℹ Step 5/6: aggregating allocated values to H3 cells...
 #> ✔ Step 5/6 (Hex aggregation) [13ms]
 #> 
-#> ℹ Step 6/6: building H3 grid and joining results...
-#> ✔ Step 6/6 (sf output) [2.8s]
+#> ℹ Step 6/6: joining results to the H3 grid...
+#> ✔ Step 6/6 (sf output) [79ms]
 #> 
 #> 
 #> ── Dasymetric interpolation diagnostics ──
@@ -169,10 +241,12 @@ hex_pop <- tracts_to_h3(
 #>   (0.00%)
 #> ! Unallocated total for population from collective households (pop_ch): 0 of 0
 #>   (0.00%)
-#> ! Unmatched CNEFE points (no tract): 4 of 6949 points (0.06% of total points)
-#> ! Tracts with NA totals: pop_ch in 1 of 40 tracts (2.50% of total tracts)
+#> ! Unmatched CNEFE points of the municipalities in `code_muni` (no tract): 4 of
+#>   6949 points (0.06%)
+#> ! Tracts with NA totals: pop_ch in 1 of 40 tracts (2.50% of the tracts read)
 #> 
 #> ── Stage 2: CNEFE points → H3 hexagons 
-#> ℹ CNEFE points mapped to H3 cells: 6945 of 6945 allocated points (100.00%)
+#> ℹ Allocated points of the municipalities in `code_muni` inside the grid: 6945
+#>   of 6945 (100.00%)
 # }
 ```

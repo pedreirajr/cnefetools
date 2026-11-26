@@ -1,4 +1,4 @@
-# Export CNEFE data to a persistent, optimised file
+# Export CNEFE data to a persistent, optimized file
 
 `cnefe_export()` downloads a municipality (or reuses the cache) and
 writes it to a location and format of your choosing, so the data no
@@ -105,19 +105,19 @@ path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [39ms]
 #> 
-#> ℹ Reading file1ed676ba9b9c.csv.gz with arrow
-#> ✔ Reading file1ed676ba9b9c.csv.gz with arrow [30ms]
+#> ℹ Reading file2c7b7e59be7c.csv.gz with arrow
+#> ✔ Reading file2c7b7e59be7c.csv.gz with arrow [30ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Writing cnefe_2022_2929057.parquet
 #> ✔ Writing cnefe_2022_2929057.parquet [16ms]
 #> 
-#> ✔ Wrote 9354 records to /tmp/RtmpHTNUyL/cnefe_2022_2929057.parquet (0.3 MB).
+#> ✔ Wrote 9354 records to /tmp/Rtmp3cMLaB/cnefe_2022_2929057.parquet (0.3 MB).
 
 # Read it back without touching the network
 cnefe <- read_cnefe(file = path)
 #> ℹ Reading cnefe_2022_2929057.parquet as Parquet
-#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [15ms]
+#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [22ms]
 #> 
 #> ✔ Read 9354 records from cnefe_2022_2929057.parquet
 # }

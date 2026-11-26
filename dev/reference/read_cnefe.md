@@ -117,7 +117,7 @@ both.
 ## See also
 
 [`cnefe_export()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_export.md)
-to write a municipality to a persistent, optimised file that this
+to write a municipality to a persistent, optimized file that this
 function can read back through `file`.
 
 ## Examples
@@ -129,10 +129,10 @@ cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [48ms]
+#> ✔ Converting the archive to .csv.gz (done once) [39ms]
 #> 
-#> ℹ Reading file1ed6fcbd9e4.csv.gz with arrow
-#> ✔ Reading file1ed6fcbd9e4.csv.gz with arrow [18ms]
+#> ℹ Reading file2c7b3f570c50.csv.gz with arrow
+#> ✔ Reading file2c7b3f570c50.csv.gz with arrow [18ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
@@ -142,19 +142,19 @@ path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [50ms]
+#> ✔ Converting the archive to .csv.gz (done once) [39ms]
 #> 
-#> ℹ Reading file1ed62e6ad8e4.csv.gz with arrow
-#> ✔ Reading file1ed62e6ad8e4.csv.gz with arrow [18ms]
+#> ℹ Reading file2c7b6456f903.csv.gz with arrow
+#> ✔ Reading file2c7b6456f903.csv.gz with arrow [17ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Writing cnefe_2022_2929057.parquet
-#> ✔ Writing cnefe_2022_2929057.parquet [17ms]
+#> ✔ Writing cnefe_2022_2929057.parquet [18ms]
 #> 
-#> ✔ Wrote 9354 records to /tmp/RtmpHTNUyL/cnefe_2022_2929057.parquet (0.3 MB).
+#> ✔ Wrote 9354 records to /tmp/Rtmp3cMLaB/cnefe_2022_2929057.parquet (0.3 MB).
 cnefe_local <- read_cnefe(file = path)
 #> ℹ Reading cnefe_2022_2929057.parquet as Parquet
-#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [10ms]
+#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [22ms]
 #> 
 #> ✔ Read 9354 records from cnefe_2022_2929057.parquet
 
@@ -163,10 +163,10 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 #> ℹ Processing municipality code 2929057
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [47ms]
+#> ✔ Converting the archive to .csv.gz (done once) [38ms]
 #> 
-#> ℹ Reading file1ed66ad24352.csv.gz with arrow
-#> ✔ Reading file1ed66ad24352.csv.gz with arrow [18ms]
+#> ℹ Reading file2c7b64c868e8.csv.gz with arrow
+#> ✔ Reading file2c7b64c868e8.csv.gz with arrow [17ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object

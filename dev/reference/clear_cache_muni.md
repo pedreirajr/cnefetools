@@ -47,7 +47,7 @@ clear_cache_muni(
 - year:
 
   Integer. Restrict the deletion to one CNEFE edition. `NULL` (default)
-  clears every edition, which is the previous behaviour.
+  clears every edition, which is the previous behavior.
 
 ## Value
 

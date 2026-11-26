@@ -42,7 +42,7 @@ Download, cache and read municipality-level address data from the Cadastro Nacio
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>cnefetools: Access and Analysis of Brazilian CNEFE Address Data</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v4/R/cnefetools-package.R" class="external-link"><code>R/cnefetools-package.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/R/cnefetools-package.R" class="external-link"><code>R/cnefetools-package.R</code></a></small>
       <div class="d-none name"><code>cnefetools-package.Rd</code></div>
     </div>
 
@@ -65,7 +65,7 @@ per logical core and a <code>memory_limit</code> of 80% of installed RAM. That i
 right default on a dedicated machine and the wrong one on a shared node, a
 laptop running other work, or a CI runner.</p>
 <p>Names are passed to DuckDB's <code>SET</code> verbatim, so any setting DuckDB accepts
-works, not only these two. An unrecognised name raises an error naming it.</p>
+works, not only these two. An unrecognized name raises an error naming it.</p>
 <p>Going over <code>memory_limit</code> makes DuckDB spill to its temporary directory
 rather than fail, so a low value costs time, not correctness.</p>
 <p>The download cache location is set through the <code>CNEFETOOLS_CACHE_DIR</code>

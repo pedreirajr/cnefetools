@@ -74,7 +74,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Computing land-use mix indices with CNEFE data</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v4/vignettes/articles/compute_lumi.Rmd" class="external-link"><code>vignettes/articles/compute_lumi.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/vignettes/articles/compute_lumi.Rmd" class="external-link"><code>vignettes/articles/compute_lumi.Rmd</code></a></small>
       <div class="d-none name"><code>compute_lumi.Rmd</code></div>
     </div>
 
@@ -440,6 +440,51 @@ to aggregate to those polygons instead.</li>
 via the <code>crs_output</code> argument.</li>
 </ul>
 </div>
+</div>
+<div class="section level2">
+<h2 id="where-the-citywide-share-p-comes-from">Where the citywide share P comes from<a class="anchor" aria-label="anchor" href="#where-the-citywide-share-p-comes-from"></a>
+</h2>
+<p>By default (<code>scope = "muni"</code>), P is the residential share
+of every CNEFE address of the municipalities in <code>code_muni</code>,
+including when <code>polygon</code> is supplied. In the Maringá example
+above, P is the share of the whole municipality, not of the
+neighborhoods alone, so BGBI = 0 marks a neighborhood whose composition
+matches the city’s. Three options change this:</p>
+<ul>
+<li>
+<strong>Several municipalities.</strong> With a vector of codes,
+such as <code>code_muni = c(2927408, 2919207)</code> for Salvador and
+Lauro de Freitas, the addresses are pooled, the H3 grid covers the union
+of their boundaries, each cell appears once, and P is the share of the
+whole region. <code>bal</code> and <code>bgbi</code> are then measured
+against the regional share, so they can’t be compared with the values of
+a call per municipality.</li>
+<li>
+<strong><code>scope = "geom"</code>.</strong> P comes from the
+addresses inside the output geometries (the H3 cells or the polygons),
+whichever municipality they belong to, and the cells or polygons on the
+edge of the area receive the addresses of the neighboring municipalities
+too. With polygons, <code>code_muni</code> can then be left out, and the
+municipalities the polygons intersect are found from the 2022 IBGE
+boundaries.</li>
+<li>
+<strong><code>p_target</code>.</strong> A number strictly between 0
+and 1 replaces the observed P, for example a residential share set by a
+land-use plan. BGBI then measures the distance to that goal, and the
+same target makes the values of different municipalities comparable.
+<code>bal</code> with a target is no longer the original Balance Index,
+which is defined against the observed citywide ratio.</li>
+</ul>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># P from the addresses inside the Maringá neighborhoods only</span></span>
+<span><span class="va">mga_lumi_geom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_lumi.html">compute_lumi</a></span><span class="op">(</span>polygon <span class="op">=</span> <span class="va">mga_nei</span>, scope <span class="op">=</span> <span class="st">"geom"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># BGBI against a target residential share of 70%</span></span>
+<span><span class="va">mga_lumi_target</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_lumi.html">compute_lumi</a></span><span class="op">(</span></span>
+<span>  code_muni <span class="op">=</span> <span class="fl">4115200</span>,</span>
+<span>  polygon <span class="op">=</span> <span class="va">mga_nei</span>,</span>
+<span>  p_target <span class="op">=</span> <span class="fl">0.7</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="notes">Notes<a class="anchor" aria-label="anchor" href="#notes"></a>

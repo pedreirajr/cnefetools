@@ -71,7 +71,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Cache and exported copies</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v4/vignettes/articles/cache.Rmd" class="external-link"><code>vignettes/articles/cache.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/vignettes/articles/cache.Rmd" class="external-link"><code>vignettes/articles/cache.Rmd</code></a></small>
       <div class="d-none name"><code>cache.Rmd</code></div>
     </div>
 
@@ -124,20 +124,39 @@ default folder, and you can see where that is with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">tools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/tools/userdir.html" class="external-link">R_user_dir</a></span><span class="op">(</span><span class="st">"cnefetools"</span>, which <span class="op">=</span> <span class="st">"cache"</span><span class="op">)</span></span></code></pre></div>
 <p>Inside that folder there’s one subfolder per CNEFE edition, and in it
-one gzipped CSV per municipality you’ve used. The census tract files
-that <code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> and <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code>
-need are kept in <code>sc_assets/</code>, one Parquet file per
-state:</p>
+one gzipped CSV per municipality you’ve used. Two smaller kinds of file
+sit next to them:</p>
+<ul>
+<li>the census tracts that <code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> and
+<code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> need, in <code>sc_assets/muni/</code>,
+one Parquet file per municipality. Only the tracts of the municipalities
+you read are downloaded, not the whole state. A whole-state file
+(<code>sc_29.parquet</code>) is kept only when it came from an earlier
+version of the package, or when the tracts of one municipality couldn’t
+be read on their own;</li>
+<li>the municipality boundaries, in <code>boundaries/</code>, one
+Parquet file per municipality. They’re used to build the H3 grid from
+<code>code_muni</code> and to find the municipalities that a layer
+reaches with <code>scope = "geom"</code>, and they’re kept at full
+resolution.</li>
+</ul>
 <pre><code>cnefetools/
 └── 2022/
     ├── 2919207_LAURO_DE_FREITAS.csv.gz
     ├── 3550308_SAO_PAULO.csv.gz
+    ├── boundaries/
+    │   ├── 2919207.parquet
+    │   └── 3550308.parquet
     └── sc_assets/
-        ├── sc_29.parquet
-        └── sc_35.parquet</code></pre>
+        └── muni/
+            ├── 2919207.parquet
+            └── 3550308.parquet</code></pre>
 <p>A large municipality takes up a fair amount of space (São Paulo is
 about 177 MB), so if you work with many municipalities it’s worth
-thinking about which disk the cache should be on.</p>
+thinking about which disk the cache should be on. Keep in mind that a
+call with several codes in <code>code_muni</code>, or with
+<code>scope = "geom"</code>, caches every municipality it reads,
+including the neighbors that <code>scope = "geom"</code> pulls in.</p>
 </div>
 <div class="section level2">
 <h2 id="moving-the-cache-to-another-disk">Moving the cache to another disk<a class="anchor" aria-label="anchor" href="#moving-the-cache-to-another-disk"></a>
@@ -179,19 +198,27 @@ for a one-off call or when you can’t write to disk.</p>
 <h2 id="clearing-the-cache">Clearing the cache<a class="anchor" aria-label="anchor" href="#clearing-the-cache"></a>
 </h2>
 <p><code><a href="../reference/clear_cache_muni.html">clear_cache_muni()</a></code> removes cached municipalities, all of
-them or just one, and <code><a href="../reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> does the same
-for the census tract files, all of them or just one state:</p>
+them or just one. <code><a href="../reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> does the same for
+the census tract files, all of them or those of one state (the state
+file and the files of each of its municipalities), and
+<code><a href="../reference/clear_cache_boundaries.html">clear_cache_boundaries()</a></code> for the municipality boundaries,
+all of them or those of the codes you pass:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="op">)</span>           <span class="co"># every cached municipality</span></span>
 <span><span class="fu"><a href="../reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>    <span class="co"># only Lauro de Freitas-BA</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="op">)</span>         <span class="co"># every census tract file</span></span>
-<span><span class="fu"><a href="../reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span>     <span class="co"># only the file for Bahia</span></span></code></pre></div>
-<p>Both functions look for the cache in the same order as everything
-else. If you set <code>CNEFETOOLS_CACHE_DIR</code>, they find it on
-their own. If you used <code>cache_dir</code> in a call, pass the same
-<code>cache_dir</code> to the cleaner, otherwise it looks in the default
-folder and finds nothing to delete:</p>
+<span><span class="fu"><a href="../reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span>     <span class="co"># only the files for Bahia</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/clear_cache_boundaries.html">clear_cache_boundaries</a></span><span class="op">(</span><span class="op">)</span>         <span class="co"># every cached boundary</span></span>
+<span><span class="fu"><a href="../reference/clear_cache_boundaries.html">clear_cache_boundaries</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>  <span class="co"># only Lauro de Freitas-BA</span></span></code></pre></div>
+<p><code><a href="../reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> leaves the boundaries alone, even
+though both are Parquet files.</p>
+<p>The three functions look for the cache in the same order as
+everything else. If you set <code>CNEFETOOLS_CACHE_DIR</code>, they find
+it on their own. If you used <code>cache_dir</code> in a call, pass the
+same <code>cache_dir</code> to the cleaner, otherwise it looks in the
+default folder and finds nothing to delete:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span>cache_dir <span class="op">=</span> <span class="st">"E:/cnefe_cache"</span><span class="op">)</span></span></code></pre></div>
 <p>If you used a version of <code>cnefetools</code> older than 0.3.0,

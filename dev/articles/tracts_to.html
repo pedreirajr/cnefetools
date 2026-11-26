@@ -74,7 +74,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Dasymetric interpolation using CNEFE addresses</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v4/vignettes/articles/tracts_to.Rmd" class="external-link"><code>vignettes/articles/tracts_to.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/vignettes/articles/tracts_to.Rmd" class="external-link"><code>vignettes/articles/tracts_to.Rmd</code></a></small>
       <div class="d-none name"><code>tracts_to.Rmd</code></div>
     </div>
 
@@ -605,23 +605,50 @@ method to bridge this spatial mismatch, transferring census data to
 custom spatial units and supporting more accurate trip generation and
 distribution models.</p>
 <div class="section level3">
-<h3 id="hint-to-scaling-to-multiple-municipalities">Hint to scaling to multiple municipalities<a class="anchor" aria-label="anchor" href="#hint-to-scaling-to-multiple-municipalities"></a>
+<h3 id="scaling-to-multiple-municipalities">Scaling to multiple municipalities<a class="anchor" aria-label="anchor" href="#scaling-to-multiple-municipalities"></a>
 </h3>
 <p>The <code>odbr</code> traffic zones cover the entire São Paulo
 metropolitan region (39 municipalities). To interpolate census data for
-all municipalities, you can use <code><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">purrr::map()</a></code> to apply
-<code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> to each municipality and then combine
-the results with <code><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">dplyr::bind_rows()</a></code>.</p>
-<p>A worked example of this iterative workflow, applied to the whole São
-Paulo metropolitan region, is available <a href="https://pedreirajr.github.io/website/posts/2026-02-18-census-tracts-rmsp/" class="external-link">here</a>.</p>
-</div>
-<div class="section level3">
-<h3 id="future-versions">Future versions<a class="anchor" aria-label="anchor" href="#future-versions"></a>
-</h3>
-<p>In future versions of the package, <code><a href="../reference/tracts_to_polygon.html">tracts_to_polygon()</a></code>
-will support municipality-independent operation, allowing users to pass
-polygons that span multiple municipalities without the need for
-per-municipality iteration.</p>
+all of them, pass the vector of municipality codes to
+<code>code_muni</code> and the zones of the whole region to
+<code>polygon</code>, as in
+<code>tracts_to_polygon(code_muni = codes, polygon = zones)</code>. The
+tracts and the CNEFE points of every municipality go through one
+allocation, so a zone that crosses a municipal border receives the
+allocation from both sides, and each zone appears once in the
+result.</p>
+<p>You can also leave <code>code_muni</code> out and set
+<code>scope = "geom"</code>. The function then finds the municipalities
+that the zones intersect, using the 2022 IBGE municipal boundaries,
+lists them in a message, and reads all of them, even when they belong to
+different states:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_zones_census_rmsp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tracts_to_polygon.html">tracts_to_polygon</a></span><span class="op">(</span></span>
+<span>  polygon <span class="op">=</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/valid.html" class="external-link">st_make_valid</a></span><span class="op">(</span><span class="va">sp_zones</span><span class="op">)</span>,</span>
+<span>  vars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pop_ph"</span>, <span class="st">"age_70m"</span><span class="op">)</span>,</span>
+<span>  scope <span class="op">=</span> <span class="st">"geom"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Zones from another source rarely follow the IBGE boundaries exactly,
+so a zone along the edge of the region may touch a neighboring
+municipality by a few meters, and that neighbor is downloaded and read
+too. The values don’t change, since only the points inside the zones are
+aggregated, but passing <code>code_muni</code> is faster when you know
+which municipalities the zones belong to.</p>
+<p>The same applies to <code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code>, which also accepts a
+vector of codes and builds one grid over the union of their boundaries.
+There, <code>scope = "geom"</code> completes the cells on the outer edge
+of the region with the points of the neighboring municipalities, while
+the default <code>scope = "muni"</code> leaves those cells holding only
+the part that lies inside the municipalities requested.</p>
+<p>Applying a function once per municipality and combining the results
+with <code><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">dplyr::bind_rows()</a></code> gives the same answer only when
+every polygon lies entirely inside one municipality. For
+<code><a href="../reference/tracts_to_h3.html">tracts_to_h3()</a></code> it is not equivalent at all, because the H3
+grid of each municipality includes the cells along its borders, so a
+border cell would come back from both calls, each holding only its own
+side. Pass the vector of codes instead.</p>
+<p>A worked example of the earlier, iterative workflow applied to the
+whole São Paulo metropolitan region is available <a href="https://pedreirajr.github.io/website/posts/2026-02-18-census-tracts-rmsp/" class="external-link">here</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="interpolation-diagnostics">Interpolation diagnostics<a class="anchor" aria-label="anchor" href="#interpolation-diagnostics"></a>

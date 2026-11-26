@@ -2,6 +2,8 @@
 
 ## All functions
 
+- [`clear_cache_boundaries()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_boundaries.md)
+  : Delete cached municipality boundaries
 - [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
   : Delete cached CNEFE data files
 - [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
@@ -13,7 +15,7 @@
 - [`cnefe_doc()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_doc.md)
   : Open the official CNEFE methodological note
 - [`cnefe_export()`](https://pedreirajr.github.io/cnefetools/dev/reference/cnefe_export.md)
-  : Export CNEFE data to a persistent, optimised file
+  : Export CNEFE data to a persistent, optimized file
 - [`compute_lumi()`](https://pedreirajr.github.io/cnefetools/dev/reference/compute_lumi.md)
   : Compute land-use mix indicators on a spatial grid
 - [`read_cnefe()`](https://pedreirajr.github.io/cnefetools/dev/reference/read_cnefe.md)

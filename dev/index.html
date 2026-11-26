@@ -108,19 +108,19 @@
 </tr>
 <tr>
 <td><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code></td>
-<td>Aggregates address counts to H3 hexagons or user-provided polygons</td>
+<td>Aggregates address counts to H3 hexagons or user-provided polygons, for one or more municipalities</td>
 </tr>
 <tr>
 <td><code><a href="reference/compute_lumi.html">compute_lumi()</a></code></td>
-<td>Computes land-use mix indices on H3 hexagons or user-provided polygons</td>
+<td>Computes land-use mix indices on H3 hexagons or user-provided polygons, for one or more municipalities</td>
 </tr>
 <tr>
 <td><code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code></td>
-<td>Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points</td>
+<td>Dasymetric interpolation of census tract variables to an H3 grid via CNEFE dwelling points, for one or more municipalities</td>
 </tr>
 <tr>
 <td><code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code></td>
-<td>Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points</td>
+<td>Dasymetric interpolation of census tract variables to user-provided polygons via CNEFE dwelling points, for one or more municipalities</td>
 </tr>
 <tr>
 <td><code><a href="reference/cnefe_doc.html">cnefe_doc()</a></code></td>
@@ -136,9 +136,9 @@
 </tr>
 <tr>
 <td>
-<code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code>, <code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code>
+<code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code>, <code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code>, <code><a href="reference/clear_cache_boundaries.html">clear_cache_boundaries()</a></code>
 </td>
-<td>Delete cached CNEFE files or census tract Parquet files from the cache directory</td>
+<td>Delete cached CNEFE files, census tract Parquet files or municipality boundaries from the cache directory</td>
 </tr>
 </tbody>
 </table>
@@ -413,6 +413,25 @@
 <p>See the <a href="https://pedreirajr.github.io/cnefetools/articles/tracts_to.html">tracts_to article</a> for details.</p>
 </div>
 <div class="section level2">
+<h2 id="working-with-several-municipalities">Working with several municipalities<a class="anchor" aria-label="anchor" href="#working-with-several-municipalities"></a>
+</h2>
+<p><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code>, <code><a href="reference/compute_lumi.html">compute_lumi()</a></code>, <code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code> and <code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> accept a vector of IBGE codes in <code>code_muni</code>. The addresses (and census tracts) of all of them are read as one table, the H3 grid is built over the union of their boundaries, and each cell or polygon appears once in the result, so a cell on a shared border holds the addresses of both sides. Calling a function once per municipality and binding the results doesn’t give the same answer, because such a cell would come back from both calls, each holding only its own side.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Salvador and Lauro de Freitas in a single grid</span></span>
+<span><span class="va">hex_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2927408</span>, <span class="fl">2919207</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The <code>scope</code> argument decides which addresses are used. With the default, <code>scope = "muni"</code>, only the addresses of the municipalities in <code>code_muni</code> are read, so a cell or polygon on the outer edge of the area leaves out the part of it that lies in a municipality you didn’t request. With <code>scope = "geom"</code>, the municipalities that the output geometries reach are read as well, and every cell or polygon receives all the addresses inside it. This is slower, since each neighbor is downloaded and read in full. With polygons, <code>scope = "geom"</code> also finds those municipalities on its own, so <code>code_muni</code> can be left out:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ipea.github.io/geobr/" class="external-link">geobr</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">nei_ldf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://ipea.github.io/geobr/reference/read_neighborhood.html" class="external-link">read_neighborhood</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span>, <span class="va">code_muni</span> <span class="op">==</span> <span class="fl">2919207</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">counts_nei</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span>polygon <span class="op">=</span> <span class="va">nei_ldf</span>, scope <span class="op">=</span> <span class="st">"geom"</span><span class="op">)</span></span></code></pre></div>
+<p>In <code><a href="reference/compute_lumi.html">compute_lumi()</a></code>, the scope also sets where the citywide residential share P comes from: every address of the municipalities read (<code>"muni"</code>) or only those inside the output geometries (<code>"geom"</code>). With several municipalities, P belongs to the whole region. <code>p_target</code> replaces P with a share you choose, for example a target set by a land-use plan, so that <code>bgbi</code> measures the distance to that goal:</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lumi_target</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compute_lumi.html">compute_lumi</a></span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">2919207</span>, p_target <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span></span></code></pre></div>
+<p>Each function’s help page explains these choices in its “Several municipalities” and “Border cells at the edge of the region” sections (“Polygons at the edge of the region” in <code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code>).</p>
+</div>
+<div class="section level2">
 <h2 id="duckdb-powered-spatial-operations">DuckDB-powered spatial operations<a class="anchor" aria-label="anchor" href="#duckdb-powered-spatial-operations"></a>
 </h2>
 <p>Under the hood, <strong>{cnefetools}</strong> uses <a href="https://duckdb.org/" class="external-link">DuckDB</a> as its default backend. DuckDB reads the cached gzipped CSV directly, decompressing it natively, and aggregates as it scans, so the full address table never has to sit in memory. Its advantage over pure R grows with the size of the municipality. On São Paulo, the largest in the country, <code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> runs more than 15 times faster and its peak memory is more than 12 times smaller.</p>
@@ -425,24 +444,28 @@
 </ul>
 <p>The R package <a href="https://cidree.github.io/duckspatial/" class="external-link"><strong>duckspatial</strong></a> bridges <code>sf</code> objects and DuckDB’s spatial extension.</p>
 <p>All extensions are installed and loaded automatically on first use. You can set how many threads and how much memory DuckDB may use:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>cnefetools.duckdb_config <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>threads <span class="op">=</span> <span class="fl">4</span>, memory_limit <span class="op">=</span> <span class="st">"4GB"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="reference/cnefe_counts.html">cnefe_counts()</a></code> and <code><a href="reference/compute_lumi.html">compute_lumi()</a></code> also have a pure-R backend (<code>backend = "r"</code>), built on <code>h3jsr</code> and <code>sf</code>. Use it when DuckDB extensions can’t be installed, for example on some restricted computing clusters. It isn’t the lighter option as it holds the address table in R memory, so on large municipalities it needs far more RAM than DuckDB. See the <a href="https://pedreirajr.github.io/cnefetools/articles/bench_duckdb.html">benchmark article</a> for the measurements.</p>
 </div>
 <div class="section level2">
 <h2 id="managing-the-local-cache">Managing the local cache<a class="anchor" aria-label="anchor" href="#managing-the-local-cache"></a>
 </h2>
-<p>While caching speeds up repeated analyses by avoiding redundant downloads, users may want to free up disk space or force a fresh download. <strong>{cnefetools}</strong> provides two dedicated functions for fine-grained control over the local cache, allowing you to remove cached files selectively or all at once.</p>
+<p>While caching speeds up repeated analyses by avoiding redundant downloads, users may want to free up disk space or force a fresh download. <strong>{cnefetools}</strong> provides three dedicated functions for fine-grained control over the local cache, allowing you to remove cached files selectively or all at once.</p>
 <p><code><a href="reference/clear_cache_muni.html">clear_cache_muni()</a></code> deletes cached CNEFE files from the cache directory. You can remove all cached files at once or target a specific municipality by its seven-digit IBGE code:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="op">)</span>          <span class="co"># delete all cached CNEFE files</span></span>
 <span><span class="fu"><a href="reference/clear_cache_muni.html">clear_cache_muni</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>   <span class="co"># delete only the file for Lauro de Freitas-BA</span></span></code></pre></div>
-<p><code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> removes cached census tract Parquet files. You can filter by state using a two-letter UF abbreviation, a two-digit numeric state code, or a seven-digit municipality code (resolved to its state automatically):</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<p><code><a href="reference/clear_cache_tracts.html">clear_cache_tracts()</a></code> removes cached census tract Parquet files. <code><a href="reference/tracts_to_h3.html">tracts_to_h3()</a></code> and <code><a href="reference/tracts_to_polygon.html">tracts_to_polygon()</a></code> download only the tracts of the municipalities they read and keep one file per municipality (earlier versions kept one file per state, and those are removed too). You can filter by state using a two-letter UF abbreviation, a two-digit numeric state code, or a seven-digit municipality code (resolved to its state automatically):</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="op">)</span>        <span class="co"># delete all cached census tract Parquets</span></span>
-<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span>    <span class="co"># delete only the Parquet for Bahia</span></span>
+<span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="st">"BA"</span><span class="op">)</span>    <span class="co"># delete only the Parquets for Bahia</span></span>
 <span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">29</span><span class="op">)</span>      <span class="co"># same, using the numeric state code</span></span>
 <span><span class="fu"><a href="reference/clear_cache_tracts.html">clear_cache_tracts</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span> <span class="co"># same, using a municipality code</span></span></code></pre></div>
+<p><code><a href="reference/clear_cache_boundaries.html">clear_cache_boundaries()</a></code> removes the municipality boundaries, which are used to build the H3 grids and to find the municipalities that a layer reaches. They are kept at full resolution, one small file per municipality:</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/clear_cache_boundaries.html">clear_cache_boundaries</a></span><span class="op">(</span><span class="op">)</span>          <span class="co"># delete every cached boundary</span></span>
+<span><span class="fu"><a href="reference/clear_cache_boundaries.html">clear_cache_boundaries</a></span><span class="op">(</span><span class="fl">2919207</span><span class="op">)</span>   <span class="co"># delete only the boundary of Lauro de Freitas-BA</span></span></code></pre></div>
 <p>If you moved the cache with <code>cache_dir</code>, pass the same <code>cache_dir</code> to these functions, so they clean the folder you’re actually using.</p>
 </div>
 <div class="section level2">

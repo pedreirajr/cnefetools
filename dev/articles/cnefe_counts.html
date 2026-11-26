@@ -74,7 +74,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Aggregating CNEFE address counts</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/sc-assets-v4/vignettes/articles/cnefe_counts.Rmd" class="external-link"><code>vignettes/articles/cnefe_counts.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pedreirajr/cnefetools/blob/main/vignettes/articles/cnefe_counts.Rmd" class="external-link"><code>vignettes/articles/cnefe_counts.Rmd</code></a></small>
       <div class="d-none name"><code>cnefe_counts.Rmd</code></div>
     </div>
 
@@ -353,6 +353,36 @@ spatial unit best fits their study design.</p>
 <p>Both approaches demonstrate how <code><a href="../reference/cnefe_counts.html">cnefe_counts()</a></code> enables
 intra-urban analysis, moving beyond aggregate national statistics to
 reveal spatial patterns within cities.</p>
+</div>
+<div class="section level2">
+<h2 id="beyond-a-single-municipality">Beyond a single municipality<a class="anchor" aria-label="anchor" href="#beyond-a-single-municipality"></a>
+</h2>
+<p><code>code_muni</code> also accepts a vector of codes, which counts a
+region that spans several municipalities in one call. The addresses of
+all of them are pooled, the H3 grid is built over the union of their
+boundaries, and each cell appears once, so a cell on a shared border
+holds the addresses of both sides. Binding the outputs of one call per
+municipality doesn’t give the same result, since such a cell would come
+back from both calls.</p>
+<p>By default (<code>scope = "muni"</code>), only the addresses of the
+municipalities in <code>code_muni</code> are read, so a cell or polygon
+on the outer edge of the area leaves out the addresses of the neighbor
+it overlaps. With <code>scope = "geom"</code>, the municipalities that
+the output geometries reach are read too, and every cell or polygon
+receives all the addresses inside it. With polygons,
+<code>code_muni</code> can then be left out:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Porto Alegre and its neighbor Canoas in a single grid</span></span>
+<span><span class="va">poa_can_hex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
+<span>  code_muni <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4314902</span>, <span class="fl">4304606</span><span class="op">)</span>,</span>
+<span>  h3_resolution <span class="op">=</span> <span class="fl">8</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The municipalities the neighborhoods intersect are found on their own</span></span>
+<span><span class="va">poa_neigh_counts_geom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cnefe_counts.html">cnefe_counts</a></span><span class="op">(</span></span>
+<span>  polygon <span class="op">=</span> <span class="va">poa_neighborhoods</span>,</span>
+<span>  scope <span class="op">=</span> <span class="st">"geom"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

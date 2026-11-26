@@ -27,24 +27,43 @@ tools::R_user_dir("cnefetools", which = "cache")
 ```
 
 Inside that folder there’s one subfolder per CNEFE edition, and in it
-one gzipped CSV per municipality you’ve used. The census tract files
-that
-[`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
-and
-[`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
-need are kept in `sc_assets/`, one Parquet file per state:
+one gzipped CSV per municipality you’ve used. Two smaller kinds of file
+sit next to them:
+
+- the census tracts that
+  [`tracts_to_h3()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_h3.md)
+  and
+  [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md)
+  need, in `sc_assets/muni/`, one Parquet file per municipality. Only
+  the tracts of the municipalities you read are downloaded, not the
+  whole state. A whole-state file (`sc_29.parquet`) is kept only when it
+  came from an earlier version of the package, or when the tracts of one
+  municipality couldn’t be read on their own;
+- the municipality boundaries, in `boundaries/`, one Parquet file per
+  municipality. They’re used to build the H3 grid from `code_muni` and
+  to find the municipalities that a layer reaches with `scope = "geom"`,
+  and they’re kept at full resolution.
+
+&nbsp;
 
     cnefetools/
     └── 2022/
         ├── 2919207_LAURO_DE_FREITAS.csv.gz
         ├── 3550308_SAO_PAULO.csv.gz
+        ├── boundaries/
+        │   ├── 2919207.parquet
+        │   └── 3550308.parquet
         └── sc_assets/
-            ├── sc_29.parquet
-            └── sc_35.parquet
+            └── muni/
+                ├── 2919207.parquet
+                └── 3550308.parquet
 
 A large municipality takes up a fair amount of space (São Paulo is about
 177 MB), so if you work with many municipalities it’s worth thinking
-about which disk the cache should be on.
+about which disk the cache should be on. Keep in mind that a call with
+several codes in `code_muni`, or with `scope = "geom"`, caches every
+municipality it reads, including the neighbors that `scope = "geom"`
+pulls in.
 
 ## Moving the cache to another disk
 
@@ -97,9 +116,13 @@ cnefe <- read_cnefe(2919207, cache = FALSE)
 ## Clearing the cache
 
 [`clear_cache_muni()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_muni.md)
-removes cached municipalities, all of them or just one, and
+removes cached municipalities, all of them or just one.
 [`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
-does the same for the census tract files, all of them or just one state:
+does the same for the census tract files, all of them or those of one
+state (the state file and the files of each of its municipalities), and
+[`clear_cache_boundaries()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_boundaries.md)
+for the municipality boundaries, all of them or those of the codes you
+pass:
 
 ``` r
 
@@ -107,13 +130,20 @@ clear_cache_muni()           # every cached municipality
 clear_cache_muni(2919207)    # only Lauro de Freitas-BA
 
 clear_cache_tracts()         # every census tract file
-clear_cache_tracts("BA")     # only the file for Bahia
+clear_cache_tracts("BA")     # only the files for Bahia
+
+clear_cache_boundaries()         # every cached boundary
+clear_cache_boundaries(2919207)  # only Lauro de Freitas-BA
 ```
 
-Both functions look for the cache in the same order as everything else.
-If you set `CNEFETOOLS_CACHE_DIR`, they find it on their own. If you
-used `cache_dir` in a call, pass the same `cache_dir` to the cleaner,
-otherwise it looks in the default folder and finds nothing to delete:
+[`clear_cache_tracts()`](https://pedreirajr.github.io/cnefetools/dev/reference/clear_cache_tracts.md)
+leaves the boundaries alone, even though both are Parquet files.
+
+The three functions look for the cache in the same order as everything
+else. If you set `CNEFETOOLS_CACHE_DIR`, they find it on their own. If
+you used `cache_dir` in a call, pass the same `cache_dir` to the
+cleaner, otherwise it looks in the default folder and finds nothing to
+delete:
 
 ``` r
 

@@ -300,6 +300,47 @@ mapview(
   `polygon`. If a different CRS is desired, it can be specified via the
   `crs_output` argument.
 
+## Where the citywide share P comes from
+
+By default (`scope = "muni"`), P is the residential share of every CNEFE
+address of the municipalities in `code_muni`, including when `polygon`
+is supplied. In the Maringá example above, P is the share of the whole
+municipality, not of the neighborhoods alone, so BGBI = 0 marks a
+neighborhood whose composition matches the city’s. Three options change
+this:
+
+- **Several municipalities.** With a vector of codes, such as
+  `code_muni = c(2927408, 2919207)` for Salvador and Lauro de Freitas,
+  the addresses are pooled, the H3 grid covers the union of their
+  boundaries, each cell appears once, and P is the share of the whole
+  region. `bal` and `bgbi` are then measured against the regional share,
+  so they can’t be compared with the values of a call per municipality.
+- **`scope = "geom"`.** P comes from the addresses inside the output
+  geometries (the H3 cells or the polygons), whichever municipality they
+  belong to, and the cells or polygons on the edge of the area receive
+  the addresses of the neighboring municipalities too. With polygons,
+  `code_muni` can then be left out, and the municipalities the polygons
+  intersect are found from the 2022 IBGE boundaries.
+- **`p_target`.** A number strictly between 0 and 1 replaces the
+  observed P, for example a residential share set by a land-use plan.
+  BGBI then measures the distance to that goal, and the same target
+  makes the values of different municipalities comparable. `bal` with a
+  target is no longer the original Balance Index, which is defined
+  against the observed citywide ratio.
+
+``` r
+
+# P from the addresses inside the Maringá neighborhoods only
+mga_lumi_geom <- compute_lumi(polygon = mga_nei, scope = "geom")
+
+# BGBI against a target residential share of 70%
+mga_lumi_target <- compute_lumi(
+  code_muni = 4115200,
+  polygon = mga_nei,
+  p_target = 0.7
+)
+```
+
 ## Notes
 
 In addition to EI, BAL, and BGBI,

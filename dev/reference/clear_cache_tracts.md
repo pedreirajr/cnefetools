@@ -6,6 +6,12 @@ user cache directory by
 and
 [`tracts_to_polygon()`](https://pedreirajr.github.io/cnefetools/dev/reference/tracts_to_polygon.md).
 
+Those functions download only the census tracts of the municipalities
+they read, and keep one file per municipality in the cache. A
+whole-state file is kept instead when it was downloaded by an earlier
+version of the package, or when the tracts of a single municipality
+could not be read from the release. Both kinds of file are removed here.
+
 ## Usage
 
 ``` r
@@ -19,8 +25,8 @@ clear_cache_tracts(uf = "all", verbose = TRUE, cache_dir = NULL, year = NULL)
   `"all"`, a two-letter UF abbreviation (e.g. `"BA"`), a two-digit
   numeric state code (e.g. `29L`), or a seven-digit IBGE municipality
   code (e.g. `2919207`). If `"all"` (default), all cached Parquet files
-  are deleted. Otherwise, only the file for the resolved state is
-  deleted.
+  are deleted. Otherwise, only the files of the resolved state are
+  deleted (the state file and the files of each of its municipalities).
 
 - verbose:
 
@@ -39,7 +45,7 @@ clear_cache_tracts(uf = "all", verbose = TRUE, cache_dir = NULL, year = NULL)
 - year:
 
   Integer. Restrict the deletion to one CNEFE edition. `NULL` (default)
-  clears every edition, which is the previous behaviour.
+  clears every edition, which is the previous behavior.
 
 ## Value
 
