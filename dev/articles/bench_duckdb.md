@@ -91,25 +91,26 @@ bench_med <- bench_summarise(bench)
 The machine: 14-core, 20-thread Intel Core i9-13900H (2.60 GHz), 32 GB
 RAM, Windows 11.
 
+The measurements were taken on 2026-11-25 with the development version
+of cnefetools that will be released as 0.4.0.
+
 ``` r
 
+# The versions used for the measurements, written out rather than read from
+# the session, so that rendering the article later doesn't relabel them.
 data.frame(
   component = c("R", "duckdb", "cnefetools"),
-  version = c(
-    paste0(R.version$major, ".", R.version$minor),
-    as.character(packageVersion("duckdb")),
-    as.character(packageVersion("cnefetools"))
-  )
+  version = c("4.6.0", "1.5.6", "0.3.0.9000 (0.4.0 in development)")
 ) |>
   kbl() |>
   kable_styling(full_width = FALSE)
 ```
 
-| component  | version    |
-|:-----------|:-----------|
-| R          | 4.6.0      |
-| duckdb     | 1.5.2      |
-| cnefetools | 0.3.0.9000 |
+| component  | version                           |
+|:-----------|:----------------------------------|
+| R          | 4.6.0                             |
+| duckdb     | 1.5.6                             |
+| cnefetools | 0.3.0.9000 (0.4.0 in development) |
 
 ## Comparing cities of different sizes
 
@@ -158,11 +159,10 @@ bench_plot_time(
 
 ![](bench_duckdb_files/figure-html/plot-benchmark-cities-1.png)
 
-> **Note:** For smaller municipalities, the DuckDB backend may offer
-> little or no speedup over pure R, and can even be slightly slower.
-> DuckDB pays a fixed cost to initialise the connection and load the H3
-> extension before any computation begins. When the dataset is small,
-> that setup cost outweighs the gains from its query engine.
+> **Note:** The speedup is smallest on the smallest municipality. DuckDB
+> pays a fixed cost to initialise the connection and load the H3
+> extension before any computation begins, and on a small dataset that
+> cost takes up a larger share of the total time.
 
 ### Memory
 
@@ -271,9 +271,9 @@ bench_med |>
 
 | Municipality            | Addresses | DuckDB speedup |
 |:------------------------|:----------|---------------:|
-| Vitória da Conquista-BA | ~200k     |           1.24 |
-| Curitiba-PR             | ~900k     |           2.60 |
-| São Paulo-SP            | ~5.7M     |          16.71 |
+| Vitória da Conquista-BA | ~200k     |           1.63 |
+| Curitiba-PR             | ~900k     |           4.90 |
+| São Paulo-SP            | ~5.7M     |          22.52 |
 
 ``` r
 
@@ -294,21 +294,21 @@ bench_med |>
 
 | H3 resolution | Mean hexagon area (m2) | DuckDB speedup |
 |--------------:|-----------------------:|---------------:|
-|             7 |             5161293.36 |           2.17 |
-|             9 |              105332.51 |           2.39 |
-|            11 |                2149.64 |           1.17 |
+|             7 |             5161293.36 |           5.35 |
+|             9 |              105332.51 |           3.60 |
+|            11 |                2149.64 |           1.18 |
 
 How much time DuckDB saves depends on the job. It grows with the number
-of address points and shrinks as H3 resolution rises, to the point of
-disappearing at resolution 11, where the two backends come within a
-couple of percent of each other because H3 indexing dominates and both
-hand it to the same underlying C library. On the smallest municipality
-they’re close enough that the choice doesn’t matter much, and in one
-configuration measured here pure R came out marginally ahead.
+of address points and shrinks as H3 resolution rises. At resolution 11
+most of it is gone, because H3 indexing dominates and both backends hand
+it to the same underlying C library. On the smallest municipality the
+gain is about a second per call, small enough that the choice doesn’t
+matter much there.
 
-Memory behaves differently. That gap doesn’t shrink with resolution and
-it widens with municipality size, because only one of the two backends
-materialises the address table.
+Memory behaves differently. That gap widens with municipality size,
+because only one of the two backends materialises the address table. It
+narrows at resolution 11, where DuckDB’s own footprint grows as well,
+but pure R still uses more.
 
 **Recommendation**: use the DuckDB backend, which is the default. The
 pure-R backend is there for environments where DuckDB extensions can’t

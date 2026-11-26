@@ -158,14 +158,14 @@ repository, and the harness that produced them is
 <span><span class="va">bench_med</span> <span class="op">&lt;-</span> <span class="fu">bench_summarise</span><span class="op">(</span><span class="va">bench</span><span class="op">)</span></span></code></pre></div>
 <p>The machine: 14-core, 20-thread Intel Core i9-13900H (2.60 GHz), 32
 GB RAM, Windows 11.</p>
+<p>The measurements were taken on 2026-11-25 with the development
+version of cnefetools that will be released as 0.4.0.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="co"># The versions used for the measurements, written out rather than read from</span></span>
+<span><span class="co"># the session, so that rendering the article later doesn't relabel them.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"R"</span>, <span class="st">"duckdb"</span>, <span class="st">"cnefetools"</span><span class="op">)</span>,</span>
-<span>  version <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">R.version</span><span class="op">$</span><span class="va">major</span>, <span class="st">"."</span>, <span class="va">R.version</span><span class="op">$</span><span class="va">minor</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"duckdb"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"cnefetools"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
+<span>  version <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"4.6.0"</span>, <span class="st">"1.5.6"</span>, <span class="st">"0.3.0.9000 (0.4.0 in development)"</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html" class="external-link">kbl</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html" class="external-link">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
@@ -192,7 +192,7 @@ R
 duckdb
 </td>
 <td style="text-align:left;">
-1.5.2
+1.5.6
 </td>
 </tr>
 <tr>
@@ -200,7 +200,7 @@ duckdb
 cnefetools
 </td>
 <td style="text-align:left;">
-0.3.0.9000
+0.3.0.9000 (0.4.0 in development)
 </td>
 </tr>
 </tbody>
@@ -247,11 +247,10 @@ apart.</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p><img src="bench_duckdb_files/figure-html/plot-benchmark-cities-1.png" alt="" width="100%"></p>
 <blockquote>
-<p><strong>Note:</strong> For smaller municipalities, the DuckDB backend
-may offer little or no speedup over pure R, and can even be slightly
-slower. DuckDB pays a fixed cost to initialise the connection and load
-the H3 extension before any computation begins. When the dataset is
-small, that setup cost outweighs the gains from its query engine.</p>
+<p><strong>Note:</strong> The speedup is smallest on the smallest
+municipality. DuckDB pays a fixed cost to initialise the connection and
+load the H3 extension before any computation begins, and on a small
+dataset that cost takes up a larger share of the total time.</p>
 </blockquote>
 <div class="section level3">
 <h3 id="memory">Memory<a class="anchor" aria-label="anchor" href="#memory"></a>
@@ -365,7 +364,7 @@ Vitória da Conquista-BA
 ~200k
 </td>
 <td style="text-align:right;">
-1.24
+1.63
 </td>
 </tr>
 <tr>
@@ -376,7 +375,7 @@ Curitiba-PR
 ~900k
 </td>
 <td style="text-align:right;">
-2.60
+4.90
 </td>
 </tr>
 <tr>
@@ -387,7 +386,7 @@ São Paulo-SP
 ~5.7M
 </td>
 <td style="text-align:right;">
-16.71
+22.52
 </td>
 </tr>
 </tbody>
@@ -427,7 +426,7 @@ DuckDB speedup
 5161293.36
 </td>
 <td style="text-align:right;">
-2.17
+5.35
 </td>
 </tr>
 <tr>
@@ -438,7 +437,7 @@ DuckDB speedup
 105332.51
 </td>
 <td style="text-align:right;">
-2.39
+3.60
 </td>
 </tr>
 <tr>
@@ -449,22 +448,21 @@ DuckDB speedup
 2149.64
 </td>
 <td style="text-align:right;">
-1.17
+1.18
 </td>
 </tr>
 </tbody>
 </table>
 <p>How much time DuckDB saves depends on the job. It grows with the
-number of address points and shrinks as H3 resolution rises, to the
-point of disappearing at resolution 11, where the two backends come
-within a couple of percent of each other because H3 indexing dominates
-and both hand it to the same underlying C library. On the smallest
-municipality they’re close enough that the choice doesn’t matter much,
-and in one configuration measured here pure R came out marginally
-ahead.</p>
-<p>Memory behaves differently. That gap doesn’t shrink with resolution
-and it widens with municipality size, because only one of the two
-backends materialises the address table.</p>
+number of address points and shrinks as H3 resolution rises. At
+resolution 11 most of it is gone, because H3 indexing dominates and both
+backends hand it to the same underlying C library. On the smallest
+municipality the gain is about a second per call, small enough that the
+choice doesn’t matter much there.</p>
+<p>Memory behaves differently. That gap widens with municipality size,
+because only one of the two backends materialises the address table. It
+narrows at resolution 11, where DuckDB’s own footprint grows as well,
+but pure R still uses more.</p>
 <p><strong>Recommendation</strong>: use the DuckDB backend, which is the
 default. The pure-R backend is there for environments where DuckDB
 extensions can’t be installed, and choosing it costs far more in memory

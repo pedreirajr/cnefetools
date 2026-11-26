@@ -102,31 +102,27 @@ ftl_h3 <- tracts_to_h3(
 #> 
 ℹ Step 1/6: connecting to DuckDB and loading extensions...
 
-✔ Step 1/6 (DuckDB ready) [323ms]                         
+✔ Step 1/6 (DuckDB ready) [480ms]                         
 #> 
 ℹ Step 2/6: preparing census tracts in DuckDB...
 
-                                                 
-ℹ Using cached file: 'sc_23.parquet'
-#> ℹ Step 2/6: preparing census tracts in DuckDB...
-
-✔ Step 2/6 (Tracts ready) [211ms]               
+✔ Step 2/6 (Tracts ready) [246ms]               
 #> 
 ℹ Step 3/6: preparing CNEFE points in DuckDB...
 
-✔ Step 3/6 (CNEFE points ready) [1.3s]         
+✔ Step 3/6 (CNEFE points ready) [1.5s]         
 #> 
 ℹ Step 4/6: spatial join (points to tracts) and allocation prep...
 
-✔ Step 4/6 (Join and allocation) [985ms]                          
+✔ Step 4/6 (Join and allocation) [999ms]                          
 #> 
 ℹ Step 5/6: aggregating allocated values to H3 cells...
 
-✔ Step 5/6 (Hex aggregation) [162ms]                   
+✔ Step 5/6 (Hex aggregation) [142ms]                   
 #> 
-ℹ Step 6/6: building H3 grid and joining results...
+ℹ Step 6/6: joining results to the H3 grid...
 
-✔ Step 6/6 (sf output) [1s]                        
+✔ Step 6/6 (sf output) [838ms]               
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 
@@ -134,19 +130,18 @@ ftl_h3 <- tracts_to_h3(
 #> ! Unallocated total for population from private households (pop_ph): 2169 of
 #>   2424722 (0.09%)
 #> ! Unallocated total for race_preta (race_preta): 74 of 170887 (0.04%)
-#> ! avg_inc_resp assigned to 1032500 of 1033952 eligible points (99.86% of total
-#>   points)
-#> ! avg_inc_resp is NA in 128 of 4408 tracts (2.90% of total tracts)
-#> ! Unmatched CNEFE points (no tract): 194 of 1034611 points (0.02% of total
-#>   points)
-#> ! Tracts with NA totals: pop_ph in 128 of 4408 tracts (2.90% of total tracts);
-#>   race_preta in 200 of 4408 tracts (4.54% of total tracts)
-#> ! Tracts with no eligible dwellings: pop_ph in 6 of 4408 tracts (0.14% of total
-#>   tracts); race_preta in 6 of 4408 tracts (0.14% of total tracts)
+#> ! avg_inc_resp assigned to 1032500 of 1033952 eligible points (99.86%)
+#> ! avg_inc_resp is NA in 128 of 4408 tracts (2.90% of the tracts read)
+#> ! Unmatched CNEFE points of the municipalities in `code_muni` (no tract): 194
+#>   of 1034611 points (0.02%)
+#> ! Tracts with NA totals: pop_ph in 128 of 4408 tracts (2.90% of the tracts
+#>   read); race_preta in 200 of 4408 tracts (4.54% of the tracts read)
+#> ! Tracts with no eligible dwellings: pop_ph in 6 of 4408 tracts (0.14% of the
+#>   tracts read); race_preta in 6 of 4408 tracts (0.14% of the tracts read)
 #> 
 #> ── Stage 2: CNEFE points → H3 hexagons 
-#> ℹ CNEFE points mapped to H3 cells: 1034417 of 1034417 allocated points
-#>   (100.00%)
+#> ℹ Allocated points of the municipalities in `code_muni` inside the grid:
+#>   1034417 of 1034417 (100.00%)
 
 head(ftl_h3)
 #> Simple feature collection with 6 features and 4 fields
@@ -279,11 +274,11 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Input CRS: "EPSG:22523" | Output CRS: "EPSG:22523"
 #> ℹ Step 1/6: aligning CRS...
 
-✔ Step 1/6 (CRS alignment) [292ms]
+✔ Step 1/6 (CRS alignment) [279ms]
 #> 
 ℹ Step 2/6: connecting to DuckDB and loading extensions...
 
-✔ Step 2/6 (DuckDB ready) [414ms]                         
+✔ Step 2/6 (DuckDB ready) [371ms]                         
 #> 
 ℹ Step 3/6: preparing census tracts in DuckDB...
 
@@ -291,7 +286,7 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: 'sc_35.parquet'
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
 
-✔ Step 3/6 (Tracts ready) [4.3s]                
+✔ Step 3/6 (Tracts ready) [438ms]               
 #> 
 ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
@@ -299,15 +294,15 @@ sp_zones_census <- tracts_to_polygon(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/3550308_SAO_PAULO.csv.gz
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-✔ Step 4/6 (CNEFE points ready) [4.1s]         
+✔ Step 4/6 (CNEFE points ready) [3.8s]         
 #> 
 ℹ Step 5/6: spatial join (points to tracts) and allocation...
 
-✔ Step 5/6 (Join and allocation) [10.3s]                     
+✔ Step 5/6 (Join and allocation) [10.1s]                     
 #> 
 ℹ Step 6/6: aggregating allocated values to polygons...
 
-✔ Step 6/6 (Polygon aggregation) [341ms]               
+✔ Step 6/6 (Polygon aggregation) [323ms]               
 #> 
 #> ── Dasymetric interpolation diagnostics ──
 #> 
@@ -315,15 +310,16 @@ sp_zones_census <- tracts_to_polygon(
 #> ! Unallocated total for population from private households (pop_ph): 86998 of
 #>   11394071 (0.76%)
 #> ! Unallocated total for age_70m (age_70m): 5397 of 923921 (0.58%)
-#> ! Unmatched CNEFE points (no tract): 2935 of 4996529 points (0.06% of total
-#>   points)
-#> ! Tracts with NA totals: pop_ph in 622 of 27301 tracts (2.28% of total tracts);
-#>   age_70m in 1316 of 27301 tracts (4.82% of total tracts)
+#> ! Unmatched CNEFE points of the municipalities in `code_muni` (no tract): 2935
+#>   of 4996529 points (0.06%)
+#> ! Tracts with NA totals: pop_ph in 622 of 27301 tracts (2.28% of the tracts
+#>   read); age_70m in 1316 of 27301 tracts (4.82% of the tracts read)
 #> ! Tracts with no eligible dwellings: pop_ph in 324 of 27301 tracts (1.19% of
-#>   total tracts); age_70m in 297 of 27301 tracts (1.09% of total tracts)
+#>   the tracts read); age_70m in 297 of 27301 tracts (1.09% of the tracts read)
 #> 
 #> ── Stage 2: CNEFE points → Polygons 
-#> ℹ Polygon coverage: 4993321 of 4993594 allocated points captured (99.99%)
+#> ℹ Polygon coverage: 4993321 of 4993594 allocated points of the municipalities
+#>   in `code_muni` captured (99.99%)
 #> ℹ Polygons with no CNEFE points: 3 of 342 total polygons (0.88%)
 
 head(sp_zones_census)

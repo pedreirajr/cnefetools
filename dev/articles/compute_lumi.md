@@ -167,21 +167,21 @@ spo_lumi <- compute_lumi(
 )
 #> ℹ Processing municipality code 3550308...
 #> 
-ℹ Step 1/3: Ensuring the CNEFE data file...
+ℹ Step 1/3: Building the H3 grid and ensuring the CNEFE data...
 
-                                            
+                                                                
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/3550308_SAO_PAULO.csv.gz
-#> ℹ Step 1/3: Ensuring the CNEFE data file...
+#> ℹ Step 1/3: Building the H3 grid and ensuring the CNEFE data...
 
-✔ Step 1/3 (CNEFE data ready) [138ms]      
+✔ Step 1/3 (Grid and CNEFE data ready) [1.2s]                  
 #> 
 ℹ Step 2/3: Counting addresses per H3 cell...
 
-✔ Step 2/3 (Addresses counted) [3.3s]        
+✔ Step 2/3 (Addresses counted) [3.2s]        
 #> 
-ℹ Step 3/3: Building grid and computing LUMI...
+ℹ Step 3/3: Computing LUMI on the grid...
 
-✔ Step 3/3 (Land use mix indices computed) [981ms]
+✔ Step 3/3 (Land use mix indices computed) [206ms]
 
 head(spo_lumi)
 #> Simple feature collection with 6 features and 8 fields

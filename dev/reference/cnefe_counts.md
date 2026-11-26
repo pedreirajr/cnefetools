@@ -257,26 +257,26 @@ for land-use mix indices on the same spatial units.
 # Count addresses per H3 hexagon (resolution 9)
 hex_counts <- cnefe_counts(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Building full H3 grid over the municipal boundaries...
-#> ✔ Step 1/3 (H3 grid built) [5.1s]
+#> ✔ Step 1/3 (H3 grid built) [4s]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [39ms]
+#> ✔ Converting the archive to .csv.gz (done once) [38ms]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 
-#> ✔ Step 2/3 (CNEFE data ready) [1.3s]
+#> ✔ Step 2/3 (CNEFE data ready) [12.2s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
-#> ✔ Step 3/3 (Addresses counted) [541ms]
+#> ✔ Step 3/3 (Addresses counted) [365ms]
 #> 
 
 # Several municipalities in one call: one grid over their union, with no cell
 # repeated along the shared border (Salvador and its neighbor Lauro de Freitas)
 region_counts <- cnefe_counts(code_muni = c(2927408, 2919207), cache = FALSE)
 #> ℹ Step 1/3: Building full H3 grid over the municipal boundaries...
-#> ✔ Step 1/3 (H3 grid built) [2.9s]
+#> ✔ Step 1/3 (H3 grid built) [1.8s]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 #> ℹ Municipality 1 of 2: 2927408
@@ -284,7 +284,7 @@ region_counts <- cnefe_counts(code_muni = c(2927408, 2919207), cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2927408_SALVADOR.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [6.8s]
+#> ✔ Converting the archive to .csv.gz (done once) [6.7s]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 
@@ -293,11 +293,11 @@ region_counts <- cnefe_counts(code_muni = c(2927408, 2919207), cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [430ms]
+#> ✔ Converting the archive to .csv.gz (done once) [427ms]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 
-#> ✔ Step 2/3 (CNEFE data ready) [12.6s]
+#> ✔ Step 2/3 (CNEFE data ready) [22.9s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
 #> ✔ Step 3/3 (Addresses counted) [2.1s]
@@ -311,7 +311,7 @@ ldf_full <- cnefe_counts(code_muni = 2919207, scope = "geom", cache = FALSE)
 #>   complete the cells along the border:
 #>   Camaçari (2905701), Salvador (2927408), Simões Filho (2930709)
 #> ℹ Use `scope = "muni"` to read only the municipalities in `code_muni`.
-#> ✔ Step 1/3 (H3 grid built) [3.4s]
+#> ✔ Step 1/3 (H3 grid built) [1.5s]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 #> ℹ Municipality 1 of 4: 2919207
@@ -319,7 +319,7 @@ ldf_full <- cnefe_counts(code_muni = 2919207, scope = "geom", cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [441ms]
+#> ✔ Converting the archive to .csv.gz (done once) [440ms]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 
@@ -328,7 +328,7 @@ ldf_full <- cnefe_counts(code_muni = 2919207, scope = "geom", cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2905701_CAMACARI.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [927ms]
+#> ✔ Converting the archive to .csv.gz (done once) [924ms]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 
@@ -346,11 +346,11 @@ ldf_full <- cnefe_counts(code_muni = 2919207, scope = "geom", cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2930709_SIMOES_FILHO.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [245ms]
+#> ✔ Converting the archive to .csv.gz (done once) [240ms]
 #> 
 #> ℹ Step 2/3: Ensuring the CNEFE data file...
 
-#> ✔ Step 2/3 (CNEFE data ready) [15.3s]
+#> ✔ Step 2/3 (CNEFE data ready) [20.3s]
 #> 
 #> ℹ Step 3/3: Counting address species per hexagon...
 #> ✔ Step 3/3 (Addresses counted) [2.9s]
@@ -365,7 +365,7 @@ nei_ldf <- subset(
 )
 #> ℹ Using year/date 2022
 #> duckdb keeps downloaded extensions and secrets in a temporary directory:
-#> ℹ /tmp/Rtmp3cMLaB/duckdb
+#> ℹ /tmp/RtmpsaIjE9/duckdb
 #> This is removed when the R session ends.
 #> • Extensions are re-downloaded each session.
 #> • Secrets are lost.
@@ -380,11 +380,11 @@ nei_counts <- cnefe_counts(
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [449ms]
+#> ✔ Converting the archive to .csv.gz (done once) [443ms]
 #> 
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-#> ✔ Step 1/2 (Data and polygon ready) [2.2s]
+#> ✔ Step 1/2 (Data and polygon ready) [10.2s]
 #> 
 #> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Polygon coverage: "99.7%" of the CNEFE points of the municipalities in
@@ -397,7 +397,7 @@ nei_counts <- cnefe_counts(
 #> ℹ 285 points from the municipalities in `code_muni` fell outside the polygons
 #>   and were not counted. Possible causes are polygons that don't cover the whole
 #>   municipality, a coastline the polygons don't follow, or geocoding errors.
-#> ✔ Step 2/2 (Addresses counted) [921ms]
+#> ✔ Step 2/2 (Addresses counted) [938ms]
 #> 
 
 # With scope = "geom", the municipalities the polygons intersect are read
@@ -413,7 +413,7 @@ nei_counts_auto <- cnefe_counts(polygon = nei_ldf, scope = "geom", cache = FALSE
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2905701_CAMACARI.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [931ms]
+#> ✔ Converting the archive to .csv.gz (done once) [934ms]
 #> 
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
@@ -422,7 +422,7 @@ nei_counts_auto <- cnefe_counts(polygon = nei_ldf, scope = "geom", cache = FALSE
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [458ms]
+#> ✔ Converting the archive to .csv.gz (done once) [447ms]
 #> 
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
@@ -440,11 +440,11 @@ nei_counts_auto <- cnefe_counts(polygon = nei_ldf, scope = "geom", cache = FALSE
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2930709_SIMOES_FILHO.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [243ms]
+#> ✔ Converting the archive to .csv.gz (done once) [240ms]
 #> 
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-#> ✔ Step 1/2 (Data and polygon ready) [15s]
+#> ✔ Step 1/2 (Data and polygon ready) [18.1s]
 #> 
 #> ℹ Step 2/2: Counting addresses per polygon...
 #> Warning: Overlapping polygons: 94 of the 111188 CNEFE points inside the polygons

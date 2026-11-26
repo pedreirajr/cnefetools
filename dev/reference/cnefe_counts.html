@@ -277,26 +277,26 @@ the polygons belong to, which is faster.</p>
 <span class="r-in"><span><span class="co"># Count addresses per H3 hexagon (resolution 9)</span></span></span>
 <span class="r-in"><span><span class="va">hex_counts</span> <span class="op">&lt;-</span> <span class="fu">cnefe_counts</span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fl">2929057</span>, cache <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Building full H3 grid over the municipal boundaries...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (H3 grid built) <span style="color: #B2B2B2;">[5.1s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (H3 grid built) <span style="color: #B2B2B2;">[4s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[39ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[38ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...
 </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (CNEFE data ready) <span style="color: #B2B2B2;">[1.3s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (CNEFE data ready) <span style="color: #B2B2B2;">[12.2s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Counting address species per hexagon...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Addresses counted) <span style="color: #B2B2B2;">[541ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Addresses counted) <span style="color: #B2B2B2;">[365ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Several municipalities in one call: one grid over their union, with no cell</span></span></span>
 <span class="r-in"><span><span class="co"># repeated along the shared border (Salvador and its neighbor Lauro de Freitas)</span></span></span>
 <span class="r-in"><span><span class="va">region_counts</span> <span class="op">&lt;-</span> <span class="fu">cnefe_counts</span><span class="op">(</span>code_muni <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2927408</span>, <span class="fl">2919207</span><span class="op">)</span>, cache <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/3: Building full H3 grid over the municipal boundaries...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (H3 grid built) <span style="color: #B2B2B2;">[2.9s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (H3 grid built) <span style="color: #B2B2B2;">[1.8s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Municipality 1 of 2: <span style="color: #0000BB;">2927408</span></span>
@@ -304,7 +304,7 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2927408_SALVADOR.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[6.8s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[6.7s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...
 </span>
@@ -313,11 +313,11 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[430ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[427ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...
 </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (CNEFE data ready) <span style="color: #B2B2B2;">[12.6s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (CNEFE data ready) <span style="color: #B2B2B2;">[22.9s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Counting address species per hexagon...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Addresses counted) <span style="color: #B2B2B2;">[2.1s]</span></span>
@@ -331,7 +331,7 @@ the polygons belong to, which is faster.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   complete the cells along the border:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   Camaçari (2905701), Salvador (2927408), Simões Filho (2930709)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Use `scope = "muni"` to read only the municipalities in `code_muni`.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (H3 grid built) <span style="color: #B2B2B2;">[3.4s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/3 (H3 grid built) <span style="color: #B2B2B2;">[1.5s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Municipality 1 of 4: <span style="color: #0000BB;">2919207</span></span>
@@ -339,7 +339,7 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[441ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[440ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...
 </span>
@@ -348,7 +348,7 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2905701_CAMACARI.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[927ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[924ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...
 </span>
@@ -366,11 +366,11 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2930709_SIMOES_FILHO.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[245ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[240ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/3: Ensuring the CNEFE data file...
 </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (CNEFE data ready) <span style="color: #B2B2B2;">[15.3s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/3 (CNEFE data ready) <span style="color: #B2B2B2;">[20.3s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 3/3: Counting address species per hexagon...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 3/3 (Addresses counted) <span style="color: #B2B2B2;">[2.9s]</span></span>
@@ -385,7 +385,7 @@ the polygons belong to, which is faster.</p>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Using year/date 2022</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> duckdb keeps downloaded extensions and secrets in a temporary directory:</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> /tmp/Rtmp3cMLaB/duckdb</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> /tmp/RtmpsaIjE9/duckdb</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> This is removed when the R session ends.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> Extensions are re-downloaded each session.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> Secrets are lost.</span>
@@ -400,11 +400,11 @@ the polygons belong to, which is faster.</p>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/2: Ensuring data and preparing polygon...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[449ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[443ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/2: Ensuring data and preparing polygon...
 </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/2 (Data and polygon ready) <span style="color: #B2B2B2;">[2.2s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/2 (Data and polygon ready) <span style="color: #B2B2B2;">[10.2s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/2: Counting addresses per polygon...</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Polygon coverage: <span style="color: #0000BB;">"99.7%"</span> of the CNEFE points of the municipalities in</span>
@@ -417,7 +417,7 @@ the polygons belong to, which is faster.</p>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">285</span> points from the municipalities in `code_muni` fell outside the polygons</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   and were not counted. Possible causes are polygons that don't cover the whole</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   municipality, a coastline the polygons don't follow, or geocoding errors.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/2 (Addresses counted) <span style="color: #B2B2B2;">[921ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 2/2 (Addresses counted) <span style="color: #B2B2B2;">[938ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># With scope = "geom", the municipalities the polygons intersect are read</span></span></span>
@@ -433,7 +433,7 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2905701_CAMACARI.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[931ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[934ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/2: Ensuring data and preparing polygon...
 </span>
@@ -442,7 +442,7 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[458ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[447ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/2: Ensuring data and preparing polygon...
 </span>
@@ -460,11 +460,11 @@ the polygons belong to, which is faster.</p>
 </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2930709_SIMOES_FILHO.zip</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[243ms]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Converting the archive to <span style="color: #0000BB;">.csv.gz</span> (done once) <span style="color: #B2B2B2;">[240ms]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 1/2: Ensuring data and preparing polygon...
 </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/2 (Data and polygon ready) <span style="color: #B2B2B2;">[15s]</span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BB00;">✔</span> Step 1/2 (Data and polygon ready) <span style="color: #B2B2B2;">[18.1s]</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Step 2/2: Counting addresses per polygon...</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Overlapping polygons: <span style="color: #0000BB;">94</span> of the <span style="color: #0000BB;">111188</span> CNEFE points inside the polygons</span>

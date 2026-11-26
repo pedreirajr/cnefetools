@@ -131,8 +131,8 @@ cnefe <- read_cnefe(code_muni = 2929057, cache = FALSE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [39ms]
 #> 
-#> ℹ Reading file2c7b3f570c50.csv.gz with arrow
-#> ✔ Reading file2c7b3f570c50.csv.gz with arrow [18ms]
+#> ℹ Reading file1eb22a219406.csv.gz with arrow
+#> ✔ Reading file1eb22a219406.csv.gz with arrow [18ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 
@@ -144,17 +144,17 @@ path <- cnefe_export(2929057, path = tempdir(), cache = FALSE, overwrite = TRUE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [39ms]
 #> 
-#> ℹ Reading file2c7b6456f903.csv.gz with arrow
-#> ✔ Reading file2c7b6456f903.csv.gz with arrow [17ms]
+#> ℹ Reading file1eb25698d34d.csv.gz with arrow
+#> ✔ Reading file1eb25698d34d.csv.gz with arrow [18ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Writing cnefe_2022_2929057.parquet
-#> ✔ Writing cnefe_2022_2929057.parquet [18ms]
+#> ✔ Writing cnefe_2022_2929057.parquet [16ms]
 #> 
-#> ✔ Wrote 9354 records to /tmp/Rtmp3cMLaB/cnefe_2022_2929057.parquet (0.3 MB).
+#> ✔ Wrote 9354 records to /tmp/RtmpsaIjE9/cnefe_2022_2929057.parquet (0.3 MB).
 cnefe_local <- read_cnefe(file = path)
 #> ℹ Reading cnefe_2022_2929057.parquet as Parquet
-#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [22ms]
+#> ✔ Reading cnefe_2022_2929057.parquet as Parquet [10ms]
 #> 
 #> ✔ Read 9354 records from cnefe_2022_2929057.parquet
 
@@ -165,12 +165,12 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 #> ℹ Converting the archive to .csv.gz (done once)
 #> ✔ Converting the archive to .csv.gz (done once) [38ms]
 #> 
-#> ℹ Reading file2c7b64c868e8.csv.gz with arrow
-#> ✔ Reading file2c7b64c868e8.csv.gz with arrow [17ms]
+#> ℹ Reading file1eb23e00fc87.csv.gz with arrow
+#> ✔ Reading file1eb23e00fc87.csv.gz with arrow [16ms]
 #> 
 #> ✔ Read 9354 records from CNEFE
 #> ℹ Converting to sf object
-#> ✔ Converting to sf object [17ms]
+#> ✔ Converting to sf object [16ms]
 #> 
 #> ✔ Created <sf> object with 9354 points (CRS: EPSG:4674)
 # }

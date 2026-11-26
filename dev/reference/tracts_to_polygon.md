@@ -233,25 +233,25 @@ poly_pop <- tracts_to_polygon(
 #> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
 #> ℹ Step 1/6: aligning CRS...
 
-#> ✔ Step 1/6 (CRS alignment) [42ms]
+#> ✔ Step 1/6 (CRS alignment) [28ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [325ms]
+#> ✔ Step 2/6 (DuckDB ready) [324ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ✔ Step 3/6 (Tracts ready) [1.8s]
+#> ✔ Step 3/6 (Tracts ready) [645ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [442ms]
+#> ✔ Converting the archive to .csv.gz (done once) [444ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-#> ✔ Step 4/6 (CNEFE points ready) [2.6s]
+#> ✔ Step 4/6 (CNEFE points ready) [2.3s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [697ms]
+#> ✔ Step 5/6 (Join and allocation) [733ms]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
 #> ✔ Step 6/6 (Polygon aggregation) [22ms]
@@ -290,13 +290,13 @@ poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FA
 #> ℹ Input CRS: "EPSG:4674" | Output CRS: "EPSG:4674"
 #> ℹ Step 1/6: aligning CRS...
 
-#> ✔ Step 1/6 (CRS alignment) [39ms]
+#> ✔ Step 1/6 (CRS alignment) [30ms]
 #> 
 #> ℹ Step 2/6: connecting to DuckDB and loading extensions...
-#> ✔ Step 2/6 (DuckDB ready) [320ms]
+#> ✔ Step 2/6 (DuckDB ready) [319ms]
 #> 
 #> ℹ Step 3/6: preparing census tracts in DuckDB...
-#> ✔ Step 3/6 (Tracts ready) [2.8s]
+#> ✔ Step 3/6 (Tracts ready) [1.2s]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 #> ℹ Municipality 1 of 4: 2905701
@@ -304,7 +304,7 @@ poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FA
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2905701_CAMACARI.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [929ms]
+#> ✔ Converting the archive to .csv.gz (done once) [934ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
@@ -313,7 +313,7 @@ poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FA
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [444ms]
+#> ✔ Converting the archive to .csv.gz (done once) [457ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
@@ -322,7 +322,7 @@ poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FA
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2927408_SALVADOR.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [6.5s]
+#> ✔ Converting the archive to .csv.gz (done once) [6.7s]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
@@ -331,14 +331,14 @@ poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FA
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2930709_SIMOES_FILHO.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [243ms]
+#> ✔ Converting the archive to .csv.gz (done once) [247ms]
 #> 
 #> ℹ Step 4/6: preparing CNEFE points in DuckDB...
 
-#> ✔ Step 4/6 (CNEFE points ready) [19.6s]
+#> ✔ Step 4/6 (CNEFE points ready) [37.8s]
 #> 
 #> ℹ Step 5/6: spatial join (points to tracts) and allocation...
-#> ✔ Step 5/6 (Join and allocation) [18.4s]
+#> ✔ Step 5/6 (Join and allocation) [17.4s]
 #> 
 #> ℹ Step 6/6: aggregating allocated values to polygons...
 #> ✔ Step 6/6 (Polygon aggregation) [23ms]

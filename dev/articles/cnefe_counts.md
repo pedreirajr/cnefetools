@@ -93,21 +93,21 @@ poa_hex_counts <- cnefe_counts(
   h3_resolution = 8
 )
 #> 
-ℹ Step 1/3: Ensuring the CNEFE data file...
+ℹ Step 1/3: Building full H3 grid over the municipal boundaries...
+
+✔ Step 1/3 (H3 grid built) [419ms]                                
+#> 
+ℹ Step 2/3: Ensuring the CNEFE data file...
 
                                             
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
-#> ℹ Step 1/3: Ensuring the CNEFE data file...
+#> ℹ Step 2/3: Ensuring the CNEFE data file...
 
-✔ Step 1/3 (CNEFE data ready) [190ms]      
-#> 
-ℹ Step 2/3: Building full H3 grid over municipality boundary...
-
-✔ Step 2/3 (H3 grid built) [3.7s]                              
+✔ Step 2/3 (CNEFE data ready) [231ms]      
 #> 
 ℹ Step 3/3: Counting address species per hexagon...
 
-✔ Step 3/3 (Addresses counted) [1.3s]              
+✔ Step 3/3 (Addresses counted) [1.2s]              
 
 head(poa_hex_counts)
 #> Simple feature collection with 6 features and 9 fields
@@ -200,14 +200,17 @@ poa_neigh_counts <- cnefe_counts(
 ℹ Using cached file: C:\Users\jorge\AppData\Local/R/cache/R/cnefetools/2022/4314902_PORTO_ALEGRE.csv.gz
 #> ℹ Step 1/2: Ensuring data and preparing polygon...
 
-✔ Step 1/2 (Data and polygon ready) [269ms]       
+✔ Step 1/2 (Data and polygon ready) [205ms]       
 #> 
 ℹ Step 2/2: Counting addresses per polygon...
-#> Warning: Polygon coverage: "100.0%" of CNEFE points captured.
+#> Warning: Polygon coverage: "100.0%" of the CNEFE points of the municipalities in
+#> `code_muni` were captured.
 #> ℹ 762110 of 762239 points are within the provided polygon.
-#> ℹ 129 points fell outside the polygon and were not counted.
+#> ℹ 129 points from the municipalities in `code_muni` fell outside the polygons
+#>   and were not counted. Possible causes are polygons that don't cover the whole
+#>   municipality, a coastline the polygons don't follow, or geocoding errors.
 #> 
-✔ Step 2/2 (Addresses counted) [2.6s]        
+✔ Step 2/2 (Addresses counted) [2.4s]        
 
 head(poa_neigh_counts)
 #> Simple feature collection with 6 features and 22 fields

@@ -322,17 +322,17 @@ lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #> ℹ Step 1/3: Building the H3 grid and ensuring the CNEFE data...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2929057_SAO_FELIX_DO_CORIBE.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [40ms]
+#> ✔ Converting the archive to .csv.gz (done once) [39ms]
 #> 
 #> ℹ Step 1/3: Building the H3 grid and ensuring the CNEFE data...
 
-#> ✔ Step 1/3 (Grid and CNEFE data ready) [5.2s]
+#> ✔ Step 1/3 (Grid and CNEFE data ready) [3.9s]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [147ms]
+#> ✔ Step 2/3 (Addresses counted) [138ms]
 #> 
 #> ℹ Step 3/3: Computing LUMI on the grid...
-#> ✔ Step 3/3 (Land use mix indices computed) [92ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [93ms]
 #> 
 
 # Several municipalities in one call: one grid over their union and one P for
@@ -354,17 +354,17 @@ lumi_region <- compute_lumi(code_muni = c(2927408, 2919207), cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [442ms]
+#> ✔ Converting the archive to .csv.gz (done once) [437ms]
 #> 
 #> ℹ Step 1/3: Building the H3 grid and ensuring the CNEFE data...
 
-#> ✔ Step 1/3 (Grid and CNEFE data ready) [14.8s]
+#> ✔ Step 1/3 (Grid and CNEFE data ready) [23s]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
 #> ✔ Step 2/3 (Addresses counted) [1.9s]
 #> 
 #> ℹ Step 3/3: Computing LUMI on the grid...
-#> ✔ Step 3/3 (Land use mix indices computed) [362ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [118ms]
 #> 
 
 # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -384,14 +384,14 @@ lumi_poly <- compute_lumi(
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [443ms]
+#> ✔ Converting the archive to .csv.gz (done once) [450ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 
-#> ✔ Step 1/3 (Data and polygon ready) [1.9s]
+#> ✔ Step 1/3 (Data and polygon ready) [1.6s]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
-#> ✔ Step 2/3 (Addresses counted) [871ms]
+#> ✔ Step 2/3 (Addresses counted) [894ms]
 #> 
 #> ℹ Step 3/3: Computing land use mix indices...
 #> Warning: Polygon coverage: "99.7%" of the CNEFE points of the municipalities in
@@ -407,7 +407,7 @@ lumi_poly <- compute_lumi(
 #>   points included. On the other hand, `scope = "geom"` computes P from the
 #>   addresses inside the polygons only, and also adds to the polygons the
 #>   addresses of neighboring municipalities that fall inside them.
-#> ✔ Step 3/3 (Land use mix indices computed) [57ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [60ms]
 #> 
 
 # With scope = "geom", the municipalities the polygons intersect are read, and
@@ -425,7 +425,7 @@ lumi_poly_geom <- compute_lumi(polygon = nei_ldf, scope = "geom", cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2905701_CAMACARI.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [927ms]
+#> ✔ Converting the archive to .csv.gz (done once) [932ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 
@@ -434,7 +434,7 @@ lumi_poly_geom <- compute_lumi(polygon = nei_ldf, scope = "geom", cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [444ms]
+#> ✔ Converting the archive to .csv.gz (done once) [463ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 
@@ -443,7 +443,7 @@ lumi_poly_geom <- compute_lumi(polygon = nei_ldf, scope = "geom", cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2927408_SALVADOR.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [6.6s]
+#> ✔ Converting the archive to .csv.gz (done once) [6.7s]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 
@@ -452,20 +452,20 @@ lumi_poly_geom <- compute_lumi(polygon = nei_ldf, scope = "geom", cache = FALSE)
 
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2930709_SIMOES_FILHO.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [241ms]
+#> ✔ Converting the archive to .csv.gz (done once) [250ms]
 #> 
 #> ℹ Step 1/3: Ensuring data and preparing polygon...
 
-#> ✔ Step 1/3 (Data and polygon ready) [14.9s]
+#> ✔ Step 1/3 (Data and polygon ready) [23.2s]
 #> 
 #> ℹ Step 2/3: Counting addresses per polygon...
-#> ✔ Step 2/3 (Addresses counted) [3.7s]
+#> ✔ Step 2/3 (Addresses counted) [3.8s]
 #> 
 #> ℹ Step 3/3: Computing land use mix indices...
 #> Warning: Overlapping polygons: 91 of the 107054 CNEFE points inside the polygons
 #> (0.085%) fall in more than one polygon, so each enters the indices of every
 #> polygon that contains it.
-#> ✔ Step 3/3 (Land use mix indices computed) [35ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [36ms]
 #> 
 
 # BGBI against a target residential share of 70% instead of the observed one
@@ -474,17 +474,17 @@ lumi_target <- compute_lumi(code_muni = 2919207, p_target = 0.7, cache = FALSE)
 #> ℹ Step 1/3: Building the H3 grid and ensuring the CNEFE data...
 #> Downloading ZIP (timeout = 300s): https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/CSV/Municipio/29_BA/2919207_LAURO_DE_FREITAS.zip
 #> ℹ Converting the archive to .csv.gz (done once)
-#> ✔ Converting the archive to .csv.gz (done once) [445ms]
+#> ✔ Converting the archive to .csv.gz (done once) [443ms]
 #> 
 #> ℹ Step 1/3: Building the H3 grid and ensuring the CNEFE data...
 
-#> ✔ Step 1/3 (Grid and CNEFE data ready) [3.6s]
+#> ✔ Step 1/3 (Grid and CNEFE data ready) [10.4s]
 #> 
 #> ℹ Step 2/3: Counting addresses per H3 cell...
-#> ✔ Step 2/3 (Addresses counted) [462ms]
+#> ✔ Step 2/3 (Addresses counted) [458ms]
 #> 
 #> ℹ Step 3/3: Computing LUMI on the grid...
-#> ✔ Step 3/3 (Land use mix indices computed) [39ms]
+#> ✔ Step 3/3 (Land use mix indices computed) [53ms]
 #> 
 # }
 ```
