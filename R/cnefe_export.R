@@ -1,4 +1,4 @@
-#' Export CNEFE data to a persistent, optimised file
+#' Export CNEFE data to a persistent, optimized file
 #'
 #' @description
 #' `cnefe_export()` downloads a municipality (or reuses the cache) and writes it

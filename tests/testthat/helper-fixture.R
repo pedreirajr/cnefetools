@@ -35,3 +35,24 @@ mock_ensure_zip_fixture <- function(..., .format = "gz") {
 mock_ensure_zip_fixture_legacy <- function(...) {
   mock_ensure_zip_fixture(.format = "zip")
 }
+
+
+#' Write a synthetic CNEFE file with the columns the package reads
+#'
+#' @param df A data frame with `COD_ESPECIE`, `LONGITUDE` and `LATITUDE`.
+#' @param path Destination, `.csv.gz` by default.
+write_cnefe_gz <- function(df, path = tempfile(fileext = ".csv.gz")) {
+  out <- data.frame(
+    COD_UNICO_ENDERECO = seq_len(nrow(df)),
+    COD_SETOR = "000000000000000",
+    COD_ESPECIE = df$COD_ESPECIE,
+    LONGITUDE = df$LONGITUDE,
+    LATITUDE = df$LATITUDE
+  )
+  con <- gzfile(path, "wt")
+  on.exit(close(con), add = TRUE)
+  utils::write.table(
+    out, con, sep = ";", row.names = FALSE, quote = FALSE, na = "", dec = "."
+  )
+  path
+}

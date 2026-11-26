@@ -70,7 +70,13 @@ res <- do.call(rbind, rows)
 res$release_tag <- tag
 res$edition <- 2022L
 
+# Rows of the other releases are kept: the earlier tags stay published, and
+# the manuscript cites the checksums of the release each version used.
 out <- "data-raw/sc_assets_checksums.csv"
+if (file.exists(out)) {
+  old <- utils::read.csv(out, stringsAsFactors = FALSE)
+  res <- rbind(old[old$release_tag != tag, names(res)], res)
+}
 utils::write.csv(res, out, row.names = FALSE)
 
 cat("\nwrote", out, "\n")

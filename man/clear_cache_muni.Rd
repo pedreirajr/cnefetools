@@ -25,7 +25,7 @@ is set, otherwise \code{\link[tools:R_user_dir]{tools::R_user_dir()}} with \code
 point large downloads at a secondary drive or a shared volume.}
 
 \item{year}{Integer. Restrict the deletion to one CNEFE edition. \code{NULL}
-(default) clears every edition, which is the previous behaviour.}
+(default) clears every edition, which is the previous behavior.}
 }
 \value{
 Invisibly, the character vector of deleted file paths.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/cnefe_export.R
 \name{cnefe_export}
 \alias{cnefe_export}
-\title{Export CNEFE data to a persistent, optimised file}
+\title{Export CNEFE data to a persistent, optimized file}
 \usage{
 cnefe_export(
   code_muni,

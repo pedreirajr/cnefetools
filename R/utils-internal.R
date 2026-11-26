@@ -94,6 +94,36 @@
 }
 
 
+#' Normalise one or several IBGE municipality codes
+#'
+#' `cnefe_counts()`, `compute_lumi()` and the two interpolation functions take a
+#' vector of codes, so that a region spanning several municipalities is built in
+#' one pass: one grid over the union of the boundaries, one reference share `P`
+#' over the whole region, and no cell that appears twice (#120, R2 comment 1).
+#' Each element goes through [.normalize_code_muni()], repeated codes are
+#' dropped, and the first-seen order is kept.
+#'
+#' @param code_muni One or more seven-digit IBGE municipality codes.
+#'
+#' @return An integer vector without duplicates, at least one element long.
+#'
+#' @keywords internal
+#' @noRd
+.normalize_code_munis <- function(code_muni) {
+  if (length(code_muni) < 1L) {
+    cli::cli_abort("{.arg code_muni} must contain at least one municipality code.")
+  }
+
+  codes <- vapply(
+    seq_along(code_muni),
+    function(i) .normalize_code_muni(code_muni[[i]]),
+    integer(1)
+  )
+
+  unique(codes)
+}
+
+
 ## Theme: Cache management
 
 #' Resolve the cache directory
@@ -114,7 +144,7 @@
 #'
 #' @param cache_dir Optional path. `NULL` falls through to the next source.
 #'
-#' @return A normalised directory path. The directory is not created here.
+#' @return A normalized directory path. The directory is not created here.
 #'
 #' @keywords internal
 #' @noRd
@@ -361,6 +391,175 @@
     url = url
   )
 }
+
+#' Retrieve the CNEFE file of every requested municipality
+#'
+#' Loops over [.cnefe_ensure_zip()] and registers the cleanup of an uncached
+#' file right after each retrieval, so a failure while fetching the second
+#' municipality still removes the first one's temporary file.
+#'
+#' @param code_munis Integer vector of municipality codes.
+#' @param envir Frame the cleanup handlers attach to, the caller by default.
+#' @inheritParams .cnefe_ensure_zip
+#'
+#' @return A list of `.cnefe_ensure_zip()` results, one per code, in order.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_ensure_zips <- function(
+  code_munis,
+  index,
+  cache = TRUE,
+  cache_dir = NULL,
+  year = NULL,
+  verbose = TRUE,
+  retry_timeouts = c(300L, 600L, 1800L),
+  envir = parent.frame()
+) {
+  infos <- vector("list", length(code_munis))
+
+  for (i in seq_along(code_munis)) {
+    if (verbose && length(code_munis) > 1L) {
+      cli::cli_alert_info(
+        "Municipality {i} of {length(code_munis)}: {.val {code_munis[[i]]}}"
+      )
+    }
+    infos[[i]] <- .cnefe_ensure_zip(
+      code_muni = code_munis[[i]],
+      index = index,
+      cache = cache,
+      cache_dir = cache_dir,
+      year = year,
+      verbose = verbose,
+      retry_timeouts = retry_timeouts
+    )
+    .cnefe_defer_cleanup(infos[[i]], envir = envir)
+  }
+
+  infos
+}
+
+
+#' SQL that reads the address points of several municipalities as one table
+#'
+#' Builds one `SELECT ... FROM read_csv_auto(...)` per file and joins them with
+#' `UNION ALL`. Each file is read, and its types inferred, on its own exactly as
+#' a single-municipality call does, and DuckDB streams the union, so the memory
+#' of an aggregation over it does not depend on how many files there are.
+#'
+#' The columns are `code_muni`, `lon`, `lat` and `COD_ESPECIE`, plus
+#' `COD_UNICO_ENDERECO` and `COD_SETOR` when `ids = TRUE`.
+#'
+#' @param con A live DuckDB connection, used to load `zipfs` for a legacy ZIP.
+#' @param zip_infos List of `.cnefe_ensure_zip()` results.
+#' @param code_munis Integer vector of codes, the same length and order.
+#' @param ids Whether to carry the address id and the census tract code.
+#' @param verbose Forwarded to the extension loader.
+#'
+#' @return A single SQL string, to be used as a subquery.
+#'
+#' @keywords internal
+#' @noRd
+.cnefe_points_union_sql <- function(
+  con,
+  zip_infos,
+  code_munis,
+  ids = FALSE,
+  verbose = TRUE
+) {
+  parts <- character(length(zip_infos))
+  zipfs_ready <- FALSE
+
+  for (i in seq_along(zip_infos)) {
+    src <- .cnefe_csv_uri(zip_infos[[i]]$zip_path)
+    if (isTRUE(src$needs_zipfs) && !zipfs_ready) {
+      # A cache written by an older version is still a ZIP.
+      .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
+      zipfs_ready <- TRUE
+    }
+    uri_sql <- gsub("'", "''", src$uri)
+
+    id_cols <- if (isTRUE(ids)) {
+      paste0(
+        "CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
+",
+        "      CAST(COD_SETOR AS VARCHAR) AS COD_SETOR,
+      "
+      )
+    } else {
+      ""
+    }
+
+    parts[[i]] <- sprintf(
+      paste0(
+        "SELECT
+",
+        "      %d AS code_muni,
+",
+        "      %sCAST(LONGITUDE AS DOUBLE) AS lon,
+",
+        "      CAST(LATITUDE AS DOUBLE) AS lat,
+",
+        "      try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE
+",
+        "    FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)"
+      ),
+      as.integer(code_munis[[i]]),
+      id_cols,
+      uri_sql
+    )
+  }
+
+  paste(parts, collapse = "
+    UNION ALL
+    ")
+}
+
+
+#' Combine the spatial-join results of several municipalities
+#'
+#' The R backend joins one municipality file at a time and keeps only the
+#' counts per polygon, so memory follows the largest municipality. The pieces
+#' are additive: counts per polygon (and species) are summed, and so are the
+#' coverage totals. A single result is returned untouched.
+#'
+#' @param results List of the lists built by `.cnefe_counts_user_poly_r()` or
+#'   `.compute_lumi_user_poly_r()`.
+#'
+#' @return One list of the same shape.
+#'
+#' @keywords internal
+#' @noRd
+.combine_poly_joins <- function(results) {
+  if (length(results) == 1L) {
+    return(results[[1L]])
+  }
+
+  counts <- dplyr::bind_rows(lapply(results, function(x) x$counts))
+  value_cols <- intersect(c("n", "n_res", "n_tot"), names(counts))
+  key_cols <- setdiff(names(counts), value_cols)
+
+  counts <- counts |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(key_cols))) |>
+    dplyr::summarise(
+      dplyr::across(dplyr::all_of(value_cols), ~ as.integer(sum(.x))),
+      .groups = "drop"
+    )
+
+  out <- list(counts = counts)
+  for (nm in c(
+    "total_points", "points_matched", "points_outside", "points_multi",
+    "total_n_res", "total_n_tot", "matched_n_res", "matched_n_tot"
+  )) {
+    vals <- lapply(results, function(x) x[[nm]])
+    if (!all(vapply(vals, is.null, logical(1)))) {
+      out[[nm]] <- sum(unlist(vals))
+    }
+  }
+
+  out
+}
+
 
 #' Delete a temporary data file when the calling function exits
 #'
@@ -656,7 +855,12 @@
   # identical, verified across all 27 states, but v3 is reproducible from
   # data-raw/sc_assets_build.R and v2 was not. v2 stays published, so older
   # package versions keep working, and its checksums stay valid.
-  tags <- c("2022" = "sc-assets-v3")
+  #
+  # sc-assets-v4 holds the same rows and values as v3, rewritten by
+  # data-raw/sc_assets_rowgroups.R in row groups of 256 rows, so the tracts of
+  # one municipality can be read remotely through httpfs without the rest of
+  # the state (#120). v3 stays published for the versions that use it.
+  tags <- c("2022" = "sc-assets-v4")
 
   key <- as.character(as.integer(year %||% 2022L))
   if (!key %in% names(tags)) {
@@ -706,16 +910,19 @@
 
 #' @keywords internal
 #' @noRd
-.validate_sc_parquet <- function(path) {
+.validate_sc_parquet <- function(path, required_fields = NULL) {
 
   # Validation: open Parquet metadata and check required fields
   # Includes v2 variables (pop_ph, pop_ch, race_*) to invalidate old v1 cache
   tryCatch(
     {
-      reader <- arrow::ParquetFileReader$create(path)
+      # Without mmap: on Windows a mapped file stays locked until the reader
+      # is garbage collected, so the temporary copy could not be deleted on
+      # exit, nor overwritten by the next call with cache = FALSE
+      reader <- arrow::ParquetFileReader$create(path, mmap = FALSE)
       schema <- reader$GetSchema()
       fields <- schema$names
-      required_fields <- c(
+      required_fields <- required_fields %||% c(
         "code_tract", "geom_wkb",
         "pop_ph", "pop_ch",
         "race_branca", "race_preta", "race_amarela", "race_parda", "race_indigena"
@@ -755,6 +962,170 @@
   # Use piggyback to download the census tract assets
   .sc_download_with_piggyback(uf = uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose)
 }
+
+#' URL of the census tract asset of a state
+#'
+#' The option `cnefetools.sc_url`, a `sprintf()` template with `%s` for the
+#' two-digit state code, overrides it. The tests use it to point at a local
+#' file.
+#'
+#' @keywords internal
+#' @noRd
+.sc_url <- function(uf, year = NULL) {
+  opt <- getOption("cnefetools.sc_url")
+  if (!is.null(opt)) {
+    return(sprintf(opt, uf))
+  }
+  sprintf(
+    "https://github.com/pedreirajr/cnefetools/releases/download/%s/%s",
+    .sc_assets_tag(year), .sc_asset_filename(uf)
+  )
+}
+
+
+#' Folder of the census tracts cached by municipality
+#'
+#' @keywords internal
+#' @noRd
+.sc_muni_cache_dir <- function(cache_dir = NULL, year = NULL) {
+  file.path(.sc_cache_dir(cache_dir, year), "muni")
+}
+
+
+#' Census tract Parquet files for some municipalities of one state
+#'
+#' The files that `.sc_create_views_in_duckdb()` reads for the municipalities in
+#' `code_muni`, all of state `uf` (#120):
+#'
+#' 1. The state file, when it is already in the cache (downloaded by an earlier
+#'    version, or by the fallback below). It holds every municipality of the
+#'    state, so nothing is downloaded.
+#' 2. Otherwise one file per municipality, under `sc_assets/muni/`. The ones
+#'    missing are read from the release through httpfs, in one query that only
+#'    touches the row groups of those municipalities, and written to the cache.
+#'    With `cache = FALSE` they go to the temporary download folder instead,
+#'    and the caller deletes them.
+#' 3. If the remote read fails, the whole state file is downloaded with
+#'    `.sc_ensure_parquet_uf()`, as before, with a message.
+#'
+#' @return A character vector of Parquet paths.
+#'
+#' @keywords internal
+#' @noRd
+.sc_ensure_parquet_munis <- function(
+    uf,
+    code_muni,
+    cache = TRUE,
+    cache_dir = NULL,
+    year = NULL,
+    verbose = TRUE
+) {
+  state_file <- .sc_asset_local_path(uf, cache_dir, year)
+  if (isTRUE(cache) && file.exists(state_file) && .validate_sc_parquet(state_file)) {
+    if (verbose) {
+      cli::cli_alert_info("Using cached file: {.file {basename(state_file)}}")
+    }
+    return(state_file)
+  }
+
+  got <- tryCatch(
+    .sc_fetch_munis(uf, code_muni, cache = cache, cache_dir = cache_dir, year = year),
+    error = function(e) e
+  )
+  if (!inherits(got, "error")) {
+    return(got)
+  }
+
+  cli::cli_inform(c(
+    "!" = "Could not read the census tracts of {.val {code_muni}} from the {.pkg cnefetools} release, so the whole file of state {.val {uf}} is downloaded instead.",
+    "i" = "{conditionMessage(got)}"
+  ))
+  .sc_ensure_parquet_uf(uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose)
+}
+
+
+#' Release tag stored in a census tract file cached by municipality
+#'
+#' @return The tag, or `NULL` when the file has none or cannot be opened.
+#'
+#' @keywords internal
+#' @noRd
+.sc_file_tag <- function(path) {
+  tryCatch(
+    arrow::ParquetFileReader$create(path, mmap = FALSE)$GetSchema()$metadata$cnefetools_tag,
+    error = function(e) NULL
+  )
+}
+
+
+#' Read the tracts of some municipalities from the release, one file each
+#'
+#' The asset is sorted by `code_tract`, whose first seven digits are the
+#' municipality code, and written in row groups of 256 rows, so a range on
+#' `code_tract` lets DuckDB skip the row groups of every other municipality.
+#' Files are written under a temporary name and renamed, so an interrupted
+#' write never leaves a partial file that a later call would trust. If a write
+#' fails, the files written by this call are removed.
+#'
+#' @keywords internal
+#' @noRd
+.sc_fetch_munis <- function(uf, code_muni, cache = TRUE, cache_dir = NULL, year = NULL) {
+  code_muni <- as.integer(code_muni)
+  dir <- if (isTRUE(cache)) .sc_muni_cache_dir(cache_dir, year) else .sc_tmp_download_dir()
+  dir <- normalizePath(dir, winslash = "/", mustWork = FALSE)
+  files <- file.path(dir, paste0(code_muni, ".parquet"))
+
+  tag <- .sc_assets_tag(year)
+  have <- if (isTRUE(cache)) {
+    # A cached file is reused only when it opens with the key and the
+    # geometry and was written from the release in use, whose tag is stored
+    # in the file. A file from another release, which may lack a variable of
+    # the current one, is fetched again (#120).
+    vapply(files, function(f) {
+      file.exists(f) && .validate_sc_parquet(f, c("code_tract", "geom_wkb")) &&
+        identical(.sc_file_tag(f), tag)
+    }, logical(1), USE.NAMES = FALSE)
+  } else {
+    rep(FALSE, length(files))
+  }
+  if (all(have)) {
+    return(files)
+  }
+  need <- code_muni[!have]
+
+  url <- .sc_url(uf, year)
+  con <- .duckdb_httpfs_connect(url, reason = "to read the census tract data.")
+  ranges <- paste(
+    sprintf("(code_tract >= '%07d' AND code_tract < '%07d')", need, need + 1L),
+    collapse = " OR "
+  )
+  .duckdb_quiet(DBI::dbExecute(con, sprintf(
+    "CREATE TEMP TABLE sc_fetched AS SELECT * FROM read_parquet('%s') WHERE %s;",
+    gsub("'", "''", url), ranges
+  )))
+
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  written <- character(0)
+  done <- FALSE
+  on.exit(if (!done) unlink(c(written, paste0(written, ".tmp"))), add = TRUE)
+  for (cm in need) {
+    f <- file.path(dir, paste0(cm, ".parquet"))
+    tmp <- paste0(f, ".tmp")
+    written <- c(written, f)
+    .duckdb_quiet(DBI::dbExecute(con, sprintf(
+      "COPY (SELECT * FROM sc_fetched WHERE substr(code_tract, 1, 7) = '%07d'
+             ORDER BY code_tract) TO '%s'
+             (FORMAT parquet, KV_METADATA {cnefetools_tag: '%s'});",
+      cm, gsub("'", "''", tmp), gsub("'", "''", tag)
+    )))
+    if (!file.rename(tmp, f)) {
+      cli::cli_abort("Could not write {.path {f}}.")
+    }
+  }
+  done <- TRUE
+  files
+}
+
 
 #' Try to copy file to cache, return FALSE if file is locked
 #'
@@ -799,7 +1170,7 @@
 #' from `GITHUB_PAT` / `GITHUB_TOKEN` / `GH_TOKEN` and then from the git
 #' credential store. An expired or invalid token there makes GitHub answer 401
 #' instead of falling back to anonymous access, which is why this has to be
-#' recognised and retried rather than reported.
+#' recognized and retried rather than reported.
 #'
 #' @keywords internal
 #' @noRd
@@ -1005,22 +1376,41 @@
   .envir = parent.frame()
 ) {
 
-  code_muni <- .normalize_code_muni(code_muni)
-  uf <- .uf_from_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
+  ufs <- unique(vapply(code_muni, .uf_from_code_muni, character(1)))
 
-  # Ensure UF parquet is available locally
-  parquet_path <- .sc_ensure_parquet_uf(uf, cache = cache, cache_dir = cache_dir, year = year, verbose = verbose)
-  parquet_path <- normalizePath(parquet_path, winslash = "/", mustWork = TRUE)
-
-  # A temporary download is deleted when the caller exits, after its DuckDB
-  # connection closes. The views below read it lazily, so it cannot go any
-  # sooner (#121).
-  if (.sc_is_tmp_download(parquet_path)) {
-    .defer_unlink(parquet_path, envir = .envir)
+  # Ensure each UF parquet is available locally. A region that crosses a state
+  # border needs more than one. A temporary download is deleted when the caller
+  # exits, after its DuckDB connection closes. The views below read it lazily,
+  # so it cannot go any sooner (#121). It is registered as soon as the path is
+  # known, so a failure while fetching the next UF still removes it.
+  #
+  # Only the tracts of the municipalities read are fetched, one file each,
+  # unless the state file is already cached (#120, see
+  # .sc_ensure_parquet_munis()).
+  uf_of <- vapply(code_muni, .uf_from_code_muni, character(1))
+  parquet_paths <- character(0)
+  for (uf in ufs) {
+    paths <- .sc_ensure_parquet_munis(
+      uf, code_muni[uf_of == uf],
+      cache = cache, cache_dir = cache_dir, year = year, verbose = verbose
+    )
+    for (path in paths) {
+      path <- normalizePath(path, winslash = "/", mustWork = TRUE)
+      if (.sc_is_tmp_download(path)) {
+        .defer_unlink(path, envir = .envir)
+      }
+      parquet_paths <- c(parquet_paths, path)
+    }
   }
 
-  # 7-digit municipality prefix inside 15-digit tract code
-  muni_prefix <- sprintf("%07d", code_muni)
+  # 7-digit municipality prefixes inside the 15-digit tract code
+  muni_prefixes <- sprintf("%07d", code_muni)
+  prefix_sql <- paste(sprintf("'%s'", muni_prefixes), collapse = ", ")
+  paths_sql <- paste(
+    sprintf("'%s'", gsub("'", "''", parquet_paths)),
+    collapse = ", "
+  )
 
   suppressMessages({
   # View with tract attributes + geometry as DuckDB GEOMETRY
@@ -1030,9 +1420,9 @@
         "
       CREATE OR REPLACE VIEW sc_uf_raw AS
       SELECT *
-      FROM read_parquet('%s');
+      FROM read_parquet([%s], union_by_name = true);
     ",
-        parquet_path
+        paths_sql
       )
     )
 
@@ -1045,9 +1435,9 @@
         *,
         ST_GeomFromWKB(geom_wkb) AS geom
       FROM sc_uf_raw
-      WHERE substr(code_tract, 1, 7) = '%s';
+      WHERE substr(code_tract, 1, 7) IN (%s);
     ",
-        muni_prefix
+        prefix_sql
       )
     )
   })
@@ -1067,36 +1457,33 @@
   verbose = TRUE,
   .envir = parent.frame()
 ) {
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni <- .normalize_code_munis(code_muni)
 
-  # Ensure the municipality ZIP exists locally (reuses your existing cache logic)
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  # Ensure each municipality file exists locally (reuses the existing cache
+  # logic). An uncached file is registered for removal on the caller's frame at
+  # once: the view built below reads from it lazily, so it has to outlive this
+  # function, and it has to go when the caller exits, on success or on error.
+  zip_infos <- .cnefe_ensure_zips(
+    code_muni,
     index = index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose
+    verbose = verbose,
+    envir = .envir
   )
 
-  # The views below read the file lazily, so it has to outlive this function.
-  # The deletion is attached to the caller's frame instead, and registered now
-  # so that an error anywhere later still removes it (#121).
-  .cnefe_defer_cleanup(zip_info, envir = .envir)
-
-  zip_path <- zip_info$zip_path
-  zip_norm <- normalizePath(zip_path, winslash = "/", mustWork = TRUE)
-
-
-  # The cache holds a gzipped CSV, which DuckDB reads from a plain path. Only a
-  # legacy ZIP still needs the community zipfs extension, so it is loaded on
-  # demand rather than on every connection (#80 R1.11).
-  src <- .cnefe_csv_uri(zip_norm)
-  if (isTRUE(src$needs_zipfs)) {
-    .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-  }
-  uri <- src$uri
-  uri_sql <- gsub("'", "''", uri)
+  # One SELECT per municipality file, joined by UNION ALL. The cache holds a
+  # gzipped CSV, which DuckDB reads from a plain path. Only a legacy ZIP still
+  # needs the community zipfs extension, so it is loaded on demand rather than
+  # on every connection (#80 R1.11).
+  src_sql <- .cnefe_points_union_sql(
+    con,
+    zip_infos,
+    code_muni,
+    ids = TRUE,
+    verbose = verbose
+  )
 
   suppressMessages({
     DBI::dbExecute(
@@ -1104,15 +1491,9 @@
       sprintf(
         "
       CREATE OR REPLACE VIEW cnefe_raw AS
-      SELECT
-        CAST(COD_UNICO_ENDERECO AS VARCHAR) AS COD_UNICO_ENDERECO,
-        CAST(COD_SETOR         AS VARCHAR) AS COD_SETOR,
-        try_cast(COD_ESPECIE   AS INTEGER) AS COD_ESPECIE,
-        CAST(LONGITUDE         AS DOUBLE)  AS lon,
-        CAST(LATITUDE          AS DOUBLE)  AS lat
-      FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false);
+      %s;
     ",
-        uri_sql
+        src_sql
       )
     )
 
@@ -1121,6 +1502,7 @@
       "
       CREATE OR REPLACE VIEW cnefe_pts AS
       SELECT
+        code_muni,
         COD_UNICO_ENDERECO,
         COD_SETOR,
         COD_ESPECIE,
@@ -1136,11 +1518,7 @@
     )
   })
 
-  # A temporary file is deleted when the caller exits, after its DuckDB
-  # connection closes, not when this function returns. cnefe_pts is a lazy
-  # VIEW, so deleting the file here would break the caller's
-  # CREATE TABLE ... AS SELECT * FROM cnefe_pts.
-  invisible(zip_info)
+  invisible(zip_infos)
 }
 
 
@@ -1260,7 +1638,7 @@
 #' constrained-hardware profile.
 #'
 #' They are applied with `SET` after connecting rather than through the
-#' `config` list so that an unrecognised name fails loudly here instead of
+#' `config` list so that an unrecognized name fails loudly here instead of
 #' aborting `dbConnect()` with a message that names no option.
 #'
 #' @param extensions Character vector of DuckDB extensions to ensure. Community
@@ -1344,6 +1722,32 @@
     )
   }
 
+  con
+}
+
+
+#' A DuckDB connection that can read a remote Parquet file
+#'
+#' Used by the boundary and census tract readers (#120). For an http(s) URL
+#' the httpfs extension is loaded, and installed first if needed. A local path,
+#' as the tests use, needs nothing. The connection closes when `.envir` exits.
+#'
+#' @keywords internal
+#' @noRd
+.duckdb_httpfs_connect <- function(url, reason, .envir = parent.frame()) {
+  con <- .duckdb_connect(reason = reason, verbose = FALSE, .envir = .envir)
+  if (grepl("^https?://", url)) {
+    loaded <- tryCatch(
+      {
+        .duckdb_quiet(DBI::dbExecute(con, "LOAD httpfs;"))
+        TRUE
+      },
+      error = function(e) FALSE
+    )
+    if (!loaded) {
+      .duckdb_quiet(DBI::dbExecute(con, "INSTALL httpfs; LOAD httpfs;"))
+    }
+  }
   con
 }
 
@@ -1588,7 +1992,7 @@
 #' the CNEFE points and `s` for the census tract aggregates, with `s.n_dom_p`
 #' and `s.n_dom_c` holding the counts of private and collective dwellings.
 #'
-#' Allocation rules, kept identical to the documented behaviour:
+#' Allocation rules, kept identical to the documented behavior:
 #' - `pop_ph` and `n_resp` are split across private dwellings only.
 #' - `pop_ch` is split across collective dwellings only.
 #' - `avg_inc_resp` is assigned, not split, to each private dwelling point.
@@ -1785,7 +2189,7 @@
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}} of total points)"
+        "{.field avg_inc_resp} assigned to {.strong {assigned_avg}} of {.strong {eligible_avg}} eligible points ({.strong {sprintf('%.2f%%', assigned_pct)}})"
       )
     )
 
@@ -1799,7 +2203,7 @@
       warn_lines <- c(
         warn_lines,
         cli::format_inline(
-          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of total tracts)"
+          "{.field avg_inc_resp} is {.strong NA} in {.strong {na_avg_tracts}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_avg_pct)}} of the tracts read)"
         )
       )
     }
@@ -1810,7 +2214,7 @@
     warn_lines <- c(
       warn_lines,
       cli::format_inline(
-        "Unmatched CNEFE points (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}} of total points)"
+        "Unmatched CNEFE points of the municipalities in {.arg code_muni} (no tract): {.strong {unmatched_pts}} of {.strong {total_pts}} points ({.strong {sprintf('%.2f%%', unmatched_pct)}})"
       )
     )
   }
@@ -1825,7 +2229,7 @@
       na_pct <- if (n_tracts > 0) 100 * n_na / n_tracts else 0
       na_totals <- c(
         na_totals,
-        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of total tracts)")
+        cli::format_inline("{.field {v}} in {.strong {n_na}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', na_pct)}} of the tracts read)")
       )
     }
   }
@@ -1868,7 +2272,7 @@
       n0_pct <- if (n_tracts > 0) 100 * n0 / n_tracts else 0
       no_elig <- c(
         no_elig,
-        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of total tracts)")
+        cli::format_inline("{.field {v}} in {.strong {n0}} of {.strong {n_tracts}} tracts ({.strong {sprintf('%.2f%%', n0_pct)}} of the tracts read)")
       )
     }
   }
@@ -1895,11 +2299,27 @@
 #' @param stage1_lines Character vector from `.build_interp_diagnostics()`.
 #' @param stage2_lines Character vector of preformatted stage 2 lines.
 #' @param stage2_label What the points were aggregated onto, e.g. `"H3 hexagons"`.
+#' @param stage2_warn_lines Optional stage 2 lines shown with a warning bullet,
+#'   such as the points that fell in H3 cells outside the grid (#120).
+#' @param head_lines Optional lines shown with a warning bullet right under the
+#'   title, before stage 1, such as the dwellings that fall in more than one
+#'   polygon (#120).
 #'
 #' @keywords internal
 #' @noRd
-.report_interp_diagnostics <- function(stage1_lines, stage2_lines, stage2_label) {
+.report_interp_diagnostics <- function(
+  stage1_lines,
+  stage2_lines,
+  stage2_label,
+  stage2_warn_lines = character(0),
+  head_lines = character(0)
+) {
   cli::cli_h2("Dasymetric interpolation diagnostics")
+  if (length(head_lines) > 0) {
+    cli::cli_bullets(
+      stats::setNames(head_lines, rep("!", length(head_lines)))
+    )
+  }
 
   cli::cli_h3("Stage 1: Tracts \u2192 CNEFE points")
   if (length(stage1_lines) > 0) {
@@ -1914,6 +2334,11 @@
   cli::cli_bullets(
     stats::setNames(stage2_lines, rep("i", length(stage2_lines)))
   )
+  if (length(stage2_warn_lines) > 0) {
+    cli::cli_bullets(
+      stats::setNames(stage2_warn_lines, rep("!", length(stage2_warn_lines)))
+    )
+  }
 
   invisible(NULL)
 }
@@ -1999,6 +2424,602 @@
   }
 
   if (is.null(polygon)) "hex" else "user"
+}
+
+
+## Theme: scope and the municipalities read
+
+#' Check the `code_muni` argument before it is normalized
+#'
+#' In polygon mode with `scope = "geom"`, `code_muni` is optional (#120), so
+#' `polygon` can be the only spatial input. A polygon passed by position then
+#' lands in `code_muni`, which used to fail with an unhelpful message about
+#' 7-digit codes. In H3 mode the grid is built from the boundaries of
+#' `code_muni`, so it is always required there.
+#'
+#' @param code_muni The `code_muni` argument as received by the caller.
+#' @param polygon_type `"hex"` or `"user"`.
+#'
+#' @return `TRUE` when `code_muni` was supplied, `FALSE` when it is `NULL` and
+#'   has to be detected from the polygons.
+#'
+#' @keywords internal
+#' @noRd
+.check_code_muni_arg <- function(code_muni, polygon_type) {
+  if (inherits(code_muni, "sf") || inherits(code_muni, "sfc")) {
+    cli::cli_abort(c(
+      "{.arg code_muni} received an {.cls sf} object.",
+      "i" = "Pass the polygons by name, as {.code polygon = <your sf object>}."
+    ))
+  }
+
+  if (is.null(code_muni)) {
+    if (identical(polygon_type, "hex")) {
+      cli::cli_abort(c(
+        "{.arg code_muni} is required for the H3 grid.",
+        "i" = "Pass one or more 7-digit IBGE codes, or pass {.arg polygon} to aggregate onto your own polygons."
+      ))
+    }
+    return(FALSE)
+  }
+
+  TRUE
+}
+
+
+#' Resolve `scope` and decide whether the municipalities are detected
+#'
+#' `scope` decides which CNEFE addresses a call works with (#120):
+#'
+#' - `"muni"`: every address of the municipalities in `code_muni`, which is
+#'   then required in both modes.
+#' - `"geom"`: the addresses inside the output geometries, whichever
+#'   municipality they belong to. In polygon mode the municipalities are
+#'   detected from the polygons, so a `code_muni` that was passed is ignored.
+#'   In H3 mode `code_muni` still defines the grid, and the municipalities the
+#'   grid reaches are added later by `.grid_neighbors()`.
+#'
+#' @param scope The `scope` argument as received.
+#' @param code_muni_given The result of `.check_code_muni_arg()`.
+#' @param polygon_type `"hex"` or `"user"`.
+#' @param call The environment of the exported function, so the error names it.
+#'
+#' @return A list with `scope` (`"muni"` or `"geom"`) and `detect` (`TRUE`
+#'   when the municipalities have to be detected from the polygons).
+#'
+#' @keywords internal
+#' @noRd
+.resolve_scope <- function(scope, code_muni_given, polygon_type, call = rlang::caller_env()) {
+  scope <- match.arg(scope, c("muni", "geom"))
+
+  if (!identical(polygon_type, "user")) {
+    return(list(scope = scope, detect = FALSE))
+  }
+
+  if (identical(scope, "muni")) {
+    if (!code_muni_given) {
+      cli::cli_abort(c(
+        "{.arg code_muni} is required when {.code scope = \"muni\"}.",
+        "i" = "Pass the 7-digit IBGE codes of the municipalities to read, or use {.code scope = \"geom\"} to read the municipalities the polygons intersect."
+      ), call = call)
+    }
+    return(list(scope = scope, detect = FALSE))
+  }
+
+  if (code_muni_given) {
+    cli::cli_inform(c(
+      "i" = "{.arg code_muni} is ignored with {.code scope = \"geom\"}, which reads the municipalities the polygons intersect.",
+      "i" = "Use {.code scope = \"muni\"} to read only the municipalities in {.arg code_muni}."
+    ))
+  }
+  list(scope = scope, detect = TRUE)
+}
+
+
+#' Municipalities outside `code_muni` that an H3 grid reaches
+#'
+#' With `scope = "geom"` the cells along the border of the grid are completed
+#' with the addresses of the neighboring municipalities (#120). The grid holds
+#' the cells whose center falls inside `code_muni` plus the neighboring cells
+#' that intersect the boundary, so it reaches every municipality that borders
+#' the area. They are found with the same test as the polygons, and listed in a
+#' message.
+#'
+#' @param hex_grid The sf grid from `build_h3_grid()`.
+#' @param code_muni The normalized codes the grid was built from.
+#' @param year Territorial base year.
+#'
+#' @return An integer vector of codes, possibly empty, not in `code_muni`.
+#'
+#' @keywords internal
+#' @noRd
+.grid_neighbors <- function(hex_grid, code_muni, year = 2022L, cache = TRUE,
+                            cache_dir = NULL) {
+  detected <- .detect_code_munis(hex_grid, year = year, cache = cache, cache_dir = cache_dir)
+  extra <- detected[!detected$code_muni %in% as.integer(code_muni), , drop = FALSE]
+
+  if (nrow(extra) > 0L) {
+    .inform_detected_munis(
+      extra,
+      intro = "The H3 grid also reaches {n} municipalit{?y/ies} outside {.arg code_muni}, read to complete the cells along the border: ",
+      hint = "Use {.code scope = \"muni\"} to read only the municipalities in {.arg code_muni}."
+    )
+  }
+
+  extra$code_muni
+}
+
+
+#' Keep only the neighbor tracts that hold a dwelling inside the H3 grid
+#'
+#' Used by `tracts_to_h3(scope = "geom")` (#120). The neighbors read to complete
+#' the border cells are read whole, but only the tracts with at least one
+#' dwelling in a cell of the grid can send anything to it. Those tracts are
+#' found by joining the neighbor dwellings that fall in the grid, usually a few
+#' thousand, to the tracts. Every other tract of the neighbors is deleted from
+#' `sc_muni_tbl`, so the main spatial join runs against far fewer tracts. The
+#' tracts kept stay whole, and all their dwellings are matched later, so the
+#' allocation is the same as in a call that lists the neighbors in `code_muni`.
+#'
+#' A dwelling is matched only to the tracts of its own municipality, as in the
+#' main join, and that filter runs after the spatial join for the same reason
+#' given there.
+#'
+#' @param con DuckDB connection holding `cnefe_pts_tbl` and `sc_muni_tbl`, the
+#'   latter with an RTREE index `sc_muni_geom_idx`.
+#' @param grid_ids Character vector of the cells of the grid.
+#' @param h3_resolution H3 resolution of the grid.
+#' @param own_list The codes of `code_muni`, as a comma-separated string.
+#'
+#' @keywords internal
+#' @noRd
+.sc_keep_tracts_touching_grid <- function(con, grid_ids, h3_resolution, own_list) {
+  exec <- function(sql) invisible(.duckdb_quiet(DBI::dbExecute(con, sql)))
+  own_chr <- paste0("'", strsplit(own_list, ", ", fixed = TRUE)[[1]], "'", collapse = ", ")
+
+  .duckdb_quiet(DBI::dbWriteTable(
+    con, "grid_ids_tbl", data.frame(id_hex = as.character(grid_ids)),
+    temporary = TRUE, overwrite = TRUE
+  ))
+
+  exec(sprintf(
+    "
+    CREATE OR REPLACE TEMP TABLE nb_pts_in_grid AS
+    SELECT p.code_muni, p.geom
+    FROM cnefe_pts_tbl p
+    WHERE p.code_muni NOT IN (%s)
+      AND h3_latlng_to_cell_string(p.lat, p.lon, %d) IN (SELECT id_hex FROM grid_ids_tbl);
+    ",
+    own_list, as.integer(h3_resolution)
+  ))
+
+  exec(
+    "
+    CREATE OR REPLACE TEMP TABLE nb_tract_hits AS
+    SELECT p.code_muni, s.code_tract
+    FROM nb_pts_in_grid p, sc_muni_tbl s
+    WHERE ST_Within(p.geom, s.geom);
+    "
+  )
+
+  # The index is rebuilt after the delete
+  exec("DROP INDEX IF EXISTS sc_muni_geom_idx;")
+  exec(sprintf(
+    "
+    DELETE FROM sc_muni_tbl
+    WHERE substr(code_tract, 1, 7) NOT IN (%s)
+      AND code_tract NOT IN (
+        SELECT DISTINCT code_tract
+        FROM nb_tract_hits
+        WHERE substr(code_tract, 1, 7) = CAST(code_muni AS VARCHAR)
+      );
+    ",
+    own_chr
+  ))
+  exec("CREATE INDEX sc_muni_geom_idx ON sc_muni_tbl USING RTREE (geom);")
+
+  invisible(NULL)
+}
+
+
+#' Build the H3 grid and decide which municipalities to read
+#'
+#' The grid always comes from the boundaries of `code_muni`. With
+#' `scope = "geom"`, the municipalities the grid reaches beyond them are read
+#' too, so the cells along the border hold the addresses of both sides (#120).
+#'
+#' @param code_muni Normalized codes.
+#' @param scope `"muni"` or `"geom"`.
+#' @param h3_resolution H3 resolution.
+#' @param year Territorial base year.
+#' @param cache,cache_dir Passed to the boundary reader.
+#'
+#' @return A list with `hex_grid` (sf) and `read_munis` (integer codes, with
+#'   `code_muni` first).
+#'
+#' @keywords internal
+#' @noRd
+.h3_grid_and_read_set <- function(code_muni, scope, h3_resolution, year = 2022L,
+                                  cache = TRUE, cache_dir = NULL) {
+  hex_grid <- build_h3_grid(
+    h3_resolution = h3_resolution,
+    code_muni = code_muni,
+    year = year,
+    cache = cache,
+    cache_dir = cache_dir
+  )
+
+  read_munis <- code_muni
+  if (identical(scope, "geom")) {
+    read_munis <- c(
+      code_muni,
+      .grid_neighbors(hex_grid, code_muni, year = year, cache = cache, cache_dir = cache_dir)
+    )
+  }
+
+  list(hex_grid = hex_grid, read_munis = as.integer(read_munis))
+}
+
+
+#' Call a geobr reader with the RNG state isolated and errors wrapped
+#'
+#' The same isolation `.read_muni_boundary()` does inline: geobr (>= 2.0.0)
+#' derives dbplyr table names from the global RNG, so repeated calls under a
+#' fixed seed collide. The caller's RNG state is restored on exit.
+#'
+#' @param fun A geobr function.
+#' @param args A named list of arguments.
+#' @param what Short description used in the error message.
+#'
+#' @return The sf object returned by geobr.
+#'
+#' @keywords internal
+#' @noRd
+.geobr_read <- function(fun, args, what) {
+  rlang::check_installed(
+    "geobr",
+    reason = "to find the municipalities that the polygons intersect."
+  )
+
+  if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+    old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), add = TRUE)
+  } else {
+    on.exit(
+      if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      },
+      add = TRUE
+    )
+  }
+  set.seed(NULL)
+
+  out <- tryCatch(
+    suppressMessages(suppressWarnings(rlang::exec(fun, !!!args))),
+    error = function(cnd) {
+      cli::cli_abort(
+        "Could not read {what} via {.pkg geobr}.",
+        parent = cnd
+      )
+    }
+  )
+
+  if (!inherits(out, "sf") || nrow(out) == 0L) {
+    cli::cli_abort(c(
+      "{.pkg geobr} returned an empty or invalid object for {what}.",
+      "i" = "Try updating {.pkg geobr}."
+    ))
+  }
+
+  out
+}
+
+
+#' Municipality boundaries of some states, for the territorial base of `year`
+#'
+#' Simplified geobr boundaries, used only when the release cannot be read (see
+#' `.read_muni_boundaries()`).
+#'
+#' @param code_states Two-digit IBGE state codes.
+#'
+#' @keywords internal
+#' @noRd
+.read_muni_boundaries_of_states <- function(code_states, year = 2022L) {
+  args_base <- list(year = year, simplified = TRUE, showProgress = FALSE)
+  if ("keep_areas_operacionais" %in% names(formals(geobr::read_municipality))) {
+    args_base$keep_areas_operacionais <- FALSE
+  }
+
+  parts <- lapply(code_states, function(uf) {
+    .geobr_read(
+      geobr::read_municipality,
+      c(list(code_muni = as.integer(uf)), args_base),
+      what = paste("the municipality boundaries of state", uf)
+    )
+  })
+
+  do.call(rbind, parts)
+}
+
+
+#' Tell the user which municipalities were detected
+#'
+#' Long lists are truncated to the first few names, so a layer that covers a
+#' metropolitan region does not print dozens of lines. The message is emitted
+#' whatever `verbose` says, because the detected set decides what is downloaded.
+#'
+#' @param detected The data frame returned by `.detect_code_munis()`.
+#' @param max_shown How many municipalities to name before truncating.
+#' @param intro cli text that opens the message. `{n}` is the number listed.
+#' @param hint cli text of the closing hint.
+#'
+#' @keywords internal
+#' @noRd
+.inform_detected_munis <- function(
+  detected,
+  max_shown = 5L,
+  intro = "The polygons intersect {n} municipalit{?y/ies}: ",
+  hint = "Use {.code scope = \"muni\"} with {.arg code_muni} to read only the municipalities you choose."
+) {
+  n <- nrow(detected)
+  labels <- sprintf("%s (%s)", detected$name_muni, detected$code_muni)
+  shown <- utils::head(labels, max_shown)
+  rest <- n - length(shown)
+
+  listing <- paste(shown, collapse = ", ")
+  if (rest > 0L) {
+    listing <- paste0(listing, cli::format_inline(", and {rest} more"))
+  }
+
+  cli::cli_inform(c(
+    "i" = cli::format_inline(intro),
+    " " = listing,
+    "i" = hint
+  ))
+}
+
+
+## Theme: P for compute_lumi()
+
+#' Validate `p_target`
+#'
+#' @keywords internal
+#' @noRd
+.validate_p_target <- function(p_target) {
+  if (is.null(p_target)) {
+    return(NULL)
+  }
+  if (
+    !is.numeric(p_target) || length(p_target) != 1L ||
+      is.na(p_target) || p_target <= 0 || p_target >= 1
+  ) {
+    cli::cli_abort(c(
+      "{.arg p_target} must be a single number strictly between 0 and 1.",
+      "i" = "Value received: {.val {p_target}}"
+    ))
+  }
+  as.numeric(p_target)
+}
+
+
+## Theme: Polygon coverage messages
+
+#' Abort when no CNEFE point falls inside the polygons
+#'
+#' @param code_muni The municipality codes that were read.
+#' @param detected `NULL` when `code_muni` was supplied, otherwise the data
+#'   frame from `.detect_code_munis()`.
+#'
+#' @keywords internal
+#' @noRd
+.abort_no_points_in_polygons <- function(code_muni, detected = NULL) {
+  if (is.null(detected)) {
+    cli::cli_abort(c(
+      "No CNEFE coordinates were captured within the provided polygon.",
+      "i" = "This may indicate that:",
+      "*" = "The municipality code {.val {code_muni}} does not correspond to the polygon's municipality, or",
+      "*" = "The polygon is not located within municipality {.val {code_muni}}."
+    ))
+  }
+  cli::cli_abort(c(
+    "No CNEFE coordinates were captured within the provided polygon.",
+    "i" = "None of the addresses of the {nrow(detected)} municipalit{?y/ies} the polygons intersect falls inside them."
+  ))
+}
+
+
+#' Report how many CNEFE points of the municipalities fell inside the polygons
+#'
+#' The warning depends on `scope` (#120):
+#'
+#' - `scope = "muni"`: the user chose the municipalities, so the points of
+#'   those municipalities left outside the polygons are worth a warning. In
+#'   `compute_lumi()` without `p_target` they are still part of P, and the
+#'   warning says so, along with what `scope = "geom"` would change (it does
+#'   not bring these points into the polygons).
+#' - `scope = "geom"` (`detected` is not `NULL`): the municipalities are read
+#'   whole, so most of their points fall outside the polygons by construction,
+#'   and they enter neither the counts nor P. Nothing is reported.
+#'
+#' @param points_matched Points inside at least one polygon.
+#' @param total_points Points read.
+#' @param detected `NULL` or the data frame from `.detect_code_munis()`.
+#' @param p_note `TRUE` when P is computed from the data (compute_lumi() without
+#'   `p_target`), `FALSE` otherwise (including cnefe_counts()).
+#' @param overlap The line from `.polygon_overlap_line()`, or `character(0)`.
+#'   It opens the coverage warning, and is a warning of its own when there is
+#'   no coverage warning to open.
+#'
+#' @keywords internal
+#' @noRd
+.report_polygon_coverage <- function(
+  points_matched,
+  total_points,
+  detected = NULL,
+  p_note = FALSE,
+  overlap = character(0)
+) {
+  warn_overlap_alone <- function() {
+    if (length(overlap) > 0L) {
+      cli::cli_warn("{overlap}")
+    }
+    invisible(NULL)
+  }
+
+  if (!is.null(detected)) {
+    return(warn_overlap_alone())
+  }
+
+  points_outside <- total_points - points_matched
+
+  if (points_outside <= 0L) {
+    cli::cli_inform(c(
+      "v" = "All {.val {total_points}} CNEFE points were captured within the provided polygon."
+    ))
+    return(warn_overlap_alone())
+  }
+  overlap_line <- if (length(overlap) > 0L) c("!" = "{overlap}") else character(0)
+
+  coverage_pct <- (points_matched / total_points) * 100
+
+  p_line <- if (p_note) {
+    c("i" = "Under {.code scope = \"muni\"}, P covers every address of these municipalities, these points included. On the other hand, {.code scope = \"geom\"} computes P from the addresses inside the polygons only, and also adds to the polygons the addresses of neighboring municipalities that fall inside them.")
+  } else {
+    character(0)
+  }
+  cli::cli_warn(c(
+    "Polygon coverage: {.val {sprintf('%.1f', coverage_pct)}%} of the CNEFE points of the municipalities in {.arg code_muni} were captured.",
+    overlap_line,
+    "i" = "{.val {points_matched}} of {.val {total_points}} points are within the provided polygon.",
+    "i" = "{.val {points_outside}} points from the municipalities in {.arg code_muni} fell outside the polygons and were not counted. Possible causes are polygons that don't cover the whole municipality, a coastline the polygons don't follow, or geocoding errors.",
+    p_line
+  ))
+  invisible(NULL)
+}
+
+
+## Theme: Repeated and overlapping polygons
+
+#' Drop the features of `polygon` that repeat the geometry of an earlier one
+#'
+#' Some public layers repeat a feature with the same geometry, such as the
+#' geobr neighborhoods, where a neighborhood appears once per subdistrict it
+#' falls in. Each copy would receive the same addresses, so sums over the
+#' output would count them two or three times, and the copies would also be
+#' reported as overlapping polygons (#120). The copies are compared as WKB,
+#' which catches exact repeats in about 0.1 s even for tens of thousands of
+#' features. The first occurrence of each geometry is kept, with its
+#' attributes.
+#'
+#' @param polygon An `sf` object.
+#'
+#' @return `polygon` without the repeated features.
+#'
+#' @keywords internal
+#' @noRd
+.drop_repeated_polygons <- function(polygon) {
+  wkb <- lapply(sf::st_as_binary(sf::st_geometry(polygon)), as.raw)
+  repeated <- duplicated(wkb)
+  n_rep <- sum(repeated)
+  if (n_rep == 0L) {
+    return(polygon)
+  }
+  n <- length(repeated)
+  n_kept <- n - n_rep
+  cli::cli_inform(c(
+    "i" = "{n_rep} of the {n} features in {.arg polygon} repeat the geometry of an earlier feature and were removed, so {n_kept} feature{?s} {?is/are} used.",
+    " " = "The first occurrence of each geometry is kept, with its attributes."
+  ))
+  polygon[!repeated, ]
+}
+
+
+#' Describe the CNEFE points that fall in more than one polygon
+#'
+#' Overlapping polygons are a legitimate choice, so they are kept. Each point
+#' still goes to every polygon that contains it, and the values summed over the
+#' polygons exceed those of the addresses. The line built here opens the
+#' diagnostics of the call (#120): the coverage warning of `cnefe_counts()` and
+#' `compute_lumi()`, or the interpolation diagnostics of `tracts_to_polygon()`.
+#' The count comes from the point-polygon join each function already makes.
+#'
+#' @param points_multi Points inside two or more polygons.
+#' @param points_matched Points inside at least one polygon.
+#' @param consequence The end of the sentence, on what the repeat does to the
+#'   output.
+#' @param what What the points are, for the message.
+#'
+#' @return One formatted line, or `character(0)` when no point repeats.
+#'
+#' @keywords internal
+#' @noRd
+.polygon_overlap_line <- function(points_multi, points_matched, consequence,
+                                  what = "CNEFE points") {
+  if (is.null(points_multi) || is.na(points_multi) || points_multi <= 0L) {
+    return(character(0))
+  }
+  pct <- .fmt_small_pct(100 * points_multi / points_matched)
+  cli::format_inline(
+    "Overlapping polygons: {.val {points_multi}} of the {.val {points_matched}} {what} inside the polygons ({pct}) fall in more than one polygon, so {consequence}"
+  )
+}
+
+
+## Theme: Addresses outside the H3 grid
+
+#' Format a share that is often tiny
+#'
+#' The addresses outside the grid are usually a handful among millions, and a
+#' fixed three decimals printed them as "0.000%", which reads as none.
+#' Values below 0.001% print as "<0.001%", values below 1% keep two
+#' significant digits, and larger ones one decimal.
+#'
+#' @param pct A percentage, between 0 and 100.
+#'
+#' @return A string such as "<0.001%", "0.0013%", "0.42%" or "12.3%".
+#'
+#' @keywords internal
+#' @noRd
+.fmt_small_pct <- function(pct) {
+  if (is.na(pct) || pct <= 0) {
+    return("0%")
+  }
+  if (pct < 0.001) {
+    return("<0.001%")
+  }
+  if (pct < 1) {
+    return(paste0(format(signif(pct, 2), scientific = FALSE, trim = TRUE), "%"))
+  }
+  sprintf("%.1f%%", pct)
+}
+
+
+#' Warn about addresses whose H3 cell is not in the grid
+#'
+#' The grid is built from the 2022 IBGE boundary of the municipalities, while the
+#' cell of an address comes from its own coordinates. An address geocoded just
+#' outside the boundary, beyond the ring of border cells, falls in a cell that
+#' the grid does not hold, and the join from the grid drops it (#120). The
+#' grid is kept as it is, and the loss is reported instead.
+#'
+#' @param n_outside Addresses in cells outside the grid.
+#' @param n_total All addresses counted.
+#' @param extra Optional extra bullet lines.
+#'
+#' @keywords internal
+#' @noRd
+.warn_outside_grid <- function(n_outside, n_total, extra = character(0)) {
+  if (n_outside <= 0L) {
+    return(invisible(NULL))
+  }
+  pct <- if (n_total > 0) 100 * n_outside / n_total else 0
+  # Formatted first: cli reads "{.name" as a style, not as a function call
+  pct_txt <- .fmt_small_pct(pct)
+  cli::cli_warn(c(
+    "{.val {n_outside}} of {.val {n_total}} addresses ({pct_txt}) of the municipalities in {.arg code_muni} fall in H3 cells outside the grid and were not counted.",
+    "i" = "The grid covers the 2022 IBGE municipal boundaries plus the cells along them, and these addresses were geocoded beyond it.",
+    extra
+  ))
 }
 
 
@@ -2107,7 +3128,7 @@
 #' indexed URL, and it never replaces the index, so a successful scan repairs a
 #' single call rather than mutating package state.
 #'
-#' @param code_muni Seven-digit IBGE municipality code, already normalised.
+#' @param code_muni Seven-digit IBGE municipality code, already normalized.
 #' @param known_url The URL from the internal index, used to locate the tree.
 #' @param timeout Seconds allowed per listing request.
 #' @param verbose Whether to report the attempt.
@@ -2185,7 +3206,7 @@
 #' Read a CNEFE file already on disk into an Arrow table
 #'
 #' Referee 1 (R1.11) asked for a path from the transient cache to a persistent,
-#' optimised store, citing `spanishoddata` as a model. Referee 2 (R2.7) asked,
+#' optimized store, citing `spanishoddata` as a model. Referee 2 (R2.7) asked,
 #' from the other direction, whether `read_cnefe()` could ingest a locally
 #' obtained file independently of the FTP download step. Both are answered by
 #' separating retrieval from parsing, which this does.

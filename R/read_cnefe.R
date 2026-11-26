@@ -57,7 +57,7 @@
 #' If `output = "sf"`, an [sf][sf::st_as_sf] object with point geometry in
 #' EPSG:4674 (SIRGAS 2000), using the `LONGITUDE` and `LATITUDE` columns.
 #'
-#' @seealso [cnefe_export()] to write a municipality to a persistent, optimised
+#' @seealso [cnefe_export()] to write a municipality to a persistent, optimized
 #'   file that this function can read back through `file`.
 #'
 #' @examples

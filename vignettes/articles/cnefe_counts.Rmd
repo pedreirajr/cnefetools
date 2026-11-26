@@ -300,6 +300,36 @@ Both approaches demonstrate how `cnefe_counts()` enables intra-urban
 analysis, moving beyond aggregate national statistics to reveal spatial
 patterns within cities.
 
+## Beyond a single municipality
+
+`code_muni` also accepts a vector of codes, which counts a region that
+spans several municipalities in one call. The addresses of all of them
+are pooled, the H3 grid is built over the union of their boundaries, and
+each cell appears once, so a cell on a shared border holds the addresses
+of both sides. Binding the outputs of one call per municipality doesn't
+give the same result, since such a cell would come back from both calls.
+
+By default (`scope = "muni"`), only the addresses of the municipalities
+in `code_muni` are read, so a cell or polygon on the outer edge of the
+area leaves out the addresses of the neighbor it overlaps. With
+`scope = "geom"`, the municipalities that the output geometries reach
+are read too, and every cell or polygon receives all the addresses
+inside it. With polygons, `code_muni` can then be left out:
+
+``` r
+# Porto Alegre and its neighbor Canoas in a single grid
+poa_can_hex <- cnefe_counts(
+  code_muni = c(4314902, 4304606),
+  h3_resolution = 8
+)
+
+# The municipalities the neighborhoods intersect are found on their own
+poa_neigh_counts_geom <- cnefe_counts(
+  polygon = poa_neighborhoods,
+  scope = "geom"
+)
+```
+
 ## References
 
 Massey, D. S. (2001). The prodigal paradigm returns: ecology comes back
