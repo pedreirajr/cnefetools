@@ -50,18 +50,28 @@ for (nm in names(MUNIS)) {
   }
 }
 
-cat("\n== census tract assets ==\n")
-# .sc_ensure_parquet_uf() takes the two-digit IBGE state code, not the acronym,
-# so derive it from the municipality codes above rather than hardcoding it.
+cat("\n== municipal boundaries and census tracts ==\n")
+# What the current version reads: the boundary of each municipality and its
+# census tracts, one Parquet file per municipality (#120). A whole-state tract
+# file in the cache takes precedence over the per-municipality one, and the
+# benchmark would then time a path new users no longer take, so stop on it.
+# .uf_from_code_muni() gives the two-digit IBGE state code, not the acronym.
 for (nm in names(MUNIS)) {
-  uf <- .uf_from_code_muni(MUNIS[[nm]])
+  cm <- MUNIS[[nm]]
+  uf <- .uf_from_code_muni(cm)
+  state_file <- .sc_asset_local_path(uf, year = 2022L)
+  if (file.exists(state_file)) {
+    stop(
+      "The cache holds the whole-state tract file ", state_file,
+      "\nUse a clean cache (CNEFETOOLS_CACHE_DIR) or remove it with ",
+      "clear_cache_tracts(), otherwise the benchmark measures the old path."
+    )
+  }
   t0 <- Sys.time()
-  p <- .sc_ensure_parquet_uf(uf = uf, cache = TRUE, year = 2022L, verbose = FALSE)
+  invisible(.read_muni_boundaries(cm, year = 2022L, cache = TRUE))
+  invisible(.sc_fetch_munis(uf, cm, cache = TRUE, year = 2022L))
   dt <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-  cat(sprintf(
-    "  %-24s uf %-3s %-28s %7.1f MB  %6.1fs\n",
-    nm, uf, basename(p), file.size(p) / 1024^2, dt
-  ))
+  cat(sprintf("  %-24s uf %-3s %6.1fs\n", nm, uf, dt))
 }
 
-cat("\nPre-warm complete. Caches are uniform (.csv.gz) and local.\n")
+cat("\nPre-warm complete. Caches are uniform (.csv.gz, per-municipality tracts) and local.\n")

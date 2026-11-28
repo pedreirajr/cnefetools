@@ -93,7 +93,8 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
       )
     },
     .cnefe_create_points_view_in_duckdb = function(con, ...) {
-      # 4 private points inside tract 1; 1 point outside any tract (unmatched)
+      # 4 private points inside tract 1; 1 point outside any tract (unmatched).
+      # code_muni is what the real view carries since #120.
       DBI::dbExecute(
         con,
         "
@@ -103,15 +104,16 @@ testthat::test_that("tracts_to_h3 returns an sf object with requested variables"
           1::INTEGER AS COD_ESPECIE,
           0.2::DOUBLE AS lon,
           0.2::DOUBLE AS lat,
-          ST_Point(0.2, 0.2) AS geom
+          ST_Point(0.2, 0.2) AS geom,
+          2927408::INTEGER AS code_muni
         UNION ALL
-        SELECT 2, 1, 0.2, 0.8, ST_Point(0.2, 0.8)
+        SELECT 2, 1, 0.2, 0.8, ST_Point(0.2, 0.8), 2927408
         UNION ALL
-        SELECT 3, 1, 0.8, 0.2, ST_Point(0.8, 0.2)
+        SELECT 3, 1, 0.8, 0.2, ST_Point(0.8, 0.2), 2927408
         UNION ALL
-        SELECT 4, 1, 0.8, 0.8, ST_Point(0.8, 0.8)
+        SELECT 4, 1, 0.8, 0.8, ST_Point(0.8, 0.8), 2927408
         UNION ALL
-        SELECT 5, 1, 10.0, 10.0, ST_Point(10.0, 10.0)
+        SELECT 5, 1, 10.0, 10.0, ST_Point(10.0, 10.0), 2927408
       "
       )
     }

@@ -1,7 +1,7 @@
 #' Compute land-use mix indicators on a spatial grid
 #'
 #' @description
-#' `compute_lumi()` reads CNEFE records for a given municipality,
+#' `compute_lumi()` reads CNEFE records for one or more municipalities,
 #' assigns each address point to spatial units (either H3 hexagonal cells or
 #' user-provided polygons), and computes the residential proportion (`p_res`) and land-use mix
 #' indices, such as the Entropy Index (`ei`), the Herfindahl-Hirschman Index (`hhi`),
@@ -10,38 +10,71 @@
 #' proposed in Pedreira Junior et al. (2025, 2026). The 2026 article introduces the BGBI,
 #' and the adapted HHI is documented in the 2025 preprint.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param code_muni Numeric or character. One or more seven-digit IBGE
+#'   municipality codes, for example `2927408` or `c(2927408, 2919207)`.
+#'   Repeated codes are dropped. With several codes, their addresses are
+#'   pooled into one analysis (see "Several municipalities").
+#'
+#'   Required for the H3 grid, which is built from the boundaries of these
+#'   municipalities. With `polygon`, it's required under `scope = "muni"` and
+#'   ignored under `scope = "geom"`, which finds the municipalities that the
+#'   polygons intersect (see "Municipalities detected from the polygons").
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param polygon_type `r lifecycle::badge("deprecated")` The aggregation mode is
 #'   now inferred from `polygon`: leave it `NULL` for an H3 grid, or pass an
 #'   [`sf::sf`] object for user polygons. Passing `polygon_type` still works and
 #'   warns.
-#' @param polygon An [`sf::sf`] object with polygon geometries. Supplying it
-#'   switches the output from an H3 grid to these polygons. A warning is issued reporting the percentage of
-#'   CNEFE points covered by the polygon area. If no CNEFE points fall within
-#'   the polygon, an error is raised.
+#' @param polygon An [`sf::sf`] object with polygon geometries. When it's
+#'   supplied, the indices are computed for these polygons instead of an H3
+#'   grid. Features with the same geometry as an earlier feature are dropped,
+#'   with a message, and the first one is kept. Under `scope = "muni"`, a
+#'   warning reports how many addresses of the municipalities in `code_muni`
+#'   fall outside the polygons. When polygons overlap, a warning also reports how many
+#'   addresses fall in more than one of them, since those enter the indices of
+#'   each. If no address falls inside the polygons, the function stops with an
+#'   error.
 #' @param crs_output The CRS for the output object. Only used when `polygon` is
 #'   supplied. Default is `NULL`, which uses the original CRS of
 #'   the `polygon` argument. Can be an EPSG code (e.g., 4326, 31983) or any CRS
 #'   object accepted by [sf::st_transform()].
 #' @param h3_resolution Integer. H3 grid resolution (default: 9). Only used for
 #'   the H3 grid, so it is ignored when `polygon` is supplied.
+#' @param scope Character. Which CNEFE addresses the function works with.
+#'   `"muni"` (the default, and the faster option) uses every address of the
+#'   municipalities in `code_muni`. `"geom"` uses the addresses that fall inside
+#'   the output geometries (the H3 cells, or the polygons in `polygon`),
+#'   whichever municipality they belong to, so the municipalities those
+#'   geometries reach are read as well. The H3 grid holds the cells whose
+#'   center falls inside the boundaries of `code_muni`, plus the neighboring
+#'   cells that intersect those boundaries. The scope also decides which
+#'   addresses P comes from (see "The citywide baseline P").
+#' @param p_target Numeric or `NULL`. A single number strictly between 0 and 1
+#'   that replaces the observed P, for example a residential share set by a
+#'   land-use plan (`P*` in Pedreira Junior et al., 2026). `NULL` (the default)
+#'   computes P from the data (see "The citywide baseline P").
 #' @param verbose Logical; if `TRUE`, prints messages and timing information.
-#' @param cache Logical. If `TRUE` (default), the downloaded data is stored as
-#'   a gzipped CSV in the user cache directory and reused in future calls. If
-#'   `FALSE`, a temporary file is used and deleted after the call.
+#' @param cache Logical. If `TRUE` (default), the downloaded files are kept in
+#'   the user cache directory and reused in later calls. These are the CNEFE
+#'   file of each municipality, stored as a gzipped CSV, and the municipal
+#'   boundaries used to build the H3 grid or to find the municipalities that
+#'   the polygons reach, one small file per municipality. If `FALSE`, temporary
+#'   files are used and deleted after the call. See [clear_cache_muni()] and
+#'   [clear_cache_boundaries()] to delete the cached files.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
 #'   point large downloads at a secondary drive or a shared volume.
 #' @param backend Character. `"duckdb"` (default) uses DuckDB with the H3
 #'   extension, reading the cached gzipped CSV directly. `"r"` computes H3 in R
-#'   using h3jsr instead, and needs no DuckDB extension.
+#'   using h3jsr instead, and needs no DuckDB extension for the indices. The
+#'   municipal boundaries of the H3 grid are still downloaded through DuckDB's
+#'   httpfs extension the first time, on either backend, and if that fails the
+#'   simplified geobr boundaries are used instead.
 #'
 #'   `"r"` exists for environments where DuckDB extensions cannot be installed,
 #'   such as some restricted computing clusters. It is **not** the lighter
-#'   option: it materialises the filtered address table in R memory, so its
+#'   option: it materializes the filtered address table in R memory, so its
 #'   footprint grows with the municipality, while DuckDB aggregates in a
 #'   streaming fashion and stays nearly flat. On São Paulo (5.7 million
 #'   addresses) the measured peak is about 8.4 GB under `"r"` against 0.6 GB
@@ -86,7 +119,7 @@
 #'
 #' `compute_lumi()` drops records with `COD_ESPECIE == 7` (building under
 #' construction or renovation), because such records describe a transitional
-#' state rather than a realised land use. Note that [cnefe_counts()] does **not**
+#' state rather than a realized land use. Note that [cnefe_counts()] does **not**
 #' apply this exclusion and reports these records as `addr_type7`.
 #'
 #' ## The citywide baseline P
@@ -100,13 +133,84 @@
 #' population, so it describes the distribution of address types and not the
 #' distribution of residents.
 #'
-#' Second, P is always computed over the full municipality, including when
-#' `polygon` is supplied, so it does not adapt to the area the supplied
-#' polygons happen to cover. This is intended, as P describes the context the
-#' addresses sit in, which is the municipality, and a sub-area of a city is
-#' still part of that wider context. A baseline recomputed over the sub-area
-#' would measure something different, namely mix relative to the sub-area
-#' itself rather than relative to the city.
+#' Second, by default (`scope = "muni"`) P is computed from every CNEFE
+#' address of the municipalities in `code_muni`, including when `polygon` is
+#' supplied, so it does not adapt to the area the supplied polygons happen to
+#' cover. This is intended, as P describes the context the addresses sit in,
+#' which is the municipality (or the region, when several are read), and a
+#' sub-area of a city is still part of that wider context.
+#'
+#' `scope = "geom"` computes P from the addresses inside the output geometries
+#' instead, each counted once where polygons overlap, which measures mix
+#' relative to the area covered rather than relative to the city. For polygons that cover only part of a municipality,
+#' such as a set of central neighborhoods, P is then the residential share of
+#' those polygons alone. On an H3 grid, P becomes the share of the cells of the
+#' grid, including the addresses of the neighboring municipalities that fall
+#' in the cells along the border.
+#'
+#' `p_target` replaces P with a composition chosen by the analyst, such as a
+#' goal set by a land-use plan, a zoning reform or a transit-oriented
+#' development strategy. This is the extension proposed in the conclusions of
+#' Pedreira Junior et al. (2026). With it, `bgbi` measures the distance to that
+#' goal rather than to the observed city, and the same target can be used
+#' across municipalities so that their values become comparable. `bal` with a
+#' target is no longer the original Balance Index of Song et al. (2013), which
+#' is defined against the observed citywide ratio.
+#'
+#' ## Several municipalities
+#'
+#' Pass a vector of codes to cover a region that spans more than one
+#' municipality. The records of all of them are pooled before anything is
+#' computed, the H3 grid is built over the union of their boundaries, and P is
+#' the residential share of the whole region. Each cell appears once, and a
+#' cell on a shared border holds the addresses of both sides.
+#'
+#' Because P belongs to the region, `bal` and `bgbi` are measured against the
+#' regional share, not against each municipality's own, and adding a
+#' municipality to `code_muni` changes them in every unit, not only near it. A
+#' call per municipality gives each of them a different P, so indices from such
+#' calls aren't comparable with one another, nor with a regional call.
+#'
+#' ## Border cells at the edge of the region
+#'
+#' Under the default `scope = "muni"`, only the addresses of the municipalities
+#' in `code_muni` are read. A cell or polygon on the outer edge of the
+#' requested area, one that also overlaps a municipality you did not request,
+#' therefore describes only the part of it that lies inside the area: its
+#' values (counts, `p_res` and indices) leave out the addresses of the
+#' neighbor. Adding municipalities moves the edge outward but does not remove
+#' it, and changes P.
+#'
+#' Under `scope = "geom"`, the municipalities that the output geometries reach
+#' are read too, and every cell or polygon receives all the addresses inside
+#' it, so the edge is complete. On the H3 grid, `code_muni` still defines the
+#' grid, and a message lists the neighboring municipalities read to complete
+#' it. This costs a download and a read of each of them in full, which is why
+#' it is not the default.
+#'
+#' ## Addresses outside the H3 grid
+#'
+#' The grid is built from the 2022 IBGE municipal boundaries, at full
+#' resolution, plus the ring of cells along them, but each address goes to the
+#' cell of its own coordinates. An address geocoded beyond that ring, for
+#' example on the coast or on a small island the boundary doesn't follow, lands
+#' in a cell outside the grid and isn't counted. A warning reports how many addresses of the municipalities in
+#' `code_muni` this affects. With `scope = "muni"` they are still part of P,
+#' and with `scope = "geom"` they are not.
+#'
+#' ## Municipalities detected from the polygons
+#'
+#' When `polygon` is supplied with `scope = "geom"`, the function finds the
+#' municipalities that the polygons intersect, using the 2022 IBGE municipal
+#' boundaries, and reads all of their addresses. A message lists them, and a
+#' `code_muni` passed in this case is ignored.
+#'
+#' Polygons from another source rarely follow the IBGE boundaries exactly, so
+#' a polygon along a municipal border can touch a neighboring municipality by
+#' a few meters. That neighbor is then downloaded and read too. Neither P nor
+#' the indices change, since only the addresses inside the polygons are used.
+#' If you know which municipalities the polygons belong to and want P to
+#' describe them, use `scope = "muni"` with `code_muni`, which is also faster.
 #'
 #' @references
 #' Pedreira Junior, J. U.; Louro, T. V.; Assis, L. B. M.; Brito, P. L.;
@@ -137,6 +241,10 @@
 #' # Compute land-use mix indices on H3 hexagons
 #' lumi <- compute_lumi(code_muni = 2929057, cache = FALSE)
 #'
+#' # Several municipalities in one call: one grid over their union and one P for
+#' # the whole region (Salvador and its neighbor Lauro de Freitas)
+#' lumi_region <- compute_lumi(code_muni = c(2927408, 2919207), cache = FALSE)
+#'
 #' # Compute land-use mix indices on user-provided polygons (neighborhoods of Lauro de Freitas-BA)
 #' # Using geobr to download neighborhood boundaries
 #' library(geobr)
@@ -149,16 +257,25 @@
 #'   polygon = nei_ldf,
 #'   cache = FALSE
 #' )
+#'
+#' # With scope = "geom", the municipalities the polygons intersect are read, and
+#' # P comes from the addresses inside the neighborhoods
+#' lumi_poly_geom <- compute_lumi(polygon = nei_ldf, scope = "geom", cache = FALSE)
+#'
+#' # BGBI against a target residential share of 70% instead of the observed one
+#' lumi_target <- compute_lumi(code_muni = 2919207, p_target = 0.7, cache = FALSE)
 #' }
 #'
 #' @export
 compute_lumi <- function(
-  code_muni,
+  code_muni = NULL,
   year = 2022,
   polygon_type = lifecycle::deprecated(),
   polygon = NULL,
   crs_output = NULL,
   h3_resolution = 9,
+  scope = c("muni", "geom"),
+  p_target = NULL,
   verbose = TRUE,
   cache = TRUE,
   cache_dir = NULL,
@@ -166,30 +283,29 @@ compute_lumi <- function(
 ) {
   polygon_type <- .resolve_polygon_mode(polygon, polygon_type, fn = "compute_lumi")
   backend <- match.arg(backend)
-  code_muni <- .normalize_code_muni(code_muni)
+  p_target <- .validate_p_target(p_target)
+  code_muni_given <- .check_code_muni_arg(code_muni, polygon_type)
+  scope <- .resolve_scope(scope, code_muni_given, polygon_type)
   year <- .validate_year(year)
 
   # Validate polygon argument
   if (polygon_type == "user") {
     .validate_polygon_arg(polygon, crs_output = crs_output)
+    # Repeated features would count the same addresses again (#120)
+    polygon <- .drop_repeated_polygons(polygon)
   }
+
+  # scope = "geom" on polygons: read the municipalities they intersect (#120)
+  detected <- NULL
+  if (scope$detect) {
+    detected <- .detect_code_munis(polygon, year = year, cache = cache, cache_dir = cache_dir)
+    .inform_detected_munis(detected)
+    code_muni <- detected$code_muni
+  }
+  code_muni <- .normalize_code_munis(code_muni)
 
   # Get the appropriate index for the requested year
   cnefe_index <- .get_cnefe_index(year)
-
-  # Name (optional)
-  info <- cnefe_index[
-    cnefe_index$code_muni == code_muni,
-    ,
-    drop = FALSE
-  ]
-  city_name <- if (
-    nrow(info) > 0 && "name_muni" %in% names(info) && !is.na(info$name_muni[1])
-  ) {
-    info$name_muni[1]
-  } else {
-    as.character(code_muni)
-  }
 
   if (verbose) {
     cli::cli_alert_info("Processing municipality code {.val {code_muni}}...")
@@ -211,7 +327,9 @@ compute_lumi <- function(
       cnefe_index = cnefe_index,
       verbose = verbose,
       cache = cache,
-      cache_dir = cache_dir
+      cache_dir = cache_dir,
+      p_target = p_target,
+      scope = scope$scope
     )
   } else {
     out <- .compute_lumi_user_poly(
@@ -223,7 +341,10 @@ compute_lumi <- function(
       cnefe_index = cnefe_index,
       verbose = verbose,
       cache = cache,
-      cache_dir = cache_dir
+      cache_dir = cache_dir,
+      p_target = p_target,
+      scope = scope$scope,
+      detected = detected
     )
   }
 
@@ -335,30 +456,37 @@ compute_lumi <- function(
   cnefe_index,
   verbose,
   cache = TRUE,
-  cache_dir = NULL
+  cache_dir = NULL,
+  p_target = NULL,
+  scope = "muni"
 ) {
   # ---------------------------------------------------------------------------
-  # Step 1/3: Ensure the cached data file exists
+  # Step 1/3: Build the H3 grid and ensure the cached data files exist. The
+  # grid comes first because, with scope = "geom", it decides which
+  # municipalities are read (#120).
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 1/3: Ensuring the CNEFE data file...",
-                           msg_done = "Step 1/3 (CNEFE data ready)")
+    cli::cli_progress_step("Step 1/3: Building the H3 grid and ensuring the CNEFE data...",
+                           msg_done = "Step 1/3 (Grid and CNEFE data ready)")
   }
 
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  grid_set <- .h3_grid_and_read_set(code_muni, scope, h3_resolution, year = year,
+                                    cache = cache, cache_dir = cache_dir)
+  hex_grid <- grid_set$hex_grid
+  read_munis <- grid_set$read_munis
+
+  zip_infos <- .cnefe_ensure_zips(
+    read_munis,
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose,
-    retry_timeouts = c(300L, 600L, 1800L)
+    verbose = verbose
   )
-  zip_path <- zip_info$zip_path
 
 
   if (verbose) {
-    cli::cli_progress_done("Step 1/3: Ensuring the CNEFE data file...")
+    cli::cli_progress_done("Step 1/3: Building the H3 grid and ensuring the CNEFE data...")
   }
 
   # ---------------------------------------------------------------------------
@@ -383,88 +511,71 @@ compute_lumi <- function(
       verbose = verbose
     )
 
-    {
-      {
-        src <- .cnefe_csv_uri(zip_path)
-        if (isTRUE(src$needs_zipfs)) {
-          # A cache written by an older version is still a ZIP.
-          .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-        }
-        uri <- src$uri
-        uri_sql <- gsub("'", "''", uri)
+    # One SELECT per municipality file, joined by UNION ALL. The H3 cell comes
+    # from the coordinates of each address, so a cell on a shared border gets the
+    # addresses of both sides in the same GROUP BY and appears once, and the
+    # totals that make up P cover the whole region (#120, R2 comment 1).
+    src_sql <- .cnefe_points_union_sql(
+      con,
+      zip_infos,
+      read_munis,
+      verbose = verbose
+    )
 
-        # only keep the columns needed; exclude COD_ESPECIE == 7
-        sql <- sprintf(
-          "
+    # only keep the columns needed; exclude COD_ESPECIE == 7. `own` flags the
+    # addresses of the municipalities in code_muni, the only ones the report of
+    # addresses outside the grid is about (#120).
+    sql <- sprintf(
+      "
         WITH src AS (
-          SELECT
-            CAST(LONGITUDE AS DOUBLE) AS lon,
-            CAST(LATITUDE  AS DOUBLE) AS lat,
-            try_cast(COD_ESPECIE AS INTEGER) AS cod
-          FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+          %s
         ),
         filtered AS (
           SELECT
             lower(hex(CAST(h3_latlng_to_cell(lat, lon, %d) AS UBIGINT))) AS id_hex,
-            cod
+            code_muni IN (%s) AS own,
+            COD_ESPECIE AS cod
           FROM src
           WHERE
             lon IS NOT NULL AND lat IS NOT NULL
-            AND cod BETWEEN 1 AND 8
-            AND cod != 7
+            AND COD_ESPECIE BETWEEN 1 AND 8
+            AND COD_ESPECIE != 7
         )
         SELECT
           id_hex,
+          own,
           SUM(CASE WHEN cod = 1 THEN 1 ELSE 0 END)::BIGINT AS n_res,
           COUNT(*)::BIGINT AS n_tot
         FROM filtered
-        GROUP BY 1;
+        GROUP BY 1, 2;
       ",
-          uri_sql,
-          as.integer(h3_resolution)
-        )
-
-        counts_hex <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
-          dplyr::as_tibble() |>
-          dplyr::mutate(
-            id_hex = as.character(.data$id_hex),
-            n_res = as.integer(.data$n_res),
-            n_tot = as.integer(.data$n_tot)
-          )
-      }
-    }
-
-  } else {
-    # backend "r"
-    tab <- read_cnefe(
-      code_muni = code_muni,
-      year = year,
-      output = "arrow",
-      cache = cache,
-      cache_dir = cache_dir,
-      verbose = FALSE
+      src_sql,
+      as.integer(h3_resolution),
+      paste(as.integer(code_muni), collapse = ", ")
     )
 
-    # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
-    # as.data.frame() first would materialise all 34 columns as an R data frame
-    # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
-    # memory falls from 108.4 MB to 68.3 MB.
-    df <- tab |>
-      dplyr::transmute(
-        LONGITUDE = as.numeric(.data$LONGITUDE),
-        LATITUDE = as.numeric(.data$LATITUDE),
-        COD_ESPECIE = as.integer(.data$COD_ESPECIE)
-      ) |>
-      dplyr::filter(
-        !is.na(.data$LONGITUDE),
-        !is.na(.data$LATITUDE),
-        !is.na(.data$COD_ESPECIE),
-        .data$COD_ESPECIE %in% 1L:8L,
-        .data$COD_ESPECIE != 7L
-      ) |>
-      dplyr::collect()
+    counts_hex <- .duckdb_quiet(DBI::dbGetQuery(con, sql)) |>
+      dplyr::as_tibble() |>
+      dplyr::mutate(
+        id_hex = as.character(.data$id_hex),
+        own = as.logical(.data$own),
+        n_res = as.integer(.data$n_res),
+        n_tot = as.integer(.data$n_tot)
+      )
 
-    if (nrow(df) == 0L) {
+  } else {
+    # backend "r": each municipality is reduced to its counts per cell before
+    # the next one is read, so the peak memory is that of the largest one.
+    counts_hex <- lapply(
+      seq_along(zip_infos),
+      function(i) {
+        .compute_lumi_h3_r(zip_infos[[i]]$zip_path, h3_resolution) |>
+          dplyr::mutate(own = read_munis[[i]] %in% code_muni)
+      }
+    ) |>
+      dplyr::bind_rows()
+
+    if (nrow(counts_hex) == 0L) {
       if (verbose) {
         cli::cli_alert_warning(
           "No valid CNEFE points after filtering (COD_ESPECIE 1:8, excluding 7). Returning an empty {.cls sf}."
@@ -472,29 +583,6 @@ compute_lumi <- function(
       }
       return(.empty_lumi_sf())
     }
-
-    coords <- df |>
-      dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
-
-    id_hex <- suppressMessages(h3jsr::point_to_cell(
-      coords,
-      res = h3_resolution,
-      simple = TRUE
-    ))
-
-    counts_hex <- df |>
-      dplyr::mutate(id_hex = as.character(id_hex)) |>
-      dplyr::filter(!is.na(.data$id_hex)) |>
-      dplyr::group_by(.data$id_hex) |>
-      dplyr::summarise(
-        n_res = sum(.data$COD_ESPECIE == 1L, na.rm = TRUE),
-        n_tot = dplyr::n(),
-        .groups = "drop"
-      ) |>
-      dplyr::mutate(
-        n_res = as.integer(.data$n_res),
-        n_tot = as.integer(.data$n_tot)
-      )
   }
 
   if (verbose) {
@@ -509,21 +597,49 @@ compute_lumi <- function(
   }
 
   # ---------------------------------------------------------------------------
-  # Step 3/3: Build H3 grid from ids + compute indices
+  # Step 3/3: Compute P and the indices on the grid
   # ---------------------------------------------------------------------------
   if (verbose) {
-    cli::cli_progress_step("Step 3/3: Building grid and computing LUMI...",
+    cli::cli_progress_step("Step 3/3: Computing LUMI on the grid...",
                            msg_done = "Step 3/3 (Land use mix indices computed)")
   }
 
-  hex_grid <- build_h3_grid(
-    h3_resolution = h3_resolution,
-    code_muni     = code_muni,
-    year          = year
+  # Addresses whose cell is not in the grid are dropped by the join below (#120)
+  in_grid <- counts_hex$id_hex %in% hex_grid$id_hex
+
+  # Citywide residential proportion P (COD_ESPECIE == 7 already excluded): the
+  # analyst's target, every address of code_muni (scope = "muni", where only
+  # code_muni is read), or the addresses in the cells of the grid, whichever
+  # municipality they belong to (scope = "geom").
+  P <- if (!is.null(p_target)) {
+    p_target
+  } else if (identical(scope, "geom")) {
+    sum(counts_hex$n_res[in_grid]) / sum(counts_hex$n_tot[in_grid])
+  } else {
+    sum(counts_hex$n_res, na.rm = TRUE) / sum(counts_hex$n_tot, na.rm = TRUE)
+  }
+
+  p_note <- if (!is.null(p_target)) {
+    character(0)
+  } else if (identical(scope, "geom")) {
+    c("i" = "P was computed from the cells of the grid only, so they are not part of it either.")
+  } else {
+    c("i" = "Under {.code scope = \"muni\"}, P covers every address of these municipalities, these addresses included. On the other hand, {.code scope = \"geom\"} computes P from the cells of the grid only, and also adds to the border cells the addresses of neighboring municipalities that fall inside them.")
+  }
+  own <- counts_hex$own
+  .warn_outside_grid(
+    n_outside = sum(counts_hex$n_tot[own & !in_grid]),
+    n_total = sum(counts_hex$n_tot[own]),
+    extra = p_note
   )
 
-  # Global city residential proportion P (exclude COD_ESPECIE == 7 already)
-  P <- sum(counts_hex$n_res, na.rm = TRUE) / sum(counts_hex$n_tot, na.rm = TRUE)
+  counts_hex <- counts_hex |>
+    dplyr::group_by(.data$id_hex) |>
+    dplyr::summarise(
+      n_res = as.integer(sum(.data$n_res)),
+      n_tot = as.integer(sum(.data$n_tot)),
+      .groups = "drop"
+    )
 
   out <- hex_grid |>
     dplyr::left_join(counts_hex, by = "id_hex") |>
@@ -545,10 +661,72 @@ compute_lumi <- function(
     )
 
   if (verbose) {
-    cli::cli_progress_done("Step 3/3: Building grid and computing LUMI...")
+    cli::cli_progress_done("Step 3/3: Computing LUMI on the grid...")
   }
 
   return(out)
+}
+
+
+# -----------------------------------------------------------------------------
+# Internal: R backend, counts per H3 cell for one municipality file
+# -----------------------------------------------------------------------------
+.compute_lumi_h3_r <- function(zip_path, h3_resolution) {
+  tab <- read_cnefe(
+    file = zip_path,
+    output = "arrow",
+    verbose = FALSE
+  )
+
+  # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
+  # as.data.frame() first would materialize all 34 columns as an R data frame
+  # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
+  # memory falls from 108.4 MB to 68.3 MB.
+  df <- tab |>
+    dplyr::transmute(
+      LONGITUDE = as.numeric(.data$LONGITUDE),
+      LATITUDE = as.numeric(.data$LATITUDE),
+      COD_ESPECIE = as.integer(.data$COD_ESPECIE)
+    ) |>
+    dplyr::filter(
+      !is.na(.data$LONGITUDE),
+      !is.na(.data$LATITUDE),
+      !is.na(.data$COD_ESPECIE),
+      .data$COD_ESPECIE %in% 1L:8L,
+      .data$COD_ESPECIE != 7L
+    ) |>
+    dplyr::collect()
+
+  if (nrow(df) == 0L) {
+    return(dplyr::tibble(
+      id_hex = character(0),
+      n_res = integer(0),
+      n_tot = integer(0)
+    ))
+  }
+
+  coords <- df |>
+    dplyr::transmute(lon = .data$LONGITUDE, lat = .data$LATITUDE)
+
+  id_hex <- suppressMessages(h3jsr::point_to_cell(
+    coords,
+    res = h3_resolution,
+    simple = TRUE
+  ))
+
+  df |>
+    dplyr::mutate(id_hex = as.character(id_hex)) |>
+    dplyr::filter(!is.na(.data$id_hex)) |>
+    dplyr::group_by(.data$id_hex) |>
+    dplyr::summarise(
+      n_res = sum(.data$COD_ESPECIE == 1L, na.rm = TRUE),
+      n_tot = dplyr::n(),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      n_res = as.integer(.data$n_res),
+      n_tot = as.integer(.data$n_tot)
+    )
 }
 
 
@@ -564,7 +742,10 @@ compute_lumi <- function(
   cnefe_index,
   verbose,
   cache = TRUE,
-  cache_dir = NULL
+  cache_dir = NULL,
+  p_target = NULL,
+  scope = "muni",
+  detected = NULL
 ) {
   # ---------------------------------------------------------------------------
   # Step 1/3: Ensure the cached data file exists and prepare polygon
@@ -574,16 +755,14 @@ compute_lumi <- function(
                            msg_done = "Step 1/3 (Data and polygon ready)")
   }
 
-  zip_info <- .cnefe_ensure_zip(
-    code_muni = code_muni,
+  zip_infos <- .cnefe_ensure_zips(
+    code_muni,
     index = cnefe_index,
     cache = cache,
     cache_dir = cache_dir,
     year = year,
-    verbose = verbose,
-    retry_timeouts = c(300L, 600L, 1800L)
+    verbose = verbose
   )
-  zip_path <- zip_info$zip_path
 
   # Store original CRS for output transformation
   original_crs <- sf::st_crs(polygon)
@@ -628,19 +807,24 @@ compute_lumi <- function(
     )
 
     join_result <- .compute_lumi_user_poly_duckdb(
-      zip_path = zip_path,
+      zip_infos = zip_infos,
+      code_munis = code_muni,
       polygon = polygon_4326,
       verbose = verbose
     )
   } else {
-    join_result <- .compute_lumi_user_poly_r(
-      code_muni = code_muni,
-      year = year,
-      polygon = polygon_4326,
-      verbose = verbose,
-      cache = cache,
-      cache_dir = cache_dir
-    )
+    # One municipality at a time, reduced to counts per polygon before the next
+    # file is read, so the peak memory is that of the largest municipality.
+    join_result <- .combine_poly_joins(lapply(
+      zip_infos,
+      function(info) {
+        .compute_lumi_user_poly_r(
+          zip_path = info$zip_path,
+          polygon = polygon_4326,
+          verbose = verbose
+        )
+      }
+    ))
   }
 
   if (verbose) {
@@ -665,32 +849,31 @@ compute_lumi <- function(
 
   # Check for zero coverage
   if (points_matched == 0L) {
-    cli::cli_abort(c(
-      "No CNEFE coordinates were captured within the provided polygon.",
-      "i" = "This may indicate that:",
-      "*" = "The municipality code {.val {code_muni}} does not correspond to the polygon's municipality, or",
-      "*" = "The polygon is not located within municipality {.val {code_muni}}."
-    ))
+    .abort_no_points_in_polygons(code_muni, detected)
   }
 
-  # Calculate coverage percentage
-  coverage_pct <- (points_matched / total_points) * 100
+  .report_polygon_coverage(
+    points_matched = points_matched,
+    total_points = total_points,
+    detected = detected,
+    p_note = is.null(p_target),
+    overlap = .polygon_overlap_line(
+      join_result$points_multi,
+      points_matched,
+      "each enters the indices of every polygon that contains it."
+    )
+  )
 
-  # Issue warning about coverage
-  if (points_outside > 0L) {
-    cli::cli_warn(c(
-      "Polygon coverage: {.val {sprintf('%.1f', coverage_pct)}%} of CNEFE points captured.",
-      "i" = "{.val {points_matched}} of {.val {total_points}} points are within the provided polygon.",
-      "i" = "{.val {points_outside}} points fell outside the polygon and were not counted."
-    ))
+  # P: the analyst's target, the addresses inside the polygons, each counted
+  # once even where polygons overlap (scope = "geom"), or every address of
+  # code_muni (scope = "muni") (#120).
+  P <- if (!is.null(p_target)) {
+    p_target
+  } else if (identical(scope, "geom")) {
+    join_result$matched_n_res / join_result$matched_n_tot
   } else {
-    cli::cli_inform(c(
-      "v" = "All {.val {total_points}} CNEFE points were captured within the provided polygon."
-    ))
+    total_n_res / total_n_tot
   }
-
-  # Global P from all municipality CNEFE points (not just those in polygons)
-  P <- total_n_res / total_n_tot
 
   # Join counts to polygon and compute LUMI indices
   if (nrow(counts) == 0L || all(is.na(counts$.poly_row_id))) {
@@ -737,7 +920,8 @@ compute_lumi <- function(
 # Internal: DuckDB backend for user polygon spatial join (compute_lumi)
 # -----------------------------------------------------------------------------
 .compute_lumi_user_poly_duckdb <- function(
-  zip_path,
+  zip_infos,
+  code_munis,
   polygon,
   verbose
 ) {
@@ -752,30 +936,34 @@ compute_lumi <- function(
 
   .duckdb_quiet({
     {
-      src <- .cnefe_csv_uri(zip_path)
-      if (isTRUE(src$needs_zipfs)) {
-        # A cache written by an older version is still a ZIP.
-        .duckdb_quiet(.duckdb_ensure_extension(con, "zipfs", verbose = verbose))
-      }
-      uri <- src$uri
-      uri_sql <- gsub("'", "''", uri)
+      # One SELECT per municipality file, joined by UNION ALL: the points of the
+      # whole region go through a single spatial join, and the global totals
+      # that make up P cover all of them (#120, R2 comment 1).
+      src_sql <- .cnefe_points_union_sql(
+        con,
+        zip_infos,
+        code_munis,
+        verbose = verbose
+      )
 
       DBI::dbExecute(con, sprintf(
         "
       CREATE TABLE cnefe_pts AS
       SELECT
         ROW_NUMBER() OVER () AS pt_id,
-        CAST(LONGITUDE AS DOUBLE) AS lon,
-        CAST(LATITUDE  AS DOUBLE) AS lat,
-        try_cast(COD_ESPECIE AS INTEGER) AS COD_ESPECIE,
-        ST_Point(CAST(LONGITUDE AS DOUBLE), CAST(LATITUDE AS DOUBLE)) AS geom
-      FROM read_csv_auto('%s', delim=';', header=true, strict_mode=false)
+        lon,
+        lat,
+        COD_ESPECIE,
+        ST_Point(lon, lat) AS geom
+      FROM (
+        %s
+      )
       WHERE
-        LONGITUDE IS NOT NULL AND LATITUDE IS NOT NULL
-        AND try_cast(COD_ESPECIE AS INTEGER) BETWEEN 1 AND 8
-        AND try_cast(COD_ESPECIE AS INTEGER) != 7;
+        lon IS NOT NULL AND lat IS NOT NULL
+        AND COD_ESPECIE BETWEEN 1 AND 8
+        AND COD_ESPECIE != 7;
       ",
-        uri_sql
+        src_sql
       ))
 
       total_points <- DBI::dbGetQuery(
@@ -793,8 +981,11 @@ compute_lumi <- function(
       total_points = 0L,
       points_matched = 0L,
       points_outside = 0L,
+      points_multi = 0L,
       total_n_res = 0L,
-      total_n_tot = 0L
+      total_n_tot = 0L,
+      matched_n_res = 0L,
+      matched_n_tot = 0L
     ))
   }
 
@@ -852,12 +1043,34 @@ compute_lumi <- function(
   coverage <- DBI::dbGetQuery(con,
     "
     SELECT
-      COUNT(DISTINCT CASE WHEN poly_row_id IS NOT NULL THEN pt_id END) AS matched
-    FROM joined;
+      COUNT(*) FILTER (WHERE k >= 1) AS matched,
+      COUNT(*) FILTER (WHERE k > 1) AS multi
+    FROM (
+      SELECT pt_id, COUNT(poly_row_id) AS k
+      FROM joined
+      GROUP BY pt_id
+    );
     "
   )
   unique_pts_matched <- as.integer(coverage$matched[1])
+  # Points inside two or more polygons, for the overlap warning (#120)
+  points_multi <- as.integer(coverage$multi[1])
   points_outside <- total_points - unique_pts_matched
+
+  # Totals over the points inside any polygon, each point once even where
+  # polygons overlap, for scope = "geom" (#120)
+  matched_totals <- DBI::dbGetQuery(con,
+    "
+    SELECT
+      COALESCE(SUM(CASE WHEN COD_ESPECIE = 1 THEN 1 ELSE 0 END), 0)::INTEGER AS n_res,
+      COUNT(*)::INTEGER AS n_tot
+    FROM (
+      SELECT DISTINCT pt_id, COD_ESPECIE
+      FROM joined
+      WHERE poly_row_id IS NOT NULL
+    );
+    "
+  )
 
   # Aggregate n_res and n_tot per polygon (inside DuckDB)
   counts <- DBI::dbGetQuery(con,
@@ -882,8 +1095,11 @@ compute_lumi <- function(
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside,
+    points_multi = points_multi,
     total_n_res = total_n_res,
-    total_n_tot = total_n_tot
+    total_n_tot = total_n_tot,
+    matched_n_res = as.integer(matched_totals$n_res[1]),
+    matched_n_tot = as.integer(matched_totals$n_tot[1])
   )
 
     }
@@ -898,25 +1114,19 @@ compute_lumi <- function(
 # Internal: R backend for user polygon spatial join (compute_lumi)
 # -----------------------------------------------------------------------------
 .compute_lumi_user_poly_r <- function(
-  code_muni,
-  year,
+  zip_path,
   polygon,
-  verbose,
-  cache = TRUE,
-  cache_dir = NULL
+  verbose
 ) {
   # Read CNEFE data via Arrow
   tab <- read_cnefe(
-    code_muni = code_muni,
-    year = year,
-    output = "arrow",
-    cache = cache,
-    cache_dir = cache_dir,
-    verbose = FALSE
-  )
+      file = zip_path,
+      output = "arrow",
+      verbose = FALSE
+    )
 
   # Verbs are pushed down to the Arrow table and collected last (#80 R1.10).
-  # as.data.frame() first would materialise all 34 columns as an R data frame
+  # as.data.frame() first would materialize all 34 columns as an R data frame
   # before three of them are kept. Measured on Fortaleza, 1.19M rows: peak
   # memory falls from 108.4 MB to 68.3 MB.
   df <- tab |>
@@ -946,8 +1156,11 @@ compute_lumi <- function(
       total_points = 0L,
       points_matched = 0L,
       points_outside = 0L,
+      points_multi = 0L,
       total_n_res = 0L,
-      total_n_tot = 0L
+      total_n_tot = 0L,
+      matched_n_res = 0L,
+      matched_n_tot = 0L
     ))
   }
 
@@ -967,8 +1180,16 @@ compute_lumi <- function(
   joined <- sf::st_join(cnefe_pts, polygon[, ".poly_row_id"], join = sf::st_within)
 
   # Count unique points matched
-  unique_pts_matched <- length(unique(joined$.pt_id[!is.na(joined$.poly_row_id)]))
+  hits <- tabulate(joined$.pt_id[!is.na(joined$.poly_row_id)], nbins = total_points)
+  matched_ids <- which(hits > 0L)
+  unique_pts_matched <- length(matched_ids)
+  # Points inside two or more polygons, for the overlap warning (#120)
+  points_multi <- sum(hits > 1L)
   points_outside <- total_points - unique_pts_matched
+
+  # Totals over the points inside any polygon, each point once even where
+  # polygons overlap, for scope = "geom" (#120)
+  matched_n_res <- as.integer(sum(cnefe_pts$COD_ESPECIE[matched_ids] == 1L))
 
   # Aggregate n_res and n_tot per polygon
   counts <- joined |>
@@ -986,7 +1207,10 @@ compute_lumi <- function(
     total_points = total_points,
     points_matched = unique_pts_matched,
     points_outside = points_outside,
+    points_multi = points_multi,
     total_n_res = total_n_res,
-    total_n_tot = total_n_tot
+    total_n_tot = total_n_tot,
+    matched_n_res = matched_n_res,
+    matched_n_tot = as.integer(unique_pts_matched)
   ))
 }

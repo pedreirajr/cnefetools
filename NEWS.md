@@ -1,5 +1,92 @@
 # cnefetools (development version)
 
+## New features
+
+* `cnefe_counts()`, `compute_lumi()`, `tracts_to_h3()` and `tracts_to_polygon()`
+  now accept a vector of municipality codes in `code_muni`. The CNEFE files of
+  all of them are read as one table, the H3 grid is built over the union of the
+  boundaries, and for `compute_lumi()` the citywide share P is computed over the
+  whole region. This replaces the pattern of calling a function once per
+  municipality and binding the results, which does not give a correct regional
+  result: the grid of each municipality includes the H3 cells that intersect its
+  boundary, so a cell on a shared border is returned by both calls, each holding
+  only its own side. Removing the repeated rows then discards one municipality's
+  contribution, and averaging the two values of an index is wrong (20 private
+  households on one side and 51 other-use addresses on the other give a
+  residential share of 20 / 71 in the pooled cell, not the 0.5 that the average
+  of the two separate shares gives). With a vector every cell appears once. A
+  call with a single code behaves as before. The codes can be given as numbers
+  or as strings, alone or in a vector, and repeated codes are dropped (#120).
+
+* New `scope = c("muni", "geom")` argument in `cnefe_counts()`,
+  `compute_lumi()`, `tracts_to_h3()` and `tracts_to_polygon()`. The default,
+  `"muni"`, reads only the addresses of the municipalities in `code_muni`, so a
+  cell or polygon on the outer edge of the requested area describes only the
+  part of it inside the area. `"geom"` also reads every municipality that the
+  output geometries reach, so the cells and polygons on the edge receive all
+  the addresses inside them. In `compute_lumi()`, `"geom"` also computes P from
+  the addresses inside the output geometries rather than from every address of
+  the municipalities read. This is documented in the "Border cells at the edge
+  of the region" section of each function ("Polygons at the edge of the region"
+  in `tracts_to_polygon()`) (#120).
+
+* With `polygon` and `scope = "geom"`, `code_muni` can be left out in
+  `cnefe_counts()`, `compute_lumi()` and `tracts_to_polygon()`. The
+  municipalities that the polygons intersect are found from the 2022 IBGE
+  boundaries, even across states, and a message lists them (#120).
+
+* `compute_lumi()` gains `p_target`, a residential share strictly between 0 and
+  1 chosen by the analyst (`P*` in Pedreira Junior et al., 2026), which replaces
+  the observed P in `bal` and `bgbi` (#120).
+
+* New `clear_cache_boundaries()` deletes the cached municipality boundaries.
+  `clear_cache_tracts()` also removes the census tracts cached by municipality,
+  and leaves the boundaries alone (#120).
+
+## Minor improvements
+
+* Municipal boundaries are now read at full resolution from a file published
+  with the package and cached one file per municipality, instead of the
+  simplified `geobr` boundaries, which remain the fallback. H3 grids built from
+  `code_muni` may therefore differ slightly along the border from those of
+  0.3.0. The cached boundaries can be removed with `clear_cache_boundaries()`
+  (#120).
+
+* `tracts_to_h3()` and `tracts_to_polygon()` download only the census tracts of
+  the municipalities they read, and cache them one file per municipality,
+  instead of the whole state. A state file already in the cache is still used
+  (#120).
+
+* Features of `polygon` that repeat an earlier geometry are dropped with a
+  message, and overlapping polygons are reported, since the addresses in the
+  overlap enter each of them (#120).
+
+* `cnefe_counts()`, `compute_lumi()` and `tracts_to_h3()` warn about addresses
+  whose H3 cell falls outside the grid, for example on the coast or on small
+  islands the boundary doesn't follow (#120).
+
+## Bug fixes
+
+* With `cache = FALSE`, `cnefe_counts()` and `compute_lumi()` on the R backend
+  no longer download the municipality twice. They now read the file they
+  already retrieved (#121).
+
+* An address whose H3 cell falls outside the grid of its own municipality is no
+  longer dropped when the neighboring municipality is requested in the same
+  call. On Salvador and Lauro de Freitas this recovers 4 of 1,502,282 addresses
+  that two separate calls leave out (#120).
+
+* With `cache = FALSE`, temporary files are now deleted when the function
+  exits, whether it succeeds or fails. Before, `cnefe_counts()` and
+  `compute_lumi()` left a `.csv.gz` in the session's temporary folder on either
+  backend, and `tracts_to_h3()` and `tracts_to_polygon()` left the census tract
+  Parquet. They could also leave the CNEFE file behind when they failed partway
+  through (#121).
+
+* A `cnefetools.duckdb_config` option with an unknown setting or the wrong
+  shape no longer leaves a DuckDB connection open. The connection is now set to
+  close before the option is applied (#121).
+
 # cnefetools 0.3.0
 
 ## Breaking changes

@@ -47,8 +47,12 @@ stopifnot(requireNamespace("callr", quietly = TRUE))
 stopifnot(requireNamespace("ps", quietly = TRUE))
 
 PILOT <- "--pilot" %in% commandArgs(trailingOnly = TRUE)
-PKG_DIR <- normalizePath(".", winslash = "/")
-OUT_CSV <- "data-raw/bench_r2_8.csv"
+# BENCH_PKG_DIR points the measurements at another checkout of the package
+# (for example a worktree of an earlier release, to compare two versions under
+# the same conditions), and BENCH_OUT_CSV writes the results somewhere other
+# than the committed CSV. Both default to the current behavior.
+PKG_DIR <- normalizePath(Sys.getenv("BENCH_PKG_DIR", "."), winslash = "/")
+OUT_CSV <- Sys.getenv("BENCH_OUT_CSV", "data-raw/bench_r2_8.csv")
 
 MUNIS <- list(
   vca = list(label = "Vitoria da Conquista-BA", code = 2933307L, n = "~200k"),

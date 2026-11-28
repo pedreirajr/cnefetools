@@ -17,10 +17,21 @@
 #' fallback would offer users a path that does not finish rather than a slower
 #' one.
 #'
-#' @param code_muni Integer. Seven-digit IBGE municipality code.
+#' @param code_muni Numeric or character. One or more seven-digit IBGE
+#'   municipality codes, for example `2927408` or `c(2927408, 2919207)`.
+#'   Repeated codes are dropped. With several codes, they're interpolated
+#'   together, in a single allocation (see "Several municipalities").
+#'
+#'   Required under `scope = "muni"` (the default) and ignored under
+#'   `scope = "geom"`, which finds the municipalities that the polygons
+#'   intersect (see "Municipalities detected from the polygons").
 #' @param polygon An [`sf::sf`] object with polygon geometries (POLYGON or
-#'   MULTIPOLYGON). The function will automatically align CRS and issue a warning
-#'   reporting the percentage of the polygon area that falls outside the municipality.
+#'   MULTIPOLYGON), in any CRS. Features with the same geometry as an earlier
+#'   feature are dropped, with a message, and the first one is kept. Under
+#'   `scope = "muni"`, the diagnostics report the share of the allocated points
+#'   of the municipalities in `code_muni` that falls inside the polygons. When
+#'   polygons overlap, the diagnostics open with how many dwellings fall in more
+#'   than one of them, since their allocated values are added to each.
 #' @param year Integer. The CNEFE data year. Currently only 2022 is supported.
 #'   Defaults to 2022.
 #' @param vars Character vector. Names of tract-level variables to interpolate.
@@ -52,7 +63,19 @@
 #' @param crs_output The CRS for the output object. Default is `NULL`, which uses
 #'   the original CRS of the `polygon` argument. Can be an EPSG code (e.g., 4326,
 #'   31983) or any CRS object accepted by [sf::st_transform()].
-#' @param cache Logical. Whether to use the package cache for the census tract assets and the CNEFE files.
+#' @param scope Character. Which CNEFE addresses (and census tracts) the
+#'   function works with. `"muni"` (the default, and the faster option) uses
+#'   every address and tract of the municipalities in `code_muni`. `"geom"` uses
+#'   the addresses that fall inside the polygons in `polygon`, whichever
+#'   municipality they belong to, so the municipalities those polygons reach are
+#'   read as well. See the section "Polygons at the edge of the region".
+#' @param cache Logical. If `TRUE` (default), the downloaded files are kept in
+#'   the user cache directory and reused in later calls. These are the CNEFE
+#'   file, the census tracts and the boundary of each municipality read. Only
+#'   the tracts of those municipalities are downloaded, not the whole state. If
+#'   `FALSE`, temporary files are used and deleted after the call. See
+#'   [clear_cache_muni()], [clear_cache_tracts()] and [clear_cache_boundaries()]
+#'   to delete the cached files.
 #' @param cache_dir Character. Directory to use for cached downloads. If `NULL`
 #'   (default), the `CNEFETOOLS_CACHE_DIR` environment variable is used when it
 #'   is set, otherwise [tools::R_user_dir()] with `which = "cache"`. Use this to
@@ -62,6 +85,46 @@
 #' @return An `sf` object with the user-provided polygons and the requested
 #'   interpolated variables. The output CRS matches the original `polygon` CRS
 #'   (or `crs_output` if specified).
+#'
+#' @details
+#' ## Several municipalities
+#'
+#' Pass a vector of codes to interpolate a region that spans more than one
+#' municipality in a single call. The tracts and the CNEFE points of all of them
+#' go through one allocation, each point is matched only to the tracts of its own
+#' municipality, and the result has one row per polygon, whichever municipality
+#' the polygon crosses.
+#'
+#' Calling the function once per municipality and binding the results isn't the
+#' same. A polygon that crosses a municipal border gets, in each call, only the
+#' part of the allocation that comes from the municipality of that call.
+#' Totals (every variable except `avg_inc_resp`) add up, so separate outputs
+#' can be combined by summing them by polygon. `avg_inc_resp` can't, because
+#' it's an average over the allocated points, and two averages don't give the
+#' average of the pooled points. Use a vector of codes instead.
+#'
+#' ## Polygons at the edge of the region
+#'
+#' Under the default `scope = "muni"`, only the addresses and tracts of the
+#' municipalities in `code_muni` are used. A polygon that extends beyond them
+#' receives only the part of the allocation that comes from the municipalities
+#' requested, so its totals and `avg_inc_resp` describe a fraction of it. Use
+#' `scope = "geom"` for a complete result, which reads every municipality the
+#' polygons reach.
+#'
+#' ## Municipalities detected from the polygons
+#'
+#' With `scope = "geom"`, the function finds the municipalities that the
+#' polygons intersect, using the 2022 IBGE municipal boundaries, and uses all
+#' of their tracts and addresses, even when they belong to different states. A
+#' message lists them, and a `code_muni` passed in this case is ignored.
+#'
+#' Polygons from another source rarely follow the IBGE boundaries exactly, so
+#' a polygon along a municipal border can touch a neighboring municipality by
+#' a few meters. That neighbor is then downloaded and read too. The values are
+#' not affected, since only the points inside the polygons are aggregated, but
+#' use `scope = "muni"` with `code_muni` whenever you know which municipalities
+#' the polygons belong to, which is faster.
 #'
 #' @examples
 #' \donttest{
@@ -78,22 +141,26 @@
 #'   vars = c("pop_ph", "pop_ch"),
 #'   cache = FALSE
 #' )
+#'
+#' # With scope = "geom", the municipalities the polygons intersect are used
+#' poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FALSE)
 #' }
 #'
 #' @export
 tracts_to_polygon <- function(
-  code_muni,
+  code_muni = NULL,
   polygon,
   year = 2022,
-
   vars = c("pop_ph", "pop_ch"),
   crs_output = NULL,
+  scope = c("muni", "geom"),
   cache = TRUE,
   cache_dir = NULL,
   verbose = TRUE
 ) {
   # normalize inputs ----------------------------------------------------------
-  code_muni <- .normalize_code_muni(code_muni)
+  code_muni_given <- .check_code_muni_arg(code_muni, "user")
+  scope <- .resolve_scope(scope, code_muni_given, "user")
   year <- .validate_year(year)
 
   # Get the appropriate index for the requested year
@@ -141,6 +208,17 @@ cnefe_index <- .get_cnefe_index(year)
 
   # validate polygon ----------------------------------------------------------
   .validate_polygon_arg(polygon, crs_output = crs_output)
+  # Repeated features would receive the same dwellings again (#120)
+  polygon <- .drop_repeated_polygons(polygon)
+
+  # scope = "geom": use the municipalities the polygons intersect (#120)
+  detected <- NULL
+  if (scope$detect) {
+    detected <- .detect_code_munis(polygon, year = year, cache = cache, cache_dir = cache_dir)
+    .inform_detected_munis(detected)
+    code_muni <- detected$code_muni
+  }
+  code_muni <- .normalize_code_munis(code_muni)
 
   # helpers -------------------------------------------------------------------
 
@@ -247,45 +325,6 @@ cnefe_index <- .get_cnefe_index(year)
     "CREATE INDEX IF NOT EXISTS sc_muni_geom_idx ON sc_muni_tbl USING RTREE (geom);"
   )
 
-  # Check polygon coverage against census tracts union
-  tracts_union_wkt <- DBI::dbGetQuery(
-    con,
-    "SELECT ST_AsText(ST_Union_Agg(geom)) AS wkt FROM sc_muni_tbl;"
-  )$wkt[1]
-
-  if (!is.null(tracts_union_wkt) && !is.na(tracts_union_wkt)) {
-    tracts_union <- sf::st_as_sfc(tracts_union_wkt, crs = 4326)
-    tracts_union <- sf::st_make_valid(tracts_union)
-
-    polygon_union <- sf::st_union(polygon_4326)
-    polygon_union <- sf::st_make_valid(polygon_union)
-
-    polygon_inside <- tryCatch(
-      sf::st_intersection(polygon_union, tracts_union),
-      error = function(e) polygon_union
-    )
-    polygon_inside <- sf::st_make_valid(polygon_inside)
-
-    # Use a projected CRS for accurate area calculation (UTM based on centroid)
-    centroid <- sf::st_centroid(polygon_union)
-    centroid_coords <- sf::st_coordinates(centroid)
-    utm_zone <- floor((centroid_coords[1] + 180) / 6) + 1
-    utm_crs <- if (centroid_coords[2] >= 0) {
-      sf::st_crs(paste0("+proj=utm +zone=", utm_zone, " +datum=WGS84 +units=m +no_defs"))
-    } else {
-      sf::st_crs(paste0("+proj=utm +zone=", utm_zone, " +south +datum=WGS84 +units=m +no_defs"))
-    }
-
-    polygon_union_proj <- sf::st_transform(polygon_union, utm_crs)
-    polygon_inside_proj <- sf::st_transform(polygon_inside, utm_crs)
-
-    total_area <- as.numeric(sf::st_area(polygon_union_proj))
-    inside_area <- as.numeric(sf::st_area(polygon_inside_proj))
-    outside_area <- total_area - inside_area
-    outside_pct <- (outside_area / total_area) * 100
-
-  }
-
   if (verbose) {
     cli::cli_progress_done("Step 3/6: preparing census tracts in DuckDB...")
   }
@@ -298,7 +337,7 @@ cnefe_index <- .get_cnefe_index(year)
   }
 
   # Create lazy views (cnefe_raw, cnefe_pts) that read from the ZIP file.
-  zip_info_cnefe <- .cnefe_create_points_view_in_duckdb(
+  .cnefe_create_points_view_in_duckdb(
     con,
     code_muni = code_muni,
     index = cnefe_index,
@@ -327,10 +366,8 @@ cnefe_index <- .get_cnefe_index(year)
     "SELECT COUNT(*) AS n FROM cnefe_pts_tbl;"
   )$n[1]
 
-  # ZIP data is now fully in DuckDB — safe to delete the temp file.
-  if (is.list(zip_info_cnefe) && isTRUE(zip_info_cnefe$cleanup_zip)) {
-    on.exit(unlink(zip_info_cnefe$zip_path), add = TRUE)
-  }
+  # A temporary CNEFE file was registered for deletion on exit by
+  # .cnefe_create_points_view_in_duckdb(), before anything here could fail.
 
   if (verbose) {
     cli::cli_progress_done("Step 4/6: preparing CNEFE points in DuckDB...")
@@ -356,6 +393,22 @@ cnefe_index <- .get_cnefe_index(year)
     WHERE ST_Within(p.geom, s.geom);
   "
   )
+
+  # With several municipalities a point is only matched to the tracts of its own
+  # municipality, the same pairing a call per municipality would make. The
+  # filter runs after the join, not inside it: an equality predicate on two
+  # columns of the joined tables takes the spatial join out of its optimized
+  # operator and turns it into a nested loop, which does not finish on a
+  # metropolitan region.
+  if (length(code_muni) > 1L) {
+    .duckdb_quiet_execute(
+      con,
+      "
+      DELETE FROM cnefe_sc
+      WHERE substr(code_tract, 1, 7) <> CAST(code_muni AS VARCHAR);
+    "
+    )
+  }
 
   matched_pts <- DBI::dbGetQuery(con, "SELECT COUNT(*) AS n FROM cnefe_sc;")$n[1]
   unmatched_pts <- max(total_cnefe_pts - matched_pts, 0)
@@ -483,20 +536,41 @@ cnefe_index <- .get_cnefe_index(year)
   "
   )
 
+  # Dwellings inside two or more polygons, for the overlap warning (#120)
+  points_multi <- DBI::dbGetQuery(
+    con,
+    "
+    SELECT COUNT(*) AS n
+    FROM (
+      SELECT COD_UNICO_ENDERECO
+      FROM cnefe_poly_joined
+      WHERE poly_row_id IS NOT NULL
+      GROUP BY COD_UNICO_ENDERECO
+      HAVING COUNT(DISTINCT poly_row_id) > 1
+    );
+  "
+  )$n[1]
+
   points_inside <- coverage_stats$inside[1]
   points_outside <- coverage_stats$total[1] - points_inside
 
   if (points_inside == 0) {
-    cli::cli_abort(c(
-      "No CNEFE coordinates were captured within the provided polygon.",
-      "i" = "This may indicate that:",
-      "*" = "The municipality code {.val {code_muni}} does not correspond to the polygon's municipality, or",
-      "*" = "The polygon is not located within municipality {.val {code_muni}}."
-    ))
+    .abort_no_points_in_polygons(code_muni, detected)
   }
 
-  # Coverage stats saved for Stage 2 diagnostics
-  coverage_pct <- (points_inside / total_alloc_pts) * 100
+  # Opens the diagnostics below (#120)
+  overlap_line <- .polygon_overlap_line(
+    points_multi,
+    points_inside,
+    "the values allocated to each are added to every polygon that contains it, and the totals summed over the polygons exceed those of the tracts.",
+    what = "CNEFE dwellings"
+  )
+
+  # Coverage stats saved for Stage 2 diagnostics. Numerator and denominator
+  # both count distinct dwellings, so a dwelling that repeats in the join is
+  # not counted twice in one of them only (#120).
+  points_total <- coverage_stats$total[1]
+  coverage_pct <- if (points_total > 0) (points_inside / points_total) * 100 else 0
 
   if (verbose) {
     cli::cli_progress_done("Step 5/6: spatial join (points to tracts) and allocation...")
@@ -561,16 +635,26 @@ cnefe_index <- .get_cnefe_index(year)
   warn_lines <- .build_interp_diagnostics(con, vars, unmatched_pts, total_cnefe_pts)
 
   total_polygons <- nrow(polygon_4326)
-  polygons_with_values <- nrow(poly_vals)
-  polygons_empty <- total_polygons - polygons_with_values
+  polygons_empty <- sum(!polygon_4326$.poly_row_id %in% poly_vals$.poly_row_id)
 
+  # With scope = "geom" the detected municipalities are read whole, so the
+  # share left outside the polygons says nothing about the call (#120).
   stage2_lines <- character(0)
-  stage2_lines <- c(
-    stage2_lines,
-    cli::format_inline(
-      "Polygon coverage: {.strong {points_inside}} of {.strong {total_alloc_pts}} allocated points captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+  if (is.null(detected)) {
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Polygon coverage: {.strong {points_inside}} of {.strong {points_total}} allocated points of the municipalities in {.arg code_muni} captured ({.strong {sprintf('%.2f%%', coverage_pct)}})"
+      )
     )
-  )
+  } else {
+    stage2_lines <- c(
+      stage2_lines,
+      cli::format_inline(
+        "Allocated points inside the polygons: {.strong {points_inside}}, from the {.strong {nrow(detected)}} municipalities the polygons intersect"
+      )
+    )
+  }
   if (polygons_empty > 0) {
     polygons_empty_pct <- 100 * polygons_empty / total_polygons
     stage2_lines <- c(
@@ -581,7 +665,8 @@ cnefe_index <- .get_cnefe_index(year)
     )
   }
 
-  .report_interp_diagnostics(warn_lines, stage2_lines, "Polygons")
+  .report_interp_diagnostics(warn_lines, stage2_lines, "Polygons",
+                             head_lines = overlap_line)
 
   return(out)
 }

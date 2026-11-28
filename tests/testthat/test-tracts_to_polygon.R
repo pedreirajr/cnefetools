@@ -139,13 +139,22 @@ testthat::test_that("tracts_to_polygon validates code_muni argument", {
     "code_muni.*7-digit"
   )
 
-  # Error when code_muni has multiple values
+  # Several municipalities are accepted (#120), but an invalid code among them,
+  # or none at all, is still an error raised before any retrieval.
   testthat::expect_error(
     cnefetools::tracts_to_polygon(
-      c(2929057L, 2927408L),
+      c(2929057L, 123L),
       polygon = test_polygon,
       verbose = FALSE
     ),
-    "code_muni.*single"
+    "code_muni.*7-digit"
+  )
+  testthat::expect_error(
+    cnefetools::tracts_to_polygon(
+      integer(0),
+      polygon = test_polygon,
+      verbose = FALSE
+    ),
+    "at least one"
   )
 })

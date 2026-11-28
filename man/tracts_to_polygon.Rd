@@ -5,22 +5,34 @@
 \title{Convert census tract aggregates to user-provided polygons using CNEFE points}
 \usage{
 tracts_to_polygon(
-  code_muni,
+  code_muni = NULL,
   polygon,
   year = 2022,
   vars = c("pop_ph", "pop_ch"),
   crs_output = NULL,
+  scope = c("muni", "geom"),
   cache = TRUE,
   cache_dir = NULL,
   verbose = TRUE
 )
 }
 \arguments{
-\item{code_muni}{Integer. Seven-digit IBGE municipality code.}
+\item{code_muni}{Numeric or character. One or more seven-digit IBGE
+municipality codes, for example \code{2927408} or \code{c(2927408, 2919207)}.
+Repeated codes are dropped. With several codes, they're interpolated
+together, in a single allocation (see "Several municipalities").
+
+Required under \code{scope = "muni"} (the default) and ignored under
+\code{scope = "geom"}, which finds the municipalities that the polygons
+intersect (see "Municipalities detected from the polygons").}
 
 \item{polygon}{An \code{\link[sf:sf]{sf::sf}} object with polygon geometries (POLYGON or
-MULTIPOLYGON). The function will automatically align CRS and issue a warning
-reporting the percentage of the polygon area that falls outside the municipality.}
+MULTIPOLYGON), in any CRS. Features with the same geometry as an earlier
+feature are dropped, with a message, and the first one is kept. Under
+\code{scope = "muni"}, the diagnostics report the share of the allocated points
+of the municipalities in \code{code_muni} that falls inside the polygons. When
+polygons overlap, the diagnostics open with how many dwellings fall in more
+than one of them, since their allocated values are added to each.}
 
 \item{year}{Integer. The CNEFE data year. Currently only 2022 is supported.
 Defaults to 2022.}
@@ -59,7 +71,20 @@ tracts with no private dwellings receive no allocation.
 the original CRS of the \code{polygon} argument. Can be an EPSG code (e.g., 4326,
 31983) or any CRS object accepted by \code{\link[sf:st_transform]{sf::st_transform()}}.}
 
-\item{cache}{Logical. Whether to use the package cache for the census tract assets and the CNEFE files.}
+\item{scope}{Character. Which CNEFE addresses (and census tracts) the
+function works with. \code{"muni"} (the default, and the faster option) uses
+every address and tract of the municipalities in \code{code_muni}. \code{"geom"} uses
+the addresses that fall inside the polygons in \code{polygon}, whichever
+municipality they belong to, so the municipalities those polygons reach are
+read as well. See the section "Polygons at the edge of the region".}
+
+\item{cache}{Logical. If \code{TRUE} (default), the downloaded files are kept in
+the user cache directory and reused in later calls. These are the CNEFE
+file, the census tracts and the boundary of each municipality read. Only
+the tracts of those municipalities are downloaded, not the whole state. If
+\code{FALSE}, temporary files are used and deleted after the call. See
+\code{\link[=clear_cache_muni]{clear_cache_muni()}}, \code{\link[=clear_cache_tracts]{clear_cache_tracts()}} and \code{\link[=clear_cache_boundaries]{clear_cache_boundaries()}}
+to delete the cached files.}
 
 \item{cache_dir}{Character. Directory to use for cached downloads. If \code{NULL}
 (default), the \code{CNEFETOOLS_CACHE_DIR} environment variable is used when it
@@ -92,6 +117,49 @@ take prohibitively long in medium and large municipalities, so a pure-R
 fallback would offer users a path that does not finish rather than a slower
 one.
 }
+\details{
+\subsection{Several municipalities}{
+
+Pass a vector of codes to interpolate a region that spans more than one
+municipality in a single call. The tracts and the CNEFE points of all of them
+go through one allocation, each point is matched only to the tracts of its own
+municipality, and the result has one row per polygon, whichever municipality
+the polygon crosses.
+
+Calling the function once per municipality and binding the results isn't the
+same. A polygon that crosses a municipal border gets, in each call, only the
+part of the allocation that comes from the municipality of that call.
+Totals (every variable except \code{avg_inc_resp}) add up, so separate outputs
+can be combined by summing them by polygon. \code{avg_inc_resp} can't, because
+it's an average over the allocated points, and two averages don't give the
+average of the pooled points. Use a vector of codes instead.
+}
+
+\subsection{Polygons at the edge of the region}{
+
+Under the default \code{scope = "muni"}, only the addresses and tracts of the
+municipalities in \code{code_muni} are used. A polygon that extends beyond them
+receives only the part of the allocation that comes from the municipalities
+requested, so its totals and \code{avg_inc_resp} describe a fraction of it. Use
+\code{scope = "geom"} for a complete result, which reads every municipality the
+polygons reach.
+}
+
+\subsection{Municipalities detected from the polygons}{
+
+With \code{scope = "geom"}, the function finds the municipalities that the
+polygons intersect, using the 2022 IBGE municipal boundaries, and uses all
+of their tracts and addresses, even when they belong to different states. A
+message lists them, and a \code{code_muni} passed in this case is ignored.
+
+Polygons from another source rarely follow the IBGE boundaries exactly, so
+a polygon along a municipal border can touch a neighboring municipality by
+a few meters. That neighbor is then downloaded and read too. The values are
+not affected, since only the points inside the polygons are aggregated, but
+use \code{scope = "muni"} with \code{code_muni} whenever you know which municipalities
+the polygons belong to, which is faster.
+}
+}
 \examples{
 \donttest{
 # Interpolate population to user-provided polygons (neighborhoods of Lauro de Freitas-BA)
@@ -107,6 +175,9 @@ poly_pop <- tracts_to_polygon(
   vars = c("pop_ph", "pop_ch"),
   cache = FALSE
 )
+
+# With scope = "geom", the municipalities the polygons intersect are used
+poly_pop_geom <- tracts_to_polygon(polygon = nei_ldf, scope = "geom", cache = FALSE)
 }
 
 }

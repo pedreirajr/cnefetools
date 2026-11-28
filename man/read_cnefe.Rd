@@ -95,6 +95,6 @@ cnefe_sf <- read_cnefe(code_muni = 2929057, output = "sf", cache = FALSE)
 
 }
 \seealso{
-\code{\link[=cnefe_export]{cnefe_export()}} to write a municipality to a persistent, optimised
+\code{\link[=cnefe_export]{cnefe_export()}} to write a municipality to a persistent, optimized
 file that this function can read back through \code{file}.
 }

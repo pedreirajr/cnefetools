@@ -15,3 +15,6 @@ data-raw/baseline/
 # Regenerated census tract assets (#80 R1.9). The checksums and the
 # verification table are the committed artefacts.
 data-raw/sc_assets/
+
+# Boundary asset built by data-raw/boundaries_2022.R, published on the release
+data-raw/muni_2022.parquet
