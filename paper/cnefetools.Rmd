@@ -1206,6 +1206,14 @@ poly_diag <- tracts_to_polygon(
 )
 ```
 
+The report opens with a warning that the polygons overlap. The
+neighborhoods of Lauro de Freitas in \CRANpkg{geobr} overlap slightly,
+so 61 dwellings (0.064%) fall in two neighborhoods, and the values
+allocated to them are added to both. Overlapping polygons are not
+treated as an error, since some layers overlap by design, but they are
+always reported, because the totals summed over the polygons then exceed
+those of the census tracts.
+
 Stage 1 of the report describes how completely the census tract totals
 were allocated to CNEFE dwelling points before aggregation to the target
 polygons. The unallocated fraction for count variables such as `pop_ph`
