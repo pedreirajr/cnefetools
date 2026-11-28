@@ -61,6 +61,8 @@ knitr::opts_chunk$set(
   eval = FALSE
 )
 
+library(cnefetools)
+
 # Patch distill so that an explicit `last_name:` in the YAML author block
 # takes precedence over the default behaviour of splitting `name` on spaces
 # and using the last word (which would produce "Junior" instead of
@@ -163,7 +165,8 @@ provides tools for computing land use mix indices from either
 address-level or polygon-based data.
 
 A key technical contribution is a dual-backend architecture. The default
-DuckDB backend [@duckdb2019], supported by the \pkg{duckdb} R package,
+DuckDB backend [@duckdb2019], supported by the \CRANpkg{duckdb} R package
+[@duckdb_r2024],
 reads the cached gzipped CSV directly, without prior extraction and
 without any third-party extension, performs H3 cell assignment and
 spatial joins entirely in-process, and returns only the final aggregated
@@ -238,7 +241,7 @@ columns are:
 |  4   | Educational establishment  |       Estabelecimento de ensino       |
 |  5   |    Health establishment    |       Estabelecimento de saúde        |
 |  6   |    Other establishment     | Estabelecimento de outras finalidades |
-|  7   |     Under construction     |  Edificação em construção ou reforma  |
+|  7   | Under construction or renovation |  Edificação em construção ou reforma  |
 |  8   |  Religious establishment   |       Estabelecimento religioso       |
 
 : (#tab:tab-especie) CNEFE address types (`COD_ESPECIE`).
@@ -264,7 +267,8 @@ million (10.5%), followed by agricultural establishments (address type
 3) at 4.1 million (3.7%), while educational (address type 4), health
 (address type 5), and religious establishments (address type 8) jointly
 account for approximately 1.1 million records (1.0%). Buildings under
-construction (address type 7) numbered approximately 3.5 million (3.2%).
+construction or renovation (address type 7) numbered approximately 3.5
+million (3.2%).
 
 The data are distributed by IBGE via an FTP server at
 <https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/>.
@@ -308,7 +312,8 @@ functions additionally validate their inputs with \CRANpkg{checkmate}
 [@lang2017] before any I/O (normalizing municipality codes, verifying
 geometry types, and repairing invalid geometries), so errors are caught
 before any network or disk operation begins. Every function accepts one
-or more municipality codes, and Section 4.5 shows how a study region
+or more municipality codes, and the subsection "Several municipalities at
+once" in Section 4 shows how a study region
 that spans several municipalities is handled in a single call.
 
 ## Pre-built municipality index
@@ -355,8 +360,8 @@ third-party extension.
 The cache location resolves from the most specific source to the least:
 the `cache_dir` argument of the calling function, then the
 `CNEFETOOLS_CACHE_DIR` environment variable, and finally
-`tools::R_user_dir("cnefetools", "cache")`, which remains the default so
-that users who do nothing see the previous behaviour. Both mechanisms
+`tools::R_user_dir("cnefetools", "cache")`, which is the default. Both
+mechanisms
 are offered deliberately, since an environment variable suits a machine
 configured once while an explicit argument lets a single call be
 redirected without touching the session. The argument is accepted by
@@ -372,12 +377,14 @@ Caching can be disabled with `cache = FALSE`, in which case the data is
 written to a temporary file and removed when the function exits. Users
 also have direct control over the local cache: `clear_cache_muni()` and
 `clear_cache_tracts()` allow selectively removing cached files, either
-all at once or filtered by municipality or state (see Section 4.6).
+all at once or filtered by municipality or state (see "Utility
+functions" in Section 4).
 
 For workflows that need the data outside this transient cache,
 `cnefe_export()` writes a permanent copy to a location of the user's
 choosing, and the `file` argument of `read_cnefe()` reads such a copy
-back without any download (see Section 4.6). Together they let a user
+back without any download (see "Utility functions" in Section 4).
+Together they let a user
 keep an optimised copy on whichever disk suits them, and they also make
 ingestion independent of the download path, which matters if access to
 the upstream server ever changes.
@@ -389,7 +396,7 @@ For the computationally intensive operations in `cnefe_counts()` and
 hexagons or user-supplied polygons and performing spatial joins, users
 can choose between two backends via the `backend` argument:
 
--   **`"duckdb"` (default)**: uses the \CRANpkg{duckdb} [@duckdb_r2024]
+-   **`"duckdb"` (default)**: uses the \CRANpkg{duckdb}
     R package alongside some DuckDB extensions to spin up an in-memory DuckDB database.
     Reading the cached gzipped CSV requires no extension at all, since
     DuckDB decompresses gzip natively. For H3 aggregation, the `h3`
@@ -413,7 +420,7 @@ point-in-polygon overlay between every dwelling point in the
 municipality and the census tract polygons, which is a different and
 heavier workload than the tabular aggregation that the pure-R backend
 handles, and it is the step that benefits most from DuckDB's spatial
-index (Section 4.4).
+index (see "Dasymetric interpolation" in Section 4).
 
 The census tract assets required by `tracts_to_h3()` and
 `tracts_to_polygon()` are Parquet files published on the package's
@@ -424,7 +431,7 @@ small row groups, so DuckDB's `httpfs` extension can read only the
 tracts of the municipalities a call needs, straight from the release,
 and keep them in the cache. If that read fails, the package downloads
 the whole state file through the \CRANpkg{piggyback} package
-[@piggyback2023], as earlier versions did. The municipal boundaries used
+[@piggyback2023]. The municipal boundaries used
 to build the H3 grid are served the same way, from a single file with
 the 2022 IBGE boundaries at full resolution.
 
@@ -516,7 +523,7 @@ of the dataset previously read as an `arrow::Table`.
 ```{r cnefe-preview, echo=-3, eval=TRUE, cache=TRUE}
 library(dplyr)
 
-cnefe <- cnefetools::read_cnefe(
+cnefe <- read_cnefe(
   code_muni = 2919207, verbose = FALSE
 )
 cnefe |>
@@ -545,7 +552,7 @@ muni_ldf <- geobr::read_municipality(code_muni = 2919207,
                                      showProgress = FALSE)
 
 # CNEFE educational establishments only (COD_ESPECIE == 4)
-educational <- cnefetools::read_cnefe(
+educational <- read_cnefe(
   code_muni = 2919207, output = "sf", verbose = FALSE
 ) |>
   dplyr::filter(COD_ESPECIE == 4)
@@ -647,14 +654,14 @@ nei <- geobr::read_neighborhood(year = 2022, showProgress = FALSE) |>
   dplyr::filter(name_muni == "Lauro de Freitas")
 
 # Address counts per H3 hexagon at resolution 8
-hex8 <- cnefetools::cnefe_counts(
+hex8 <- cnefe_counts(
   code_muni     = 2919207,
   h3_resolution = 8,
   verbose       = FALSE
 )
 
 # Address counts per neighborhood
-poly_counts <- cnefetools::cnefe_counts(
+poly_counts <- cnefe_counts(
   code_muni    = 2919207,
   polygon      = nei,
   verbose      = FALSE
@@ -696,7 +703,7 @@ are based on the local residential share
 $p_i = n_{\text{res},i} / n_{\text{tot},i}$, where $n_{\text{res},i}$ is
 the count of type-1 addresses (private households) and
 $n_{\text{tot},i}$ is the total count of addresses of all types except
-type 7 (under construction). The citywide residential share $P$ is
+type 7 (under construction or renovation). The citywide residential share $P$ is
 computed in the same way over the whole municipality, and it is used by
 the Balance Index and by the BGBI.
 
@@ -752,7 +759,8 @@ municipality, including when `polygon` is supplied, because it is meant
 to describe the city that the addresses belong to. A baseline computed
 only over the area covered by the polygons would measure mix relative to
 that area rather than relative to the city, which is a different
-quantity. Section 4.5 describes the two arguments that change this
+quantity. The subsection "Several municipalities at once" describes the
+two arguments that change this
 baseline, and what happens to it when several municipalities are
 analyzed together.
 
@@ -804,14 +812,14 @@ nei <- geobr::read_neighborhood(year = 2022, showProgress = FALSE) |>
   dplyr::filter(name_muni == "Lauro de Freitas")
 
 # BGBI per H3 hexagon at resolution 8
-lumi_hex <- cnefetools::compute_lumi(
+lumi_hex <- compute_lumi(
   code_muni     = 2919207,
   h3_resolution = 8,
   verbose       = FALSE
 )
 
 # BGBI per neighborhood
-lumi_poly <- cnefetools::compute_lumi(
+lumi_poly <- compute_lumi(
   code_muni    = 2919207,
   polygon      = nei,
   verbose      = FALSE
@@ -944,9 +952,16 @@ height. The variables available for interpolation are listed in Table
 
 ```{r tab-tracts-vars, eval=TRUE, echo=FALSE}
 library(cnefetools)
+vars_df <- tracts_variables_ref[, c("var_cnefetools", "code_var_ibge", "table_ibge")]
+if (knitr::is_latex_output()) {
+  # The caption carries LaTeX markup, so escaping is off and the cells are
+  # escaped here instead
+  vars_df[] <- lapply(vars_df, function(x) gsub("([_$%&#])", "\\\\\\1", x))
+}
 knitr::kable(
-  tracts_variables_ref[, c("var_cnefetools", "code_var_ibge", "table_ibge")],
+  vars_df,
   col.names = c("Variable", "Variable code", "Source table"),
+  escape = !knitr::is_latex_output(),
   caption = if (knitr::is_latex_output()) {
     paste0(
       "Variables supported by \\texttt{tracts\\_to\\_h3()} and",
@@ -1134,7 +1149,7 @@ nei <- geobr::read_neighborhood(year = 2022, showProgress = FALSE) |>
   dplyr::filter(name_muni == "Lauro de Freitas")
 
 # Dasymetric population to H3 hexagons at resolution 8
-hex_pop <- cnefetools::tracts_to_h3(
+hex_pop <- tracts_to_h3(
   code_muni     = 2919207,
   h3_resolution = 8,
   vars          = "pop_ph",
@@ -1142,7 +1157,7 @@ hex_pop <- cnefetools::tracts_to_h3(
 )
 
 # Dasymetric population to neighborhoods
-poly_pop <- cnefetools::tracts_to_polygon(
+poly_pop <- tracts_to_polygon(
   code_muni = 2919207,
   polygon   = nei,
   vars      = "pop_ph",
@@ -1183,7 +1198,7 @@ nei <- geobr::read_neighborhood(year = 2022, showProgress = FALSE) |>
 ```
 
 ```{r tracts-diag, eval=TRUE, echo=TRUE, message=TRUE, warning=FALSE, cache=TRUE, dependson="diag-nei"}
-poly_diag <- cnefetools::tracts_to_polygon(
+poly_diag <- tracts_to_polygon(
   code_muni = 2919207,
   polygon   = nei,
   vars      = c("pop_ph", "avg_inc_resp"),
@@ -1221,13 +1236,26 @@ fallacy [@robinson1950].
 
 ## Several municipalities at once
 
-Every analytical function accepts a vector in `code_muni`, so a study
-region that spans several municipalities is handled in one call. The
-example below computes the indices on a single H3 grid over Salvador and
-Lauro de Freitas, which share a border:
+All four analytical functions accept a vector in `code_muni`, so a study
+region that spans several municipalities, such as a metropolitan region,
+is handled in one call. The addresses of all the municipalities (and, in
+the interpolation functions, their census tracts) are pooled before
+anything is computed, and the H3 grid is built over the union of their
+boundaries. Each cell appears once, and a cell on a shared border holds
+the addresses of both municipalities.
+
+`code_muni` doesn't always have to be given, though. When the output
+units are polygons, it can be left out with `scope = "geom"` (described
+below), and the package then finds the municipalities that the polygons
+intersect, using the 2022 IBGE boundaries, and lists them in a message.
+This saves listing every municipality a polygon layer covers. The H3
+grid, on the other hand, always needs `code_muni`, since it is built
+from the boundaries of those municipalities. The example below computes the
+indices on a single grid over Salvador and Lauro de Freitas, which share
+a border:
 
 ```{r multi-muni-example, eval=TRUE, cache=TRUE}
-lumi_region <- cnefetools::compute_lumi(
+lumi_region <- compute_lumi(
   code_muni     = c(2927408, 2919207),
   h3_resolution = 9,
   verbose       = FALSE
@@ -1235,31 +1263,38 @@ lumi_region <- cnefetools::compute_lumi(
 nrow(lumi_region)
 ```
 
-The grid holds the cells whose center falls inside either municipality,
-plus the neighboring cells that intersect their boundaries, and a cell
-on the shared border appears once, with the addresses of both
-municipalities. Calling the function once per municipality and binding
-the results gives something different. The grid of Salvador alone has
-5,932 cells and that of Lauro de Freitas 547, and 57 of them appear in
-both outputs, each time with the addresses of only one municipality. The
-counts of such a loop could still be summed by `id_hex`, but the indices
-can't, since they are ratios of counts. @pedreirajr2026 applies the
-package at this scale, across the 39 municipalities of the São Paulo
-metropolitan region.
+The units on the outer edge of the region, H3 cells or polygons that
+also reach municipalities that were not requested, depend on the `scope`
+argument, which the four functions share (Table
+\@ref(tab:tab-scope)). Under the default, `scope = "muni"`, only the
+municipalities in `code_muni` are read, so an edge unit describes only
+the part of it inside the region. Under `scope = "geom"`, the functions
+also read the municipalities that the output geometries reach, so every
+unit receives all the addresses inside it, at the cost of reading the
+CNEFE file of each of those municipalities in full.
 
-The baseline $P$ also changes meaning. With several codes, it's computed
-from all the addresses of those municipalities together, so `bal` and
-`bgbi` measure each cell against the region rather than against its own
-municipality, and a cell can get a different value than it does in a
-single-municipality call. Two arguments control this. With
-`scope = "geom"`, the functions take the addresses that fall inside the
-output geometries, whatever municipality they belong to, which completes
-the cells along the outer edge of the region and computes $P$ over those
-geometries only. `p_target` replaces the observed $P$ with a fixed
-value, such as a residential share set by a land use plan
-[@pedreirajr2026bgbi], which also keeps the indices comparable across
-regions. With `polygon` and `scope = "geom"`, `code_muni` can be left
-out, and the package finds the municipalities the polygons intersect.
+| Function | Units | `code_muni` | `scope = "muni"` (default) | `scope = "geom"` |
+|:-------------------|:--------|:-----------|:----------------|:----------------|
+| `cnefe_counts()`, `compute_lumi()` | H3 cells | Required | Addresses of the municipalities in `code_muni` | Also the addresses of the municipalities the grid reaches |
+| `cnefe_counts()`, `compute_lumi()` | Polygons | Required under `"muni"`, optional under `"geom"` | Addresses of the municipalities in `code_muni` | Addresses of the municipalities the polygons intersect |
+| `tracts_to_h3()` | H3 cells | Required | Tracts and dwellings of the municipalities in `code_muni` | Also the dwellings of the municipalities the grid reaches, and their tracts with a dwelling inside the grid |
+| `tracts_to_polygon()` | Polygons | Required under `"muni"`, optional under `"geom"` | Tracts and dwellings of the municipalities in `code_muni` | Tracts and dwellings of the municipalities the polygons intersect |
+
+: (#tab:tab-scope) What each function reads under each value of `scope`.
+Under `"muni"`, units on the outer edge of the region describe only the
+part of them inside it, and under `"geom"` they receive everything inside
+them.
+
+In `compute_lumi()`, the baseline $P$ used by `bal` and `bgbi` follows
+the same choice. Under `"muni"`, it is the residential share of every
+address of the municipalities in `code_muni`, so with several codes
+these two indices measure each unit against the region rather than
+against its own municipality. Under `"geom"`, it is computed only from
+the addresses inside the output geometries. The `p_target` argument
+replaces the observed $P$ with a fixed value under either scope, such as
+a residential share set by a land use plan [@pedreirajr2026bgbi], which
+also keeps the indices comparable across regions. The other indices are
+computed within each unit and don't depend on $P$.
 
 ## Utility functions {#utility-functions}
 
@@ -1392,7 +1427,7 @@ DuckDB figure.
 knitr::include_graphics("figures/bench-memory.png")
 ```
 
-This separates two constraints that were previously treated as one. The
+This separates two constraints that are easy to treat as one. The
 pure-R backend is the appropriate choice when DuckDB extensions cannot
 be installed, such as on some restricted computing clusters, which is
 the case it was written for, and it is the wrong choice when the binding
